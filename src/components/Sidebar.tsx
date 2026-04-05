@@ -109,7 +109,7 @@ export function Sidebar() {
              <div className="px-3 py-2 border-b border-[#3e4451]">
                 <span className="text-xs font-semibold text-gray-400 uppercase">Recent Repositories</span>
              </div>
-             <div className="max-h-60 overflow-y-auto">
+             <div className="max-h-60 overflow-y-auto custom-scrollbar">
                 {recentRepos.map(repo => (
                    <div 
                      key={repo.path}
@@ -152,7 +152,7 @@ export function Sidebar() {
       </div>
 
       {/* Scrollable List */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-4 custom-scrollbar">
         
         {/* LOCAL */}
         <div>

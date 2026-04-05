@@ -1,6 +1,6 @@
 # GitManager App Summary
-## Version: 0.7.0
-## Last updated: 2026-04-05 - Commit Graph Edge Direction Fix
+## Version: 0.8.0
+## Last updated: 2026-04-05 - Commit Graph Bezier Fix + Scrollbar
 ## Project: GitKit
 
-GitKraken-style desktop Git client. Commit graph renders per-row SVGs with correct edge directions: branch-off uses horizontal-first bezier, merge uses vertical-first bezier. Avatar is pure HTML with hue-based fallback. Sidebar derives branches dynamically from commitLog refs with filter support.
+GitKraken-style desktop Git client. Commit graph uses per-row SVGs with exact bezier control points (branch-off horizontal-first, merge vertical-first). Continuous vertical lane lines pass through nodes. Active lanes tracked per row with consistent SVG width. Custom scrollbar CSS applied globally. Sidebar derives branches from commitLog refs.

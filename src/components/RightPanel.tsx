@@ -26,7 +26,7 @@ export function RightPanel({ loadStatus }: { loadStatus?: (path: string) => void
       </header>
       
       {/* Scrollable File List */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 text-sm flex flex-col">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 text-sm flex flex-col custom-scrollbar">
          
          <div className="mb-4">
             <div className="flex justify-between items-center text-[11px] font-semibold uppercase text-[#5c6370] mb-1 group px-1">

@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 0.7.0
-## Last updated: 2026-04-05 - Commit Graph Edge Direction Fix
+## Version: 0.8.0
+## Last updated: 2026-04-05 - Commit Graph Bezier Fix + Scrollbar Component
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -10,3 +10,4 @@
 - 2026-04-05: Commit Graph Visual Fix — rewrote CommitGraph.tsx to match GitKraken style. Separated avatar from graph node (avatar as HTML, graph as per-row SVG). Fixed z-order: pass-through lines → bezier edges → circle → inner dot. 36px row height, no clipping, proper S-curve beziers. Small r=5 circles with r=2 inner dark dots.
 - 2026-04-05: Sidebar Dynamic Data — removed static mock arrays and Pull Requests/Issues dummy sections. Sidebar now derives local/remote branch lists from commitLog refs. Added filter input, empty states, and remote branch grouping by remote name.
 - 2026-04-05: Commit Graph Edge Direction Fix — branch-off edges use horizontal-first bezier (M xA 18 C xA 18, xB 18, xB 36), merge edges use vertical-first bezier (M xFrom 36 C xFrom 18, xFrom 18, xTo 18). Avatar fully HTML with hue-based AvatarFallback. classifyEdge() determines type from parent count.
+- 2026-04-05: Commit Graph Bezier Fix — exact control points (branch-off: C x1 27 x2 27; merge: C x1 9 x2 9). Continuous vertical lane lines through nodes. Active lanes tracked per row with consistent SVG width. Debug log added. Custom scrollbar CSS component created in index.css and applied to all scrollable containers.
