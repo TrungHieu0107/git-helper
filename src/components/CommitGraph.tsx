@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, CommitNode } from '../store';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
+import { Monitor, Cloud } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────
 const ROW_H = 50;
@@ -269,19 +270,46 @@ export function CommitGraph() {
                 onClick={() => setSel(row)} onMouseEnter={() => setHov(row)} onMouseLeave={() => setHov(null)}>
                 {/* Branch labels */}
                 <div className="pl-2 flex items-center gap-1 overflow-hidden" style={{ width: cw.label }}>
-                  {n.refs?.map(r => {
-                    const isRemote = r.includes('origin/');
-                    const isHead = r === 'HEAD';
-                    const bg = isHead ? 'bg-sky-900/50 text-sky-300 border-sky-600/50'
-                      : isRemote ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
-                      : `border-[${color(n.color_idx)}]/50`;
-                    const style = !isHead && !isRemote ? { backgroundColor: color(n.color_idx) + '30', color: color(n.color_idx), borderColor: color(n.color_idx) + '60' } : undefined;
-                    return (
-                      <span key={r} className={`border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate max-w-[80px] ${isHead || isRemote ? bg : 'border'}`} style={style}>
-                        {r}
-                      </span>
-                    );
-                  })}
+                  {(() => {
+                    const branchGroups = new Map<string, { isLocal: boolean; isRemote: boolean; isHead: boolean }>();
+                    n.refs?.forEach(r => {
+                      if (r === 'HEAD') {
+                        branchGroups.set('HEAD', { isLocal: true, isRemote: false, isHead: true });
+                        return;
+                      }
+                      let name = r;
+                      let isRemote = false;
+                      if (r.startsWith('origin/')) {
+                        name = r.substring(7);
+                        isRemote = true;
+                      }
+                      const existing = branchGroups.get(name) || { isLocal: false, isRemote: false, isHead: false };
+                      if (isRemote) existing.isRemote = true;
+                      else existing.isLocal = true;
+                      branchGroups.set(name, existing);
+                    });
+
+                    return Array.from(branchGroups.entries()).map(([name, info]) => {
+                      const isRemoteOnly = info.isRemote && !info.isLocal;
+                      const bg = info.isHead ? 'bg-sky-900/50 text-sky-300 border-sky-600/50'
+                        : isRemoteOnly ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
+                        : `border-[${color(n.color_idx)}]/50`;
+                      const style = !info.isHead && !isRemoteOnly ? { backgroundColor: color(n.color_idx) + '30', color: color(n.color_idx), borderColor: color(n.color_idx) + '60' } : undefined;
+                      return (
+                        <span key={name} className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate max-w-[120px] ${info.isHead || isRemoteOnly ? bg : 'border'}`} style={style}>
+                          {info.isHead ? name : (
+                            <>
+                              <span className="truncate">{name}</span>
+                              <div className="flex items-center gap-0.5 opacity-80 shrink-0">
+                                {info.isLocal && <Monitor size={10} />}
+                                {info.isRemote && <Cloud size={10} />}
+                              </div>
+                            </>
+                          )}
+                        </span>
+                      );
+                    });
+                  })()}
                 </div>
                 {/* Graph spacer */}
                 <div style={{ width: gw + 5 }} />
