@@ -4,12 +4,25 @@
   --color-primary: #3b82f6;
 }
 
+@layer base {
+  :root {
+    --sidebar-width: 220px;
+    --right-width: 340px;
+    --row-height: 36px;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+}
+
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #0f172a;
+  background-color: #0f172a; /* standard dark mode base */
   color: #f8fafc;
+  overflow: hidden; /* no outer scroll */
+}
+
+/* Base tailwind defaults mapped to UI spec */
+.text-primary {
+  color: var(--color-primary);
 }

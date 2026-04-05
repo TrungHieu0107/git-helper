@@ -1,6 +1,6 @@
 # GitManager App Summary
-## Version: 0.2.0
-## Last updated: 2026-04-05 - Added Repo Opening + Staging + Committing UI
+## Version: 0.3.0
+## Last updated: 2026-04-05 - GitKraken UI Refactor Completed
 ## Project: GitKit
 
-The project has foundational scaffolding loaded. The frontend now has a functional Left Panel with "Open Repository" integrations via `tauri-plugin-dialog`. The core `get_status`, staging operations, `get_diff`, and basic `create_commit` operations are wired fully into the Rust `git2` backend and accurately reflected on the React UI.
+The project has foundational scaffolding loaded natively. The frontend features a fully refactored GitKraken layout utilizing CSS Grid/Flexbox with purely visual rendering for missing components relying on strict component-level UI mocks. Data boundaries are structurally strictly maintained across memory states (`store.ts` unmodified). `FEATURE_REGISTRY`, `RUST_API`, and `PROJECT_CONTEXT` maps are up to date!

@@ -1,7 +1,8 @@
 # GitManager App Memory
-## Version: 0.2.0
-## Last updated: 2026-04-05 - Added Repo Opening + Staging + Committing UI 
+## Version: 0.3.0
+## Last updated: 2026-04-05 - GitKraken UI Refactor Completed
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
-- 2026-04-05: Implemented "Open Repo" capability and Phase 1 tasks. Intervened with Tauri plugins (`tauri-plugin-dialog`) to open OS folders. Upgraded Rust back-end with modules for Repo validation, Git Status retrieval, Differential patches viewing, Staging toggles, and unified Committing mechanism. Refactored `<App />` layout mapping directly to the `Zustand` store for real-time reactivity without Prop Drilling. `FEATURE_REGISTRY` & `RUST_API` maps are up to date.
+- 2026-04-05: Implemented "Open Repo" capability and Phase 1 tasks. Intervened with Tauri plugins (`tauri-plugin-dialog`) to open OS folders. Upgraded Rust back-end with modules for Repo validation, Git Status retrieval, Differential patches viewing, Staging toggles, and unified Committing mechanism. Refactored `<App />` layout mapping directly to the `Zustand` store for real-time reactivity without Prop Drilling.
+- 2026-04-05: Completely refactored the interface utilizing the raw GitKraken specs providing a Top Toolbar, unified Left Panel navigation (Repositories, Stashes, Remotes), graphical Commit Row structure maps, and Right Panel advanced Context staging. Complied fully with user request to visually mock components (D3 lanes, remote branches) without artificially skewing `store.ts`. `FEATURE_REGISTRY` & `PROJECT_CONTEXT` up to date.
