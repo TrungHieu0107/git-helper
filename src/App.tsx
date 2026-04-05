@@ -8,6 +8,7 @@ import { Sidebar } from "./components/Sidebar";
 import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
 import { CheckoutAlert } from "./components/CheckoutAlert";
+import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
   const activeRepoPath = useAppStore(state => state.activeRepoPath);
@@ -43,6 +44,7 @@ function App() {
       )}
 
       <CheckoutAlert />
+      <ToastContainer />
     </div>
   );
 }

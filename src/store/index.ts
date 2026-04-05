@@ -64,6 +64,13 @@ export interface StashEntry {
     timestamp: number;
 }
 
+export interface Toast {
+    id: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+    duration?: number;
+}
+
 interface AppStore {
   repos: RepoMeta[];          // list of opened repos
   activeRepoPath: string | null;
@@ -87,6 +94,7 @@ interface AppStore {
   hasMoreCommits: boolean;
   isLoadingMore: boolean;
   confirmCheckoutTo: string | null;
+  toasts: Toast[];
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -111,4 +119,21 @@ export const useAppStore = create<AppStore>(() => ({
   hasMoreCommits: true,
   isLoadingMore: false,
   confirmCheckoutTo: null,
+  toasts: [],
 }));
+
+export const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    useAppStore.setState(state => ({
+        toasts: [...state.toasts, { id, message, type, duration }]
+    }));
+    if (duration > 0) {
+        setTimeout(() => removeToast(id), duration);
+    }
+};
+
+export const removeToast = (id: string) => {
+    useAppStore.setState(state => ({
+        toasts: state.toasts.filter(t => t.id !== id)
+    }));
+};

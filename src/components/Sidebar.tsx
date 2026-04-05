@@ -58,6 +58,46 @@ function buildBranchTree(branchNames: string[]): BranchNode[] {
     return toSortedArray(rootMap);
 }
 
+function filterBranchTree(nodes: BranchNode[], filterText: string): BranchNode[] {
+    if (!filterText) return nodes;
+    const lowerFilter = filterText.toLowerCase();
+
+    return nodes.reduce((acc, node) => {
+        // Recursively filter children first
+        const filteredChildren = filterBranchTree(Array.from(node.children.values()), filterText);
+        
+        // Match if:
+        // 1. node name matches
+        // 2. OR any child matches
+        const matches = node.name.toLowerCase().includes(lowerFilter) || filteredChildren.length > 0;
+        
+        if (matches) {
+            acc.push({
+                ...node,
+                children: new Map(filteredChildren.map(c => [c.name, c]))
+            });
+        }
+        return acc;
+    }, [] as BranchNode[]);
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  
+  const parts = text.split(new RegExp(`(${query})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) => 
+        part.toLowerCase() === query.toLowerCase() ? (
+          <span key={i} className="text-blue-400 bg-blue-500/10 font-bold px-0.5 rounded-sm">{part}</span>
+        ) : (
+          part
+        )
+      )}
+    </>
+  );
+}
+
 export function Sidebar() {
   const [localOpen, setLocalOpen] = useState(true);
   const [remoteOpen, setRemoteOpen] = useState(true);
@@ -113,17 +153,29 @@ export function Sidebar() {
     };
   }, [commitLog, activeBranch]);
 
-  // Filter tree (simplified: just filter root names or leaf branch names)
-  const filterTree = (nodes: BranchNode[]): BranchNode[] => {
-      if (!filter) return nodes;
-      return nodes.filter(node => {
-          if (node.isBranch && node.name.toLowerCase().includes(filter.toLowerCase())) return true;
-          // or check children
-          return false;
+  // Unified Filtered States
+  const filteredLocalTree = useMemo(() => filterBranchTree(localBranches, filter), [localBranches, filter]);
+  
+  const filteredRemoteTree = useMemo(() => {
+      const lowerFilter = filter.toLowerCase();
+      const entries = Array.from(remoteBranchesTree.entries()).map(([remote, tree]): [string, BranchNode[]] => {
+          const filteredTree = filterBranchTree(tree, filter);
+          return [remote, filteredTree];
       });
-  };
+      
+      // Keep remote if:
+      // 1. Remote name matches
+      // 2. OR its tree has matching branches
+      return new Map(entries.filter(([remote, tree]) => 
+          remote.toLowerCase().includes(lowerFilter) || tree.length > 0
+      ));
+  }, [remoteBranchesTree, filter]);
 
-  const filteredLocalTree = filterTree(localBranches);
+  const filteredStashes = useMemo(() => {
+      if (!filter) return stashes;
+      return stashes.filter(s => s.message.toLowerCase().includes(filter.toLowerCase()));
+  }, [stashes, filter]);
+
 
   const switcherRef = useRef<HTMLDivElement>(null);
 
@@ -264,7 +316,7 @@ export function Sidebar() {
       <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
         
         {/* LOCAL */}
-        <div className={`flex flex-col min-h-0 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
+        <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
            <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
            {localOpen && (
              <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1 px-1">
@@ -272,7 +324,7 @@ export function Sidebar() {
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                ) : (
                  filteredLocalTree.map(node => (
-                   <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} />
+                   <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} />
                  ))
                )}
              </div>
@@ -284,22 +336,24 @@ export function Sidebar() {
         )}
 
         {/* REMOTE */}
-        <div className={`flex flex-col min-h-0 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
-           <SectionHeader title="REMOTE" count={remoteBranchesTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
+        <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
+           <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
            {remoteOpen && (
              <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1 px-1">
-               {remoteBranchesTree.size === 0 ? (
+               {filteredRemoteTree.size === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                ) : (
-                 Array.from(remoteBranchesTree.entries()).map(([remote, tree]) => (
+                 Array.from(filteredRemoteTree.entries()).map(([remote, tree]) => (
                    <div key={remote}>
                      <div className="flex items-center gap-2 py-1 pl-1">
                         <GitBranch size={12} className="text-[#5c6370]" />
-                        <span className="text-[#a0a6b1] font-medium">{remote}</span>
+                        <span className="text-[#a0a6b1] font-medium">
+                          <Highlight text={remote} query={filter} />
+                        </span>
                      </div>
                      <div className="pl-4">
                         {tree.map(node => (
-                          <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} />
+                          <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} filter={filter} />
                         ))}
                      </div>
                    </div>
@@ -314,14 +368,14 @@ export function Sidebar() {
         )}
 
         {/* STASHES */}
-        <div className={`flex flex-col min-h-0 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
-           <SectionHeader title="STASHES" count={stashes.length} open={stashOpen} setOpen={setStashOpen} />
+        <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
+           <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
            {stashOpen && (
              <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
-               {stashes.length === 0 ? (
+               {filteredStashes.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                ) : (
-                 stashes.map((s, i: number) => {
+                 filteredStashes.map((s, i: number) => {
                    const timeStr = new Date(s.timestamp * 1000).toLocaleString(undefined, {
                      year: 'numeric', month: 'short', day: 'numeric',
                      hour: '2-digit', minute: '2-digit'
@@ -330,7 +384,9 @@ export function Sidebar() {
                      <div key={i} className="flex flex-col py-1.5 px-1 hover:bg-[#2c313a] rounded cursor-pointer group text-[13px] text-slate-300 overflow-hidden">
                         <div className="flex items-center gap-2">
                           <span className="text-slate-500 shrink-0">≡</span>
-                          <span className="truncate">{s.message || `stash@{${s.index}}`}</span>
+                          <span className="truncate text-slate-300">
+                             <Highlight text={s.message || `stash@{${s.index}}`} query={filter} />
+                          </span>
                         </div>
                         <span className="text-[10px] text-slate-400 pl-4">— {timeStr}</span>
                      </div>
@@ -345,7 +401,7 @@ export function Sidebar() {
   );
 }
 
-function BranchTreeItem({ node, activeBranch, level }: Readonly<{ node: BranchNode; activeBranch: string | null; level: number }>) {
+function BranchTreeItem({ node, activeBranch, level, filter = "" }: Readonly<{ node: BranchNode; activeBranch: string | null; level: number, filter?: string }>) {
     const [expanded, setExpanded] = useState(true);
     const isHead = activeBranch === node.fullPath;
     const hasChildren = node.children.size > 0;
@@ -385,7 +441,7 @@ function BranchTreeItem({ node, activeBranch, level }: Readonly<{ node: BranchNo
                     )}
                     
                     <span className={`text-[13px] truncate ${isHead ? 'text-[#e5e5e6] font-semibold' : 'text-[#a0a6b1]'}`}>
-                        {node.name}
+                        <Highlight text={node.name} query={filter} />
                     </span>
                     
                     {isHead && <CloudSync size={12} className="text-slate-400 shrink-0 ml-1" />}
@@ -399,7 +455,7 @@ function BranchTreeItem({ node, activeBranch, level }: Readonly<{ node: BranchNo
             {hasChildren && expanded && (
                 <div className="flex flex-col">
                     {children.map(child => (
-                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} />
+                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} filter={filter} />
                     ))}
                 </div>
             )}

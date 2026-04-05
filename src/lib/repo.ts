@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry } from '../store';
+import { toast } from './toast';
 
 export async function loadRepo(path: string) {
   useAppStore.setState({ isLoadingRepo: true, repoError: null });
@@ -63,10 +64,10 @@ export async function checkoutBranch(branchName: string) {
     await invoke('checkout_branch', { repoPath: path, branchName });
     // Refresh the repo state
     await loadRepo(path);
+    toast.success(`Switched to branch "${branchName}"`);
   } catch (e) {
     console.error("Checkout failed:", e);
-    // You might want to show a toast or error alert here
-    alert(`Checkout failed: ${e}`);
+    toast.error(`Checkout failed: ${e}`);
   } finally {
     useAppStore.setState({ confirmCheckoutTo: null });
   }
