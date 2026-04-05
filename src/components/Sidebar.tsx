@@ -13,6 +13,13 @@ export function Sidebar() {
   const [recentRepos, setRecentRepos] = useState<RecentRepo[]>([]);
   const [filter, setFilter] = useState("");
   
+  // Section Heights (px) - use percentage or absolute. Let's use relative weights (flex values)
+  const [localFlex, setLocalFlex] = useState(1);
+  const [remoteFlex, setRemoteFlex] = useState(1);
+  const [stashFlex, setStashFlex] = useState(1);
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  
   const repoInfo = useAppStore(state => state.repoInfo);
   const activeBranch = useAppStore(state => state.activeBranch) || "main";
   const commitLog = useAppStore(state => state.commitLog);
@@ -92,6 +99,48 @@ export function Sidebar() {
     }
   };
 
+  const startResizing = (section: 'local' | 'remote') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startLocal = localFlex;
+    const startRemote = remoteFlex;
+    const startStash = stashFlex;
+    const totalFlex = localFlex + remoteFlex + stashFlex;
+    
+    // We need the height of the container to calculate the delta in flex units
+    const containerHeight = containerRef.current?.clientHeight || 500;
+    const flexUnitHeight = containerHeight / totalFlex;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      const flexDelta = deltaY / flexUnitHeight;
+
+      if (section === 'local') {
+        const newLocal = Math.max(0.1, startLocal + flexDelta);
+        const remaining = totalFlex - newLocal;
+        const ratio = remaining / (startRemote + startStash);
+        setLocalFlex(newLocal);
+        setRemoteFlex(startRemote * ratio);
+        setStashFlex(startStash * ratio);
+      } else if (section === 'remote') {
+        const newRemote = Math.max(0.1, startRemote + flexDelta);
+        const remaining = totalFlex - startLocal - newRemote;
+        setRemoteFlex(newRemote);
+        setStashFlex(Math.max(0.1, remaining));
+      }
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = 'default';
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'row-resize';
+  };
+
   return (
     <aside className="w-[var(--sidebar-width)] bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm relative">
       
@@ -152,13 +201,13 @@ export function Sidebar() {
       </div>
 
       {/* Sections Container (No global scroll, just flex-col) */}
-      <div className="flex-1 flex flex-col overflow-hidden p-2 gap-3">
+      <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
         
         {/* LOCAL */}
-        <div className={`flex flex-col min-h-0 ${localOpen ? 'shrink' : 'shrink-0'}`}>
+        <div className={`flex flex-col min-h-0 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
            <SectionHeader title="LOCAL" count={filteredLocal.length} open={localOpen} setOpen={setLocalOpen} />
            {localOpen && (
-             <div className="flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
+             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
                {filteredLocal.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                ) : (
@@ -170,11 +219,15 @@ export function Sidebar() {
            )}
         </div>
 
+        {localOpen && remoteOpen && (
+          <SidebarResizeHandle onMouseDown={startResizing('local')} />
+        )}
+
         {/* REMOTE */}
-        <div className={`flex flex-col min-h-0 ${remoteOpen ? 'shrink' : 'shrink-0'}`}>
+        <div className={`flex flex-col min-h-0 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
            <SectionHeader title="REMOTE" count={remoteBranches.size} open={remoteOpen} setOpen={setRemoteOpen} />
            {remoteOpen && (
-             <div className="flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
+             <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
                {remoteBranches.size === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                ) : (
@@ -196,11 +249,15 @@ export function Sidebar() {
            )}
         </div>
 
+        {remoteOpen && stashOpen && (
+          <SidebarResizeHandle onMouseDown={startResizing('remote')} />
+        )}
+
         {/* STASHES */}
-        <div className={`flex flex-col min-h-0 ${stashOpen ? 'shrink' : 'shrink-0'}`}>
+        <div className={`flex flex-col min-h-0 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
            <SectionHeader title="STASHES" count={stashes.length} open={stashOpen} setOpen={setStashOpen} />
            {stashOpen && (
-             <div className="flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
+             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
                {stashes.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                ) : (
@@ -250,5 +307,15 @@ function BranchRow({ name, isHead }: Readonly<{ name: string; isHead: boolean }>
        </div>
        <MoreHorizontal size={14} className="text-slate-400 invisible group-hover:visible shrink-0 ml-2" />
     </div>
+  );
+}
+
+function SidebarResizeHandle({ onMouseDown }: Readonly<{ onMouseDown: (e: React.MouseEvent) => void }>) {
+  return (
+    <div 
+      onMouseDown={onMouseDown}
+      className="h-1 cursor-row-resize hover:bg-blue-500/30 transition-colors my-1 shrink-0 z-10"
+      title="Drag to resize"
+    />
   );
 }
