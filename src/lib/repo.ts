@@ -13,6 +13,10 @@ export async function loadRepo(path: string) {
     const branches = await invoke<BranchInfo[]>('list_branches', { repoPath: path });
     const log = await invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0 });
     const stashes = await invoke<StashEntry[]>('list_stashes', { repoPath: path });
+    const fileStatuses = await invoke<FileStatus[]>('get_status', { repoPath: path });
+
+    const stagedFiles = fileStatuses.filter(f => f.status === 'staged');
+    const unstagedFiles = fileStatuses.filter(f => f.status === 'unstaged' || f.status === 'untracked' || f.status === 'conflicted');
 
     useAppStore.setState({
       activeRepoPath: info.path,
@@ -22,6 +26,8 @@ export async function loadRepo(path: string) {
       branches,
       commitLog: log,
       stashes,
+      stagedFiles,
+      unstagedFiles,
       hasMoreCommits: log.length === 200,
     });
   } catch (e) {

@@ -145,12 +145,17 @@ pub fn get_repo_status(path: String) -> Result<RepoStatus, String> {
 #[tauri::command]
 pub fn unstage_all(repo_path: String) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
-    // If no head, can't unstage (empty repo)
     let head = match repo.head() {
         Ok(h) => h,
-        Err(_) => return Ok(()),
+        Err(_) => {
+            // If no HEAD exists, just clear the index to unstage everything
+            let mut index = repo.index().map_err(|e| e.message().to_string())?;
+            index.clear().map_err(|e| e.message().to_string())?;
+            index.write().map_err(|e| e.message().to_string())?;
+            return Ok(());
+        }
     };
     let commit = head.peel_to_commit().map_err(|e| e.message().to_string())?;
-    repo.reset_default(Some(commit.as_object()), None as Option<&std::path::Path>).map_err(|e| e.message().to_string())?;
+    repo.reset(commit.as_object(), git2::ResetType::Mixed, None).map_err(|e| e.message().to_string())?;
     Ok(())
 }
