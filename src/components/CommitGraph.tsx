@@ -4,10 +4,10 @@ import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { Monitor, Cloud } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────
-const ROW_H = 50;
-const LANE_W = 30;
-const NODE_R = 14;
-const MERGE_DOT_R = 5;
+const ROW_H = 36;
+const LANE_W = 20;
+const NODE_R = 10;
+const MERGE_DOT_R = 4;
 const LANE_PAD = NODE_R + 8;
 const DEF_LABEL_W = 150;
 const DEF_HASH_W = 72;
@@ -60,7 +60,7 @@ function buildLaneSpans(commits: CommitNode[], off: number): Map<number, LaneSpa
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; dashed?: boolean };
 
-function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 12) {
+function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 8) {
   if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
   if (y1 === y2) return `M ${x1} ${y1} L ${x2} ${y2}`;
   const dx = x2 - x1;
@@ -179,14 +179,14 @@ export function CommitGraph() {
               <line key={`vl-${lane}`}
                 x1={lx(lane)} y1={ly(span.startRow) - NODE_R - 4}
                 x2={lx(lane)} y2={ly(span.endRow) + NODE_R + 4}
-                stroke={color(span.colorIdx)} strokeWidth={3} opacity={0.6}
+                stroke={color(span.colorIdx)} strokeWidth={2} opacity={0.6}
               />
             ))}
 
             {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
             {edges.map((e, i) => (
               <path key={`e-${i}`} d={e.path} fill="none"
-                stroke={color(e.colorIdx)} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"
+                stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
                 strokeDasharray={e.dashed ? '6 4' : 'none'} />
             ))}
 
@@ -194,9 +194,9 @@ export function CommitGraph() {
             {hasWip && (
               <g>
                 <circle cx={lx(0)} cy={ly(0)} r={NODE_R}
-                  fill="#0d1117" stroke="#58a6ff" strokeWidth={3} strokeDasharray="4 3" />
+                  fill="#0d1117" stroke="#58a6ff" strokeWidth={2} strokeDasharray="4 3" />
                 <text x={lx(0)} y={ly(0)} textAnchor="middle" dominantBaseline="central"
-                  fill="#58a6ff" fontSize={12} fontWeight={700}>W</text>
+                  fill="#58a6ff" fontSize={10} fontWeight={700}>W</text>
               </g>
             )}
 
@@ -224,13 +224,13 @@ export function CommitGraph() {
               // Regular commit — large circle with avatar initial
               return (
                 <g key={n.oid}>
-                  <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={3} />
+                  <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={2} />
                   <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                    fill="#fff" fontSize={11} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                    fill="#fff" fontSize={10} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
                     {(n.author || '?')[0].toUpperCase()}
                   </text>
                   {(hov === row || sel === row) && (
-                    <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke={sel === row ? '#fff' : c} strokeWidth={1.5} opacity={0.7} />
+                    <circle cx={cx} cy={cy} r={r + 3} fill="none" stroke={sel === row ? '#fff' : c} strokeWidth={1.5} opacity={0.7} />
                   )}
                 </g>
               );
