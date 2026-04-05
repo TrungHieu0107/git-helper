@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppStore, FileStatus } from "../store";
-import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash } from "lucide-react";
+import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X } from "lucide-react";
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff } from "../lib/repo";
 import { CommitDetailPanel } from "./CommitDetailPanel";
 
@@ -47,6 +47,7 @@ export function RightPanel() {
   const [viewMode, setViewMode] = useState<'path' | 'tree'>('path');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [fileFilter, setFileFilter] = useState('');
 
   // Vertical Resizing State
   const [unstagedFlex, setUnstagedFlex] = useState(1);
@@ -123,8 +124,17 @@ export function RightPanel() {
 
   const isViewingCommit = selectedCommitDetail || isLoadingCommitDetail;
 
-  const unstagedTree = useMemo(() => buildTree(unstagedFiles), [unstagedFiles]);
-  const stagedTree = useMemo(() => buildTree(stagedFiles), [stagedFiles]);
+  const filteredUnstaged = useMemo(() => 
+    fileFilter ? unstagedFiles.filter(f => f.path.toLowerCase().includes(fileFilter.toLowerCase())) : unstagedFiles,
+    [unstagedFiles, fileFilter]
+  );
+  const filteredStaged = useMemo(() => 
+    fileFilter ? stagedFiles.filter(f => f.path.toLowerCase().includes(fileFilter.toLowerCase())) : stagedFiles,
+    [stagedFiles, fileFilter]
+  );
+
+  const unstagedTree = useMemo(() => buildTree(filteredUnstaged), [filteredUnstaged]);
+  const stagedTree = useMemo(() => buildTree(filteredStaged), [filteredStaged]);
 
   const toggleFolder = (path: string) => {
     const newSet = new Set(expandedFolders);
@@ -228,20 +238,35 @@ export function RightPanel() {
              </div>
           </header>
           
-          {/* Tabs */}
-          <div className="flex items-center gap-4 px-4 pt-2 border-b border-[#30363d] bg-[#21252b] shrink-0">
+          {/* Tabs + Filter */}
+          <div className="flex items-center gap-3 px-3 pt-2 border-b border-[#30363d] bg-[#21252b] shrink-0">
             <button 
               onClick={() => setViewMode('path')}
-              className={`text-[11px] font-semibold pb-1.5 transition-all ${viewMode === 'path' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff] drop-shadow-[0_0_4px_rgba(88,166,255,0.8)]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
+              className={`text-[11px] font-semibold pb-1.5 transition-all shrink-0 ${viewMode === 'path' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff] drop-shadow-[0_0_4px_rgba(88,166,255,0.8)]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
             >
               Path
             </button>
             <button 
               onClick={() => setViewMode('tree')}
-              className={`text-[11px] font-semibold pb-1.5 transition-all ${viewMode === 'tree' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff] drop-shadow-[0_0_4px_rgba(88,166,255,0.8)]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
+              className={`text-[11px] font-semibold pb-1.5 transition-all shrink-0 ${viewMode === 'tree' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff] drop-shadow-[0_0_4px_rgba(88,166,255,0.8)]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
             >
               Tree
             </button>
+            <div className="flex-1 flex items-center bg-[#0d1117] rounded border border-[#30363d] px-2 mb-1">
+              <Search size={12} className="text-[#5c6370] shrink-0" />
+              <input
+                type="text"
+                placeholder="Filter files..."
+                value={fileFilter}
+                onChange={e => setFileFilter(e.target.value)}
+                className="w-full bg-transparent border-none text-[11px] py-1 px-1.5 outline-none text-[#e6edf3] placeholder-[#5c6370] font-mono"
+              />
+              {fileFilter && (
+                <button onClick={() => setFileFilter('')} className="text-[#5c6370] hover:text-[#c9d1d9] shrink-0">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Scrollable File List */}
@@ -250,7 +275,7 @@ export function RightPanel() {
              {/* Unstaged Files */}
              <div className="flex flex-col p-2" style={{ flex: unstagedFlex, minHeight: 0 }}>
                  <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
-                    <span>Unstaged Files ({unstagedFiles.length})</span>
+                    <span>Unstaged Files ({filteredUnstaged.length}{fileFilter ? `/${unstagedFiles.length}` : ''})</span>
                     {unstagedFiles.length > 0 && (
                       <button 
                         onClick={stageAll}
@@ -262,9 +287,9 @@ export function RightPanel() {
                  </div>
                  
                  <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-[#0d1117] rounded border border-[#30363d] py-1">
-                   {unstagedFiles.length > 0 ? (
+                   {filteredUnstaged.length > 0 ? (
                     viewMode === 'path' ? (
-                      unstagedFiles.map((f, i) => (
+                      filteredUnstaged.map((f, i) => (
                           <FileRow 
                             key={i} 
                             name={f.path} 
@@ -272,6 +297,7 @@ export function RightPanel() {
                             onAction={() => stageFile(f.path)}
                             actionLabel="Stage"
                             onClick={() => selectFileDiff(f.path, false)}
+                            highlight={fileFilter}
                           />
                       ))
                     ) : (
@@ -293,7 +319,7 @@ export function RightPanel() {
              {/* Staged Files */}
              <div className="flex flex-col p-2" style={{ flex: stagedFlex, minHeight: 0 }}>
                 <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
-                   <span>Staged Files ({stagedFiles.length})</span>
+                   <span>Staged Files ({filteredStaged.length}{fileFilter ? `/${stagedFiles.length}` : ''})</span>
                    {stagedFiles.length > 0 && (
                      <button 
                        onClick={unstageAll}
@@ -305,9 +331,9 @@ export function RightPanel() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-[#0d1117] rounded border border-[#30363d] py-1">
-                  {stagedFiles.length > 0 ? (
+                  {filteredStaged.length > 0 ? (
                     viewMode === 'path' ? (
-                      stagedFiles.map((f, i) => (
+                      filteredStaged.map((f, i) => (
                           <FileRow 
                             key={i} 
                             name={f.path} 
@@ -315,6 +341,7 @@ export function RightPanel() {
                             onAction={() => unstageFile(f.path)}
                             actionLabel="Unstage"
                             onClick={() => selectFileDiff(f.path, true)}
+                            highlight={fileFilter}
                           />
                       ))
                     ) : (
@@ -402,7 +429,28 @@ function StatusIcon({ status, size = 12 }: { status: string, size?: number }) {
   return <span className="font-mono text-[#d29922] font-bold text-[11px] leading-none shrink-0">~</span>; // Instead of pencil, we can use ~ or Edit2
 }
 
-function FileRow({ name, status, onAction, actionLabel, onClick }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void }) {
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let idx = lowerText.indexOf(lowerQuery);
+  while (idx !== -1) {
+    if (idx > lastIndex) parts.push(text.slice(lastIndex, idx));
+    parts.push(
+      <span key={idx} className="bg-[#e3b341]/30 text-[#e3b341] rounded-sm px-[1px]">
+        {text.slice(idx, idx + query.length)}
+      </span>
+    );
+    lastIndex = idx + query.length;
+    idx = lowerText.indexOf(lowerQuery, lastIndex);
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return <>{parts}</>;
+}
+
+function FileRow({ name, status, onAction, actionLabel, onClick, highlight = '' }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void, highlight?: string }) {
   return (
     <div 
       onClick={onClick}
@@ -413,11 +461,17 @@ function FileRow({ name, status, onAction, actionLabel, onClick }: { name: strin
            <div className="flex text-[12px] text-[#e6edf3] font-mono min-w-0 overflow-hidden" title={name}>
              {name.includes('/') ? (
                  <>
-                   <span className="truncate shrink text-[#8b949e]">{name.substring(0, name.lastIndexOf('/') + 1)}</span>
-                   <span className="shrink-0">{name.substring(name.lastIndexOf('/') + 1)}</span>
+                   <span className="truncate shrink text-[#8b949e]">
+                     <HighlightText text={name.substring(0, name.lastIndexOf('/') + 1)} query={highlight} />
+                   </span>
+                   <span className="shrink-0">
+                     <HighlightText text={name.substring(name.lastIndexOf('/') + 1)} query={highlight} />
+                   </span>
                  </>
              ) : (
-                 <span className="truncate shrink-0">{name}</span>
+                 <span className="truncate shrink-0">
+                   <HighlightText text={name} query={highlight} />
+                 </span>
              )}
            </div>
         </div>
