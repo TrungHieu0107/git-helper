@@ -52,7 +52,9 @@ pub fn pull_remote(repo_path: String, remote: String) -> Result<(), String> {
     let fetch_commit = fetch_head.peel_to_commit().map_err(|e| e.to_string())?;
     
     // Analyze merge
-    let (analysis, _) = repo.merge_analysis(&[&git2::AnnotatedCommit::from_ref(&fetch_head).unwrap()])
+    let annotated = repo.reference_to_annotated_commit(&fetch_head)
+        .map_err(|e| e.to_string())?;
+    let (analysis, _) = repo.merge_analysis(&[&annotated])
         .map_err(|e| e.to_string())?;
         
     if analysis.is_fast_forward() {

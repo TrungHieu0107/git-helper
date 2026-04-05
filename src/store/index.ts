@@ -71,6 +71,24 @@ export interface Toast {
     duration?: number;
 }
 
+export interface CommitFileChange {
+    path: string;
+    old_path: string | null;
+    status: string;
+}
+
+export interface CommitDetail {
+    oid: string;
+    short_oid: string;
+    message: string;
+    author: string;
+    email: string;
+    timestamp: number;
+    parent_oids: string[];
+    parent_short_oids: string[];
+    files: CommitFileChange[];
+}
+
 interface AppStore {
   repos: RepoMeta[];          // list of opened repos
   activeRepoPath: string | null;
@@ -96,6 +114,8 @@ interface AppStore {
   confirmCheckoutTo: string | null;
   toasts: Toast[];
   commitSearchInput: string;
+  selectedCommitDetail: CommitDetail | null;
+  isLoadingCommitDetail: boolean;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -122,6 +142,8 @@ export const useAppStore = create<AppStore>(() => ({
   confirmCheckoutTo: null,
   toasts: [],
   commitSearchInput: '',
+  selectedCommitDetail: null,
+  isLoadingCommitDetail: false,
 }));
 
 export const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {

@@ -22,6 +22,7 @@ pub fn run() {
             commands::status::unstage_all,
             commands::diff::get_diff,
             commands::diff::create_commit,
+            commands::diff::get_commit_detail,
             commands::stubs::list_branches,
             commands::stubs::list_stashes,
             commands::stubs::create_stash,

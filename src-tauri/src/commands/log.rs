@@ -66,7 +66,7 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
     // Add HEAD
     if let Ok(head) = repo.head() {
         if let Some(oid) = head.target() {
-            let mut refs = refs_map.entry(oid).or_default();
+            let refs = refs_map.entry(oid).or_default();
             if !refs.contains(&"HEAD".to_string()) {
                 refs.insert(0, "HEAD".to_string()); // Put HEAD at the front
             }

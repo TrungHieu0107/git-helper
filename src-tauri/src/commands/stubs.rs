@@ -87,7 +87,7 @@ pub fn list_branches(repo_path: String) -> Result<Vec<BranchInfo>, String> {
 
 #[tauri::command]
 pub fn list_stashes(repo_path: String) -> Result<Vec<StashEntry>, String> {
-    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let mut repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
     
     let mut stash_data = Vec::new();
     let _ = repo.stash_foreach(|index, message, oid| {

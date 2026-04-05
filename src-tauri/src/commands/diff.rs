@@ -1,4 +1,80 @@
-use git2::{Repository, Oid, Signature};
+use git2::{Repository, Signature};
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct CommitFileChange {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub status: String,  // "added", "modified", "deleted", "renamed"
+}
+
+#[derive(Serialize)]
+pub struct CommitDetail {
+    pub oid: String,
+    pub short_oid: String,
+    pub message: String,
+    pub author: String,
+    pub email: String,
+    pub timestamp: i64,
+    pub parent_oids: Vec<String>,
+    pub parent_short_oids: Vec<String>,
+    pub files: Vec<CommitFileChange>,
+}
+
+#[tauri::command]
+pub fn get_commit_detail(repo_path: String, oid: String) -> Result<CommitDetail, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
+    let obj = repo.revparse_single(&oid).map_err(|e| e.message().to_string())?;
+    let commit = obj.peel_to_commit().map_err(|e| e.message().to_string())?;
+
+    let tree = commit.tree().map_err(|e| e.message().to_string())?;
+
+    // Get parent tree (if any) for diffing
+    let parent_tree = commit.parent(0).ok().and_then(|p| p.tree().ok());
+
+    let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)
+        .map_err(|e| e.message().to_string())?;
+
+    let mut files = Vec::new();
+    for delta in diff.deltas() {
+        let status = match delta.status() {
+            git2::Delta::Added => "added",
+            git2::Delta::Deleted => "deleted",
+            git2::Delta::Modified => "modified",
+            git2::Delta::Renamed => "renamed",
+            git2::Delta::Copied => "copied",
+            _ => "modified",
+        };
+        let path = delta.new_file().path()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let old_path = if delta.status() == git2::Delta::Renamed {
+            delta.old_file().path().map(|p| p.to_string_lossy().to_string())
+        } else {
+            None
+        };
+        files.push(CommitFileChange { path, old_path, status: status.to_string() });
+    }
+
+    let parent_oids: Vec<String> = commit.parents().map(|p| p.id().to_string()).collect();
+    let parent_short_oids: Vec<String> = commit.parents().map(|p| p.id().to_string()[..7].to_string()).collect();
+
+    let author_sig = commit.author();
+    let author_name = author_sig.name().unwrap_or("").to_string();
+    let author_email = author_sig.email().unwrap_or("").to_string();
+
+    Ok(CommitDetail {
+        oid: commit.id().to_string(),
+        short_oid: commit.id().to_string()[..7].to_string(),
+        message: commit.message().unwrap_or("").to_string(),
+        author: author_name,
+        email: author_email,
+        timestamp: commit.time().seconds(),
+        parent_oids,
+        parent_short_oids,
+        files,
+    })
+}
 
 #[tauri::command]
 pub fn get_diff(repo_path: String, path: String, staged: bool) -> Result<String, String> {

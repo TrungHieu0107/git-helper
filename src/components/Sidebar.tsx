@@ -284,10 +284,9 @@ export function Sidebar() {
       {/* Top block (non-scrollable) */}
       <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
         <div className="flex justify-between items-center cursor-pointer hover:text-white" onClick={handleOpenSwitcher}>
-           <span className="font-bold text-[#e5e5e6] flex items-center gap-1 max-w-[150px] truncate">
+           <span className="font-bold text-[#e5e5e6] flex items-center gap-1 flex-1 min-w-0 truncate">
               {repoInfo ? repoInfo.name : "GitKit"} ▾
            </span>
-           <span className="bg-slate-700 text-white px-2 py-0.5 rounded-full text-xs font-semibold max-w-[80px] truncate">{activeBranch} ▾</span>
         </div>
         
         {showRepoSwitcher && (

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail } from '../store';
 import { toast } from './toast';
 
 export async function loadRepo(path: string) {
@@ -246,5 +246,18 @@ export async function getFileDiff(filePath: string, staged: boolean) {
     useAppStore.setState({ selectedFilePath: filePath, diffContent: diff });
   } catch (e) {
     toast.error(`Failed to get diff: ${e}`);
+  }
+}
+
+export async function selectCommitDetail(oid: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  useAppStore.setState({ isLoadingCommitDetail: true, selectedCommitDetail: null });
+  try {
+    const detail = await invoke<CommitDetail>('get_commit_detail', { repoPath: path, oid });
+    useAppStore.setState({ selectedCommitDetail: detail, isLoadingCommitDetail: false });
+  } catch (e) {
+    toast.error(`Failed to load commit: ${e}`);
+    useAppStore.setState({ isLoadingCommitDetail: false });
   }
 }

@@ -1,7 +1,21 @@
-import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, Search } from "lucide-react";
+import { useState } from "react";
+import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, Search, Loader2 } from "lucide-react";
 import { pullRepo, pushRepo, createStash, popStash, createBranch, undoLastCommit, openTerminal } from "../lib/repo";
 
 export function TopToolbar() {
+  const [pulling, setPulling] = useState(false);
+  const [pushing, setPushing] = useState(false);
+
+  const handlePull = async () => {
+    setPulling(true);
+    try { await pullRepo(); } finally { setPulling(false); }
+  };
+
+  const handlePush = async () => {
+    setPushing(true);
+    try { await pushRepo(); } finally { setPushing(false); }
+  };
+
   return (
     <div className="h-[48px] w-full bg-slate-800 border-b border-slate-700 flex items-center px-4 shrink-0 justify-between select-none">
       <div className="flex items-center space-x-6">
@@ -16,8 +30,8 @@ export function TopToolbar() {
         
         {/* Pull / Push */}
         <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<ArrowDown size={20} />} label="Pull ↓" onClick={pullRepo} />
-          <ToolbarButton icon={<ArrowUp size={20} />} label="Push ↑" onClick={pushRepo} />
+          <ToolbarButton icon={<ArrowDown size={20} />} label="Pull ↓" onClick={handlePull} loading={pulling} />
+          <ToolbarButton icon={<ArrowUp size={20} />} label="Push ↑" onClick={handlePush} loading={pushing} />
         </div>
 
         <div className="w-px h-6 bg-slate-700" />
@@ -60,14 +74,15 @@ export function TopToolbar() {
   );
 }
 
-function ToolbarButton({ icon, label, disabled = false, onClick }: { icon: React.ReactNode, label: string, disabled?: boolean, onClick?: () => void }) {
+function ToolbarButton({ icon, label, disabled = false, loading = false, onClick }: { icon: React.ReactNode, label: string, disabled?: boolean, loading?: boolean, onClick?: () => void }) {
+  const isDisabled = disabled || loading;
   return (
     <div 
-      onClick={() => !disabled && onClick?.()}
-      className={`flex flex-col items-center justify-center cursor-pointer group ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      onClick={() => !isDisabled && onClick?.()}
+      className={`flex flex-col items-center justify-center cursor-pointer group ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
-       <div className={`text-slate-300 ${!disabled && 'group-hover:text-white transition-colors'}`}>
-         {icon}
+       <div className={`text-slate-300 ${!isDisabled && 'group-hover:text-white transition-colors'}`}>
+         {loading ? <Loader2 size={20} className="animate-spin" /> : icon}
        </div>
        <span className="text-[10px] text-slate-500 mt-0.5">{label}</span>
     </div>

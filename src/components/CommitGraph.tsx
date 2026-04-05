@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, CommitNode } from '../store';
-import { loadMoreCommits } from '../lib/repo';
+import { loadMoreCommits, selectCommitDetail } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { Monitor, Cloud } from 'lucide-react';
 
@@ -247,7 +247,12 @@ export function CommitGraph() {
               className={`flex items-center cursor-pointer transition-colors
                 ${hov === 0 ? 'bg-[#1e293b]/40' : ''} ${sel === 0 ? 'bg-[#3b82f6]/10' : ''}`}
               style={{ height: ROW_H }}
-              onClick={() => setSel(0)} onMouseEnter={() => setHov(0)} onMouseLeave={() => setHov(null)}>
+              onClick={() => {
+                setSel(0);
+                useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false });
+              }}
+              onMouseEnter={() => setHov(0)} 
+              onMouseLeave={() => setHov(null)}>
               <div className="pl-3 flex items-center" style={{ width: cw.label }}>
                 <span className="bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-medium">WIP</span>
               </div>
@@ -272,7 +277,12 @@ export function CommitGraph() {
                 className={`flex items-center cursor-pointer transition-colors
                   ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}`}
                 style={{ height: ROW_H }}
-                onClick={() => setSel(row)} onMouseEnter={() => setHov(row)} onMouseLeave={() => setHov(null)}>
+                onClick={() => {
+                  setSel(row);
+                  selectCommitDetail(n.oid);
+                }} 
+                onMouseEnter={() => setHov(row)} 
+                onMouseLeave={() => setHov(null)}>
                 {/* Branch labels */}
                 <div className={`pl-2 flex items-center gap-1 overflow-hidden transition-opacity duration-300 ${!isActiveNode ? 'opacity-30 hover:opacity-100' : ''}`} style={{ width: cw.label }}>
                   {(() => {
