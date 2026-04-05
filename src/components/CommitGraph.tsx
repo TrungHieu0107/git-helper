@@ -31,7 +31,7 @@ const ly = (row: number) => row * ROW_H + ROW_H / 2;
 const hue = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return Math.abs(h) % 360; };
 
 // ── Manhattan-routed edge paths ──────────────────────────────────────
-type Edge = { path: string; colorIdx: number; dashed?: boolean };
+type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean };
 
 function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 8) {
   if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
@@ -66,7 +66,7 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
   // WIP → first commit
   if (wip && commits.length > 0) {
     const x1 = lx(0), y1 = ly(0), x2 = lx(commits[0].lane), y2 = ly(off);
-    out.push({ path: roundedPath(x1, y1, x2, y2, 'branch-off'), colorIdx: commits[0].color_idx, dashed: true });
+    out.push({ path: roundedPath(x1, y1, x2, y2, 'branch-off'), colorIdx: commits[0].color_idx, childOid: 'WIP', isMerge: false, dashed: true });
   }
   commits.forEach((c, i) => {
     const row = i + off;
@@ -80,12 +80,12 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
       if (idx === -1) {
         const tl = e?.to_lane ?? c.lane;
         const x2 = lx(tl), y2 = ly(row + 5);
-        out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci });
+        out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci, childOid: c.oid, isMerge: pi > 0 });
         return;
       }
       const pRow = idx + off;
       const x2 = lx(commits[idx].lane), y2 = ly(pRow);
-      out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci });
+      out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci, childOid: c.oid, isMerge: pi > 0 });
     });
   });
   return out;
@@ -113,6 +113,22 @@ export function CommitGraph() {
   const th = totalRows * ROW_H;
 
   const edges = useMemo(() => commitLog ? buildEdges(commitLog, off, hasWip) : [], [commitLog, off, hasWip]);
+
+  const activeOids = useMemo(() => {
+    const set = new Set<string>();
+    if (!commitLog || commitLog.length === 0) return set;
+    
+    if (hasWip) set.add('WIP');
+    const map = new Map<string, CommitNode>();
+    commitLog.forEach(c => map.set(c.oid, c));
+    
+    let current: string | undefined = commitLog.find(c => c.refs.includes('HEAD'))?.oid || commitLog[0].oid;
+    while (current) {
+      set.add(current);
+      current = map.get(current)?.parents?.[0]; // follow main lineage
+    }
+    return set;
+  }, [commitLog, hasWip]);
 
   const [hov, setHov] = useState<number | null>(null);
   const [sel, setSel] = useState<number | null>(null);
@@ -157,15 +173,18 @@ export function CommitGraph() {
             style={{ left: cw.label + 5, top: 0 }} width={gw} height={th}>
 
             {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
-            {edges.map((e, i) => (
-              <path key={`e-${i}`} d={e.path} fill="none"
-                stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-                strokeDasharray={e.dashed ? '6 4' : 'none'} />
-            ))}
+            {edges.map((e, i) => {
+              const isActive = activeOids.has(e.childOid) && !e.isMerge;
+              return (
+                <path key={`e-${i}`} d={e.path} fill="none"
+                  stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+                  strokeDasharray={e.dashed ? '6 4' : 'none'} strokeOpacity={isActive ? 1 : 0.25} />
+              );
+            })}
 
             {/* Layer 3: WIP node */}
             {hasWip && (
-              <g>
+              <g opacity={1}>
                 <circle cx={lx(0)} cy={ly(0)} r={NODE_R}
                   fill="#0d1117" stroke="#58a6ff" strokeWidth={2} strokeDasharray="4 3" />
                 <text x={lx(0)} y={ly(0)} textAnchor="middle" dominantBaseline="central"
@@ -181,11 +200,13 @@ export function CommitGraph() {
               const h = hue(n.author);
               const isMerge = n.parents.length > 1;
               const r = isMerge ? MERGE_DOT_R : NODE_R;
+              const isActiveNode = activeOids.has(n.oid);
+              const opacity = isActiveNode ? 1 : 0.25;
 
               if (isMerge) {
                 // Merge point — small filled dot
                 return (
-                  <g key={n.oid}>
+                  <g key={n.oid} opacity={opacity}>
                     <circle cx={cx} cy={cy} r={r} fill={c} />
                     {(hov === row || sel === row) && (
                       <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.6} />
@@ -196,7 +217,7 @@ export function CommitGraph() {
 
               // Regular commit — large circle with avatar initial
               return (
-                <g key={n.oid}>
+                <g key={n.oid} opacity={opacity}>
                   <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={2} />
                   <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
                     fill="#fff" fontSize={10} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
@@ -235,10 +256,12 @@ export function CommitGraph() {
 
           {commitLog?.map((n, i) => {
             const row = i + off;
+            const isActiveNode = activeOids.has(n.oid);
             return (
               <div key={n.oid}
                 className={`flex items-center cursor-pointer transition-colors
-                  ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}`}
+                  ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}
+                  ${!isActiveNode ? 'opacity-40' : ''}`}
                 style={{ height: ROW_H }}
                 onClick={() => setSel(row)} onMouseEnter={() => setHov(row)} onMouseLeave={() => setHov(null)}>
                 {/* Branch labels */}
