@@ -1,6 +1,6 @@
 # GitManager App Summary
-## Version: 0.3.0
-## Last updated: 2026-04-05 - GitKraken UI Refactor Completed
+## Version: 0.4.0
+## Last updated: 2026-04-05 - Open Repository Flow Implemented
 ## Project: GitKit
 
-The project has foundational scaffolding loaded natively. The frontend features a fully refactored GitKraken layout utilizing CSS Grid/Flexbox with purely visual rendering for missing components relying on strict component-level UI mocks. Data boundaries are structurally strictly maintained across memory states (`store.ts` unmodified). `FEATURE_REGISTRY`, `RUST_API`, and `PROJECT_CONTEXT` maps are up to date!
+The project features a GitKraken-style 3-column layout. We have successfully implemented the "Open Repository" flow, providing a Welcome Screen, drag-and-drop support, recent repository caching in the Rust backend, and seamless repository context switching from the UI. The application safely loads repo metadata and synchronizes it with the Zustand store.

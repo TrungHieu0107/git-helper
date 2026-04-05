@@ -69,3 +69,75 @@ pub fn stage_all(repo_path: String) -> Result<(), String> {
     index.write().map_err(|e| e.message().to_string())?;
     Ok(())
 }
+
+#[derive(Serialize)]
+pub struct RepoStatus {
+    pub staged_count: usize,
+    pub unstaged_count: usize,
+    pub untracked_count: usize,
+    pub conflict_count: usize,
+    pub ahead: usize,
+    pub behind: usize,
+}
+
+#[tauri::command]
+pub fn get_repo_status(path: String) -> Result<RepoStatus, String> {
+    let repo = Repository::open(&path).map_err(|e| e.message().to_string())?;
+    let mut opts = StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true).include_ignored(false);
+
+    let statuses = repo.statuses(Some(&mut opts)).map_err(|e| e.message().to_string())?;
+    
+    let mut staged = 0;
+    let mut unstaged = 0;
+    let mut untracked = 0;
+    let mut conflicted = 0;
+
+    for entry in statuses.iter() {
+        let status = entry.status();
+        if status.contains(git2::Status::CONFLICTED) {
+            conflicted += 1;
+        } else if status.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) && !status.intersects(git2::Status::WT_MODIFIED | git2::Status::INDEX_MODIFIED) {
+            if status.contains(git2::Status::INDEX_NEW) {
+                staged += 1;
+            } else {
+                untracked += 1;
+            }
+        } else {
+            if status.intersects(git2::Status::INDEX_MODIFIED | git2::Status::INDEX_DELETED | git2::Status::INDEX_RENAMED | git2::Status::INDEX_TYPECHANGE) {
+                staged += 1;
+            }
+            if status.intersects(git2::Status::WT_MODIFIED | git2::Status::WT_DELETED | git2::Status::WT_RENAMED | git2::Status::WT_TYPECHANGE) {
+                unstaged += 1;
+            }
+        }
+    }
+
+    let mut ahead = 0;
+    let mut behind = 0;
+    if let Ok(head) = repo.head() {
+        if head.is_branch() {
+            if let Some(branch_name) = head.shorthand() {
+                if let Ok(branch) = repo.find_branch(branch_name, git2::BranchType::Local) {
+                    if let Ok(upstream) = branch.upstream() {
+                        if let (Some(local_oid), Some(upstream_oid)) = (branch.get().target(), upstream.get().target()) {
+                            if let Ok((a, b)) = repo.graph_ahead_behind(local_oid, upstream_oid) {
+                                ahead = a;
+                                behind = b;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(RepoStatus {
+        staged_count: staged,
+        unstaged_count: unstaged,
+        untracked_count: untracked,
+        conflict_count: conflicted,
+        ahead,
+        behind,
+    })
+}

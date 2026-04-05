@@ -13,3 +13,10 @@
 - `src-tauri/src/commands/` - Tauri command registration
 - `src/components/` - Splitted isolated React UI components (TopToolbar, Sidebar, CommitGraph, RightPanel)
 - `src/store/` - Zustand store
+
+## Data Persistence & Loading
+- Recent Repositories are saved to `{app_data_dir}/recent_repos.json` via standard Rust `std::fs`.
+- Repositories can be opened via:
+  1. Welcome Screen Folder Picker
+  2. Welcome Screen / Sidebar Repo Switcher Recent List
+  3. Drag and Drop folder anywhere in the app

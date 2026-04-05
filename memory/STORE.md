@@ -11,5 +11,9 @@ interface AppStore {
   activeRepoPath: string | null;
   activeBranch: string | null;
   activeCommitOid: string | null;
+  repoInfo: RepoInfo | null;
+  repoStatus: RepoStatus | null;
+  isLoadingRepo: boolean;
+  repoError: string | null;
 }
 ```

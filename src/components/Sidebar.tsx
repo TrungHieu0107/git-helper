@@ -1,28 +1,97 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, Menu } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, Menu, FolderOpen } from "lucide-react";
+import { useAppStore, RecentRepo } from "../store";
+import { invoke } from "@tauri-apps/api/core";
+import { loadRepo } from "../lib/repo";
+import { open } from "@tauri-apps/plugin-dialog";
 
 export function Sidebar() {
   const [localOpen, setLocalOpen] = useState(true);
   const [remoteOpen, setRemoteOpen] = useState(true);
   const [stashOpen, setStashOpen] = useState(true);
+  const [showRepoSwitcher, setShowRepoSwitcher] = useState(false);
+  const [recentRepos, setRecentRepos] = useState<RecentRepo[]>([]);
+  
+  const repoInfo = useAppStore(state => state.repoInfo);
+  const activeBranch = useAppStore(state => state.activeBranch) || "main";
+  const branches = useAppStore(state => state.branches) || [];
+  const stashes = useAppStore(state => state.stashes) || [];
 
-  // MOCK DATA since backend isn't ready
-  const activeBranch = "main";
-  const branches = ["main", "feature/ui-refactor", "bugfix/header"];
-  const stashes = [
-    { message: "WIP on App.tsx", time: "2 hours ago" },
-    { message: "stash sidebar", time: "1 day ago" }
-  ];
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setShowRepoSwitcher(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleOpenSwitcher = async () => {
+    setShowRepoSwitcher(!showRepoSwitcher);
+    if (!showRepoSwitcher) {
+      try {
+        const repos = await invoke<RecentRepo[]>('get_recent_repos');
+        setRecentRepos(repos);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const pickRepo = async () => {
+    setShowRepoSwitcher(false);
+    try {
+      const selected = await open({ directory: true, multiple: false, title: 'Open Repository' });
+      if (selected) await loadRepo(selected as string);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
-    <aside className="w-[var(--sidebar-width)] bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm">
+    <aside className="w-[var(--sidebar-width)] bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm relative">
       
       {/* Top block (non-scrollable) */}
-      <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3">
-        <div className="flex justify-between items-center cursor-pointer hover:text-white">
-           <span className="font-bold text-[#e5e5e6]">GitKit ▾</span>
-           <span className="bg-slate-700 text-white px-2 py-0.5 rounded-full text-xs font-semibold">{activeBranch} ▾</span>
+      <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
+        <div className="flex justify-between items-center cursor-pointer hover:text-white" onClick={handleOpenSwitcher}>
+           <span className="font-bold text-[#e5e5e6] flex items-center gap-1 max-w-[150px] truncate">
+              {repoInfo ? repoInfo.name : "GitKit"} ▾
+           </span>
+           <span className="bg-slate-700 text-white px-2 py-0.5 rounded-full text-xs font-semibold max-w-[80px] truncate">{activeBranch} ▾</span>
         </div>
+        
+        {showRepoSwitcher && (
+          <div ref={switcherRef} className="absolute top-10 left-3 w-64 bg-[#21262d] border border-[#3e4451] rounded-lg shadow-xl z-50 flex flex-col overflow-hidden">
+             <div className="px-3 py-2 border-b border-[#3e4451]">
+                <span className="text-xs font-semibold text-gray-400 uppercase">Recent Repositories</span>
+             </div>
+             <div className="max-h-60 overflow-y-auto">
+                {recentRepos.map(repo => (
+                   <div 
+                     key={repo.path}
+                     onClick={() => { setShowRepoSwitcher(false); loadRepo(repo.path); }}
+                     className="px-3 py-2 cursor-pointer hover:bg-[#2c313a] flex items-center gap-2 transition-colors border-l-2 border-transparent hover:border-blue-500"
+                   >
+                      <FolderOpen size={14} className="text-blue-400" />
+                      <div className="flex flex-col min-w-0">
+                         <span className="text-[13px] text-gray-200 truncate">{repo.name}</span>
+                         <span className="text-[10px] text-gray-500 truncate" title={repo.path}>{repo.path}</span>
+                      </div>
+                   </div>
+                ))}
+             </div>
+             <div 
+               className="px-3 py-2 cursor-pointer hover:bg-[#2c313a] border-t border-[#3e4451] text-[#79c0ff] font-medium text-[13px] flex items-center gap-2"
+               onClick={pickRepo}
+             >
+                <div className="w-5 flex justify-center text-lg leading-none">+</div>
+                Open another repo
+             </div>
+          </div>
+        )}
         
         <div className="flex items-center gap-2">
            <span className="text-xs bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">Viewing 3</span>
