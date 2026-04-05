@@ -100,35 +100,48 @@ export function CommitGraph() {
   const isLoadingMore = useAppStore(s => s.isLoadingMore);
   const hasMoreCommits = useAppStore(s => s.hasMoreCommits);
 
+  const commitSearchInput = useAppStore(s => s.commitSearchInput);
+
+  const filteredCommits = useMemo(() => {
+    if (!commitLog) return [];
+    if (!commitSearchInput.trim()) return commitLog;
+    const q = commitSearchInput.toLowerCase();
+    return commitLog.filter((c: CommitNode) => 
+      c.message.toLowerCase().includes(q) || 
+      c.short_oid.toLowerCase().includes(q) || 
+      c.author.toLowerCase().includes(q)
+    );
+  }, [commitLog, commitSearchInput]);
+
   const hasWip = (status?.staged_count ?? 0) > 0 || (status?.unstaged_count ?? 0) > 0 || staged.length > 0 || unstaged.length > 0;
   const off = hasWip ? 1 : 0;
-  const totalRows = (commitLog?.length || 0) + off;
+  const totalRows = (filteredCommits?.length || 0) + off;
 
   const maxLane = useMemo(() => {
-    if (!commitLog?.length) return 0;
-    return commitLog.reduce((m, c) => Math.max(m, c.lane, ...c.edges.map(e => e.to_lane)), 0);
-  }, [commitLog]);
+    if (!filteredCommits?.length) return 0;
+    return filteredCommits.reduce((m: number, c: CommitNode) => Math.max(m, c.lane, ...c.edges.map((e: any) => e.to_lane)), 0);
+  }, [filteredCommits]);
 
   const gw = LANE_PAD * 2 + maxLane * LANE_W;
   const th = totalRows * ROW_H;
 
-  const edges = useMemo(() => commitLog ? buildEdges(commitLog, off, hasWip) : [], [commitLog, off, hasWip]);
+  const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip) : [], [filteredCommits, off, hasWip]);
 
   const activeOids = useMemo(() => {
     const set = new Set<string>();
-    if (!commitLog || commitLog.length === 0) return set;
+    if (!filteredCommits || filteredCommits.length === 0) return set;
     
     if (hasWip) set.add('WIP');
     const map = new Map<string, CommitNode>();
-    commitLog.forEach(c => map.set(c.oid, c));
+    filteredCommits.forEach((c: CommitNode) => map.set(c.oid, c));
     
-    let current: string | undefined = commitLog.find(c => c.refs.includes('HEAD'))?.oid || commitLog[0].oid;
+    let current: string | undefined = filteredCommits.find((c: CommitNode) => c.refs.includes('HEAD'))?.oid || filteredCommits[0].oid;
     while (current) {
       set.add(current);
       current = map.get(current)?.parents?.[0]; // follow main lineage
     }
     return set;
-  }, [commitLog, hasWip]);
+  }, [filteredCommits, hasWip]);
 
   const [hov, setHov] = useState<number | null>(null);
   const [sel, setSel] = useState<number | null>(null);
@@ -173,7 +186,7 @@ export function CommitGraph() {
             style={{ left: cw.label + 5, top: 0 }} width={gw} height={th}>
 
             {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
-            {edges.map((e, i) => {
+            {edges.map((e: Edge, i: number) => {
               return (
                 <path key={`e-${i}`} d={e.path} fill="none"
                   stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
@@ -192,7 +205,7 @@ export function CommitGraph() {
             )}
 
             {/* Layer 4: Commit nodes — ON TOP of all lines */}
-            {commitLog?.map((n, i) => {
+            {filteredCommits?.map((n: CommitNode, i: number) => {
               const row = i + off;
               const cx = lx(n.lane), cy = ly(row);
               const c = color(n.color_idx);
@@ -251,7 +264,7 @@ export function CommitGraph() {
             </div>
           )}
 
-          {commitLog?.map((n, i) => {
+          {filteredCommits?.map((n: CommitNode, i: number) => {
             const row = i + off;
             const isActiveNode = activeOids.has(n.oid);
             return (
@@ -281,7 +294,7 @@ export function CommitGraph() {
                       branchGroups.set(name, existing);
                     });
 
-                    return Array.from(branchGroups.entries()).map(([name, info]) => {
+                    return Array.from(branchGroups.entries()).map(([name, info]: [string, any]) => {
                       const isRemoteOnly = info.isRemote && !info.isLocal;
                       const bg = info.isHead ? 'bg-sky-900/50 text-sky-300 border-sky-600/50'
                         : isRemoteOnly ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
@@ -325,7 +338,7 @@ export function CommitGraph() {
             );
           })}
 
-          {(!commitLog?.length) && (
+          {(!filteredCommits?.length) && (
             <div className="flex items-center justify-center p-8 text-[#8b949e]">
               No commits found.
             </div>

@@ -95,6 +95,7 @@ interface AppStore {
   isLoadingMore: boolean;
   confirmCheckoutTo: string | null;
   toasts: Toast[];
+  commitSearchInput: string;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -120,6 +121,7 @@ export const useAppStore = create<AppStore>(() => ({
   isLoadingMore: false,
   confirmCheckoutTo: null,
   toasts: [],
+  commitSearchInput: '',
 }));
 
 export const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {

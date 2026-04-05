@@ -23,9 +23,11 @@
 - 2026-04-05: Sidebar Sectional Scrolling — replaced global scroll for the Sidebar list with isolated internal scrollbars for each open section (LOCAL, REMOTE, STASHES) using `flex-shrink` and `min-h-0`. This forces overflow into individual section boundaries allowing multiple large lists to coexist cleanly without breaking the layout.
 - 2026-04-05: Resizable Sidebar Section Heights — added horizontal resize handles and `flex` based resizing logic to the `LOCAL`, `REMOTE`, and `STASHES` blocks. Users can now drag to adjust the vertical distribution of each section independently.
 - 2026-04-05: Hierarchical Branch Tree (Worktree Style) — transformed the flat Sidebar branch list into a recursive tree structure. Branches containing slashes (e.g. `feat/login`) are now rendered as collapsible folders (`feat`) containing branch items (`login`), improving organization and readability.
-- 2026-04-05: Double-Click Checkout & Sliding Alert — implemented a branch checkout feature triggered by double-clicking branch names in the Sidebar or Commit Graph. A confirmation alert slides in from the right (100% width) onto the TopToolbar position (48px height), allowing users to switch branches safely with "YES/NO" buttons.
 - 2026-04-05: Sidebar Visual Separation — added `border-t` and `pt-2` to the main sections (LOCAL, REMOTE, STASHES) in the sidebar to better separate the containers.
 - 2026-04-05: Sidebar UI Simplification — removed the fixed "Branches" label and expanded the filter input to full-width in the top-block to provide more space for search queries and a cleaner look.
+- 2026-04-05: Un-stubbed Core Git Features — replaced backend mocks with real `git2-rs` implementation for `list_branches`, `pull`, `push`, `stash`, and `pop`.
+- 2026-04-05: Enhanced Commit Log Paging — updated `get_log` backend to support `offset` and refactored `loadMoreCommits` for efficient paging.
+- 2026-04-05: Integrated TopToolbar Actions — connected Pull, Push, Branch, Stash, and Pop buttons to their respective Git operations.
 
 # Project Status Summary
 The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing and smooth corners. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent updates include a hierarchical branch tree, infinite scrolling, and a new double-click branch checkout feature with a sliding confirmation alert.

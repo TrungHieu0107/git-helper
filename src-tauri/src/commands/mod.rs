@@ -1,5 +1,6 @@
+pub mod diff;
+pub mod log;
 pub mod repo;
 pub mod status;
-pub mod diff;
 pub mod stubs;
-pub mod log;
+pub mod remote;

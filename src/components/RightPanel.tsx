@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { useAppStore } from "../store";
 import { Trash2, Network, FileCode2, Edit2, PlusCircle, MinusCircle, ArrowRight, AlertTriangle, Sparkles } from "lucide-react";
+import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, getFileDiff } from "../lib/repo";
+import { DiffPanel } from "./DiffPanel";
 
-export function RightPanel({ loadStatus }: { loadStatus?: (path: string) => void }) {
-  const { stagedFiles, unstagedFiles } = useAppStore();
+export function RightPanel() {
+  const { stagedFiles, unstagedFiles, activeBranch } = useAppStore();
   const [message, setMessage] = useState('');
   const charsLeft = 72 - message.length;
+
+  const [amend, setAmend] = useState(false);
+
+  const handleCommit = async () => {
+    const success = await commitRepo(message, amend);
+    if (success) {
+      setMessage('');
+      setAmend(false);
+    }
+  };
 
   return (
     <aside className="w-[var(--right-width)] flex flex-col bg-[#21252b] border-l border-[#181a1f] shrink-0 text-[#a0a6b1] select-none h-full relative">
@@ -16,7 +28,7 @@ export function RightPanel({ loadStatus }: { loadStatus?: (path: string) => void
            <Trash2 size={14} className="cursor-pointer hover:text-white" />
            <span className="text-[11px] uppercase tracking-wider text-[#d7dae0] font-semibold">
               {stagedFiles.length + unstagedFiles.length} file changes on 
-              <span className="bg-slate-700 text-white px-1.5 py-0.5 rounded ml-2">main</span>
+              <span className="bg-slate-700 text-white px-1.5 py-0.5 rounded ml-2">{activeBranch || '...'}</span>
            </span>
          </div>
          <div className="flex items-center gap-2 text-[#5c6370]">
@@ -31,40 +43,78 @@ export function RightPanel({ loadStatus }: { loadStatus?: (path: string) => void
          <div className="mb-4">
             <div className="flex justify-between items-center text-[11px] font-semibold uppercase text-[#5c6370] mb-1 group px-1">
                <span>▼ Unstaged Files ({unstagedFiles.length})</span>
-               <button className="invisible group-hover:visible hover:text-white border px-1 rounded border-slate-600 bg-slate-700 text-[10px]">Stage All</button>
+               <button 
+                onClick={stageAll}
+                className="invisible group-hover:visible hover:text-white border px-1 rounded border-slate-600 bg-slate-700 text-[10px]"
+               >
+                 Stage All
+               </button>
             </div>
             {unstagedFiles.length > 0 ? unstagedFiles.map((f, i) => (
-                <FileRow key={i} name={f.path} status={f.status} icon={getIcon(f.status)} />
+                <FileRow 
+                  key={i} 
+                  name={f.path} 
+                  status={f.status} 
+                  icon={getIcon(f.status)} 
+                  onAction={() => stageFile(f.path)}
+                  actionLabel="Stage"
+                  onClick={() => getFileDiff(f.path, false)}
+                />
             )) : <div className="text-xs italic px-4 py-1.5 opacity-50">No unstaged changes</div>}
          </div>
 
          <div>
             <div className="flex justify-between items-center text-[11px] font-semibold uppercase text-[#5c6370] mb-1 group px-1">
                <span>▼ Staged Files ({stagedFiles.length})</span>
-               <button className="invisible group-hover:visible hover:text-white border px-1 rounded border-slate-600 bg-slate-700 text-[10px]">Unstage All</button>
+               <button 
+                onClick={unstageAll}
+                className="invisible group-hover:visible hover:text-white border px-1 rounded border-slate-600 bg-slate-700 text-[10px]"
+               >
+                 Unstage All
+               </button>
             </div>
             {stagedFiles.length > 0 ? stagedFiles.map((f, i) => (
-                <FileRow key={i} name={f.path} status={f.status} icon={getIcon(f.status)} />
+                <FileRow 
+                  key={i} 
+                  name={f.path} 
+                  status={f.status} 
+                  icon={getIcon(f.status)} 
+                  onAction={() => unstageFile(f.path)}
+                  actionLabel="Unstage"
+                  onClick={() => getFileDiff(f.path, true)}
+                />
             )) : <div className="text-xs italic px-4 py-1.5 opacity-50">Nothing staged</div>}
          </div>
 
       </div>
 
-      {/* Slide In Diff Placeholder - would be absolute positioned here */}
+      {/* Slide In Diff Placeholder */}
+      <DiffPanel />
 
-      {/* Commit Form Block (Non-Scrollable Footer) */}
+      {/* Commit Form Block */}
       <div className="border-t border-[#181a1f] bg-[#282c34] flex flex-col shrink-0 p-3 pt-2 gap-2 text-sm">
          <div className="flex items-center justify-between text-[#5c6370] mb-1">
              <span className="flex items-center gap-1 font-semibold  text-xs">─── ⊙ Commit <span className="ml-2 font-mono">↑ ↺</span> ───</span>
          </div>
          
          <label className="flex items-center gap-2 cursor-pointer text-xs mb-1">
-            <input type="checkbox" className="accent-blue-500 bg-[#1e2227] border-[#181a1f]" />
+            <input 
+              type="checkbox" 
+              checked={amend}
+              onChange={e => setAmend(e.target.checked)}
+              className="accent-blue-500 bg-[#1e2227] border-[#181a1f]" 
+            />
             Amend previous commit
          </label>
          
          <div className="relative">
-            <input type="text" placeholder="Commit summary" className="w-full bg-[#1e2227] border border-[#181a1f] rounded px-2 py-1.5 outline-none text-[#e5e5e6] focus:border-[#3b82f6] text-sm pr-12" value={message} onChange={e => setMessage(e.target.value)} />
+            <input 
+              type="text" 
+              placeholder="Commit summary" 
+              className="w-full bg-[#1e2227] border border-[#181a1f] rounded px-2 py-1.5 outline-none text-[#e5e5e6] focus:border-[#3b82f6] text-sm pr-12" 
+              value={message} 
+              onChange={e => setMessage(e.target.value)} 
+            />
             <span className={`absolute right-2 top-2 text-[10px] font-mono ${charsLeft < 0 ? 'text-red-400' : charsLeft < 20 ? 'text-[#e5c07b]' : 'text-[#5c6370]'}`}>{charsLeft}</span>
          </div>
          
@@ -74,8 +124,12 @@ export function RightPanel({ loadStatus }: { loadStatus?: (path: string) => void
             <Sparkles size={12} /> Compose commits with AI
          </button>
          
-         <button className={`w-full bg-[#3b82f6] text-white py-2 rounded font-semibold transition-opacity ${(stagedFiles.length === 0 || message.trim() === '') ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#4d8bf8]'}`}>
-            Type a Message to Commit
+         <button 
+          onClick={handleCommit}
+          disabled={(!amend && stagedFiles.length === 0) || message.trim() === ''}
+          className={`w-full bg-[#3b82f6] text-white py-2 rounded font-semibold transition-opacity ${((!amend && stagedFiles.length === 0) || message.trim() === '') ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#4d8bf8]'}`}
+         >
+            {amend ? 'Amend Commit' : 'Commit Files'}
          </button>
       </div>
 
@@ -83,7 +137,7 @@ export function RightPanel({ loadStatus }: { loadStatus?: (path: string) => void
   );
 }
 
-function FileRow({ name, status, icon: Icon }: { name: string, status: string, icon: any }) {
+function FileRow({ name, status, icon: Icon, onAction, actionLabel, onClick }: { name: string, status: string, icon: any, onAction?: () => void, actionLabel?: string, onClick?: () => void }) {
   let color = "text-[#e5c07b]"; // Modified (amber)
   if (status === 'untracked') color = "text-[#98c379]"; // Green
   if (status === 'deleted') color = "text-[#e06c75]"; // Red
@@ -91,12 +145,23 @@ function FileRow({ name, status, icon: Icon }: { name: string, status: string, i
   if (status === 'conflicted') color = "text-[#f44336]"; 
 
   return (
-    <div className="flex items-center justify-between py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group whitespace-nowrap">
+    <div 
+      onClick={onClick}
+      className="flex items-center justify-between py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group whitespace-nowrap"
+    >
         <div className="flex items-center gap-2 overflow-hidden">
            <Icon size={12} className={`shrink-0 ${color}`} />
            <span className="truncate text-[#e5e5e6] text-[13px]">{name}</span>
         </div>
-        <button className="invisible group-hover:visible shrink-0 bg-transparent text-[#5c6370] hover:text-[#e5e5e6] px-1 text-xs">Stage</button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onAction?.();
+          }}
+          className="invisible group-hover:visible shrink-0 bg-transparent text-[#5c6370] hover:text-[#e5e5e6] px-1 text-xs"
+        >
+          {actionLabel}
+        </button>
     </div>
   )
 }

@@ -36,10 +36,6 @@ pub fn get_diff(repo_path: String, path: String, staged: bool) -> Result<String,
 
 #[tauri::command]
 pub fn create_commit(repo_path: String, message: String, amend: bool) -> Result<String, String> {
-    if amend {
-        return Err("Amend not implemented yet".to_string());
-    }
-
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
     
     let mut index = repo.index().map_err(|e| e.message().to_string())?;
@@ -48,10 +44,15 @@ pub fn create_commit(repo_path: String, message: String, amend: bool) -> Result<
 
     let signature = repo.signature().or_else(|_| Signature::now("GitKit User", "user@gitkit.app")).map_err(|e| e.message().to_string())?;
 
-    let parent_commit = match repo.head() {
-        Ok(head) => Some(head.peel_to_commit().map_err(|e| e.message().to_string())?),
-        Err(_) => None,
-    };
+    let head = repo.head().ok();
+    let parent_commit = head.as_ref().and_then(|h| h.peel_to_commit().ok());
+
+    if amend {
+        let parent = parent_commit.ok_or("No commit to amend")?;
+        let parents = parent.parents().collect::<Vec<_>>();
+        let commit_oid = repo.commit(Some("HEAD"), &signature, &signature, &message, &tree, &parents.iter().collect::<Vec<_>>()).map_err(|e| e.message().to_string())?;
+        return Ok(commit_oid.to_string());
+    }
 
     let parents: Vec<&git2::Commit> = match &parent_commit {
         Some(commit) => vec![commit],

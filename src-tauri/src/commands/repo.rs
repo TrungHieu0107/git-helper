@@ -153,7 +153,7 @@ pub fn checkout_branch(repo_path: String, branch_name: String) -> Result<(), Str
 
     // 2. Try to find remote branch
     // If branch_name is "origin/main", we look for "main" under remote "origin"
-    if let Ok(mut remote_branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
+    if let Ok(remote_branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
         let reference = remote_branch.get();
         let commit = reference.peel_to_commit().map_err(|e| e.to_string())?;
         
@@ -170,5 +170,45 @@ pub fn checkout_branch(repo_path: String, branch_name: String) -> Result<(), Str
         return Ok(());
     }
 
-    Err(format!("Branch '{}' not found", branch_name))
+#[tauri::command]
+pub fn create_branch(repo_path: String, name: String, start_point: Option<String>) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    let target = match start_point {
+        Some(s) => repo.revparse_single(&s).map_err(|e| e.to_string())?.peel_to_commit().map_err(|e| e.to_string())?,
+        None => repo.head().map_err(|e| e.to_string())?.peel_to_commit().map_err(|e| e.to_string())?,
+    };
+
+    repo.branch(&name, &target, false).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn undo_last_commit(repo_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
+    
+    // Get parent of current HEAD
+    let parent = commit.parent(0).map_err(|_| "No parent commit to undo to")?;
+    
+    // Soft reset to parent: change HEAD, but leave index and workdir alone
+    repo.reset(parent.as_object(), git2::ResetType::Soft, None).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_terminal(path: String) -> Result<(), String> {
+    // Open powershell in the given path (Windows)
+    std::process::Command::new("powershell")
+        .arg("-NoExit")
+        .arg("-Command")
+        .arg(&format!("cd '{}'", path))
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+Err(format!("Branch '{}' not found", branch_name))
 }

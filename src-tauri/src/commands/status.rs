@@ -141,3 +141,16 @@ pub fn get_repo_status(path: String) -> Result<RepoStatus, String> {
         behind,
     })
 }
+
+#[tauri::command]
+pub fn unstage_all(repo_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
+    // If no head, can't unstage (empty repo)
+    let head = match repo.head() {
+        Ok(h) => h,
+        Err(_) => return Ok(()),
+    };
+    let commit = head.peel_to_commit().map_err(|e| e.message().to_string())?;
+    repo.reset_default(Some(commit.as_object()), None as Option<&std::path::Path>).map_err(|e| e.message().to_string())?;
+    Ok(())
+}

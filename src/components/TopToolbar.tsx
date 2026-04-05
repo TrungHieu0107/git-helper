@@ -1,4 +1,5 @@
-import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, MoreHorizontal, Search } from "lucide-react";
+import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, Search } from "lucide-react";
+import { pullRepo, pushRepo, createStash, popStash, createBranch, undoLastCommit, openTerminal } from "../lib/repo";
 
 export function TopToolbar() {
   return (
@@ -7,7 +8,7 @@ export function TopToolbar() {
         
         {/* Undo / Redo */}
         <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<Undo size={20} />} label="Undo ↺" disabled />
+          <ToolbarButton icon={<Undo size={20} />} label="Undo ↺" onClick={undoLastCommit} />
           <ToolbarButton icon={<Redo size={20} />} label="Redo ↻" disabled />
         </div>
 
@@ -15,24 +16,31 @@ export function TopToolbar() {
         
         {/* Pull / Push */}
         <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<ArrowDown size={20} />} label="Pull ↓" />
-          <ToolbarButton icon={<ArrowUp size={20} />} label="Push ↑" />
+          <ToolbarButton icon={<ArrowDown size={20} />} label="Pull ↓" onClick={pullRepo} />
+          <ToolbarButton icon={<ArrowUp size={20} />} label="Push ↑" onClick={pushRepo} />
         </div>
 
         <div className="w-px h-6 bg-slate-700" />
 
         {/* Branch / Stash / Pop */}
         <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<GitBranch size={20} />} label="Branch ⑂" />
-          <ToolbarButton icon={<Archive size={20} />} label="Stash ↓" />
-          <ToolbarButton icon={<Navigation size={20} />} label="Pop ↑" disabled />
+          <ToolbarButton 
+            icon={<GitBranch size={20} />} 
+            label="Branch ⑂" 
+            onClick={() => {
+              const name = prompt("Enter new branch name:");
+              if (name) createBranch(name);
+            }} 
+          />
+          <ToolbarButton icon={<Archive size={20} />} label="Stash ↓" onClick={createStash} />
+          <ToolbarButton icon={<Navigation size={20} />} label="Pop ↑" onClick={() => popStash(0)} />
         </div>
 
         <div className="w-px h-6 bg-slate-700" />
 
         {/* Terminal */}
         <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<Terminal size={20} />} label="Terminal >_" />
+          <ToolbarButton icon={<Terminal size={20} />} label="Terminal >_" onClick={openTerminal} />
         </div>
         
       </div>
@@ -52,9 +60,12 @@ export function TopToolbar() {
   );
 }
 
-function ToolbarButton({ icon, label, disabled = false }: { icon: React.ReactNode, label: string, disabled?: boolean }) {
+function ToolbarButton({ icon, label, disabled = false, onClick }: { icon: React.ReactNode, label: string, disabled?: boolean, onClick?: () => void }) {
   return (
-    <div className={`flex flex-col items-center justify-center cursor-pointer group ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
+    <div 
+      onClick={() => !disabled && onClick?.()}
+      className={`flex flex-col items-center justify-center cursor-pointer group ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+    >
        <div className={`text-slate-300 ${!disabled && 'group-hover:text-white transition-colors'}`}>
          {icon}
        </div>

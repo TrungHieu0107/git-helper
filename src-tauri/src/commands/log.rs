@@ -24,7 +24,7 @@ pub struct CommitNode {
 }
 
 #[tauri::command]
-pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, String> {
+pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<CommitNode>, String> {
     let repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
 
@@ -85,7 +85,7 @@ pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, Strin
     let mut color_assignments: HashMap<usize, usize> = HashMap::new();
     let mut next_color_idx = 0;
 
-    for oid_result in revwalk.take(limit) {
+    for oid_result in revwalk.skip(offset).take(limit) {
         let oid = match oid_result {
             Ok(id) => id,
             Err(_) => continue,

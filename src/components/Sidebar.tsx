@@ -121,41 +121,32 @@ export function Sidebar() {
   
   const repoInfo = useAppStore(state => state.repoInfo);
   const activeBranch = useAppStore(state => state.activeBranch) || "main";
-  const commitLog = useAppStore(state => state.commitLog);
   const stashes = useAppStore(state => state.stashes) || [];
 
-  // Derive branch lists from commitLog refs
+  const branches = useAppStore(state => state.branches) || [];
+
   const { localBranches, remoteBranchesTree } = useMemo(() => {
-    const locals = new Set<string>();
-    const remotes = new Map<string, string[]>(); // remote name -> branch names
+    const locals: string[] = [];
+    const remotes = new Map<string, string[]>();
 
-    if (commitLog) {
-      commitLog.forEach(node => {
-        node.refs.forEach(ref => {
-          if (ref === 'HEAD') return;
-          if (ref.includes('/')) {
-            const parts = ref.split('/');
-            const remoteName = parts[0];
-            const branchName = parts.slice(1).join('/');
-            if (!remotes.has(remoteName)) remotes.set(remoteName, []);
-            const list = remotes.get(remoteName)!;
-            if (!list.includes(branchName)) list.push(branchName);
-          } else {
-            locals.add(ref);
-          }
-        });
-      });
-    }
-
-    if (activeBranch && !locals.has(activeBranch)) {
-      locals.add(activeBranch);
-    }
+    branches.forEach(b => {
+      if (b.branch_type === 'local') {
+        locals.push(b.name);
+      } else {
+        // "origin/main" -> remote: "origin", branch: "main"
+        const parts = b.name.split('/');
+        const remoteName = parts[0];
+        const branchName = parts.slice(1).join('/');
+        if (!remotes.has(remoteName)) remotes.set(remoteName, []);
+        remotes.get(remoteName)!.push(branchName);
+      }
+    });
 
     return {
-      localBranches: buildBranchTree(Array.from(locals)),
+      localBranches: buildBranchTree(locals),
       remoteBranchesTree: new Map(Array.from(remotes.entries()).map(([r, names]) => [r, buildBranchTree(names)])),
     };
-  }, [commitLog, activeBranch]);
+  }, [branches]);
 
   // Unified Filtered States
   const filteredLocalTree = useMemo(() => filterBranchTree(localBranches, filter), [localBranches, filter]);
