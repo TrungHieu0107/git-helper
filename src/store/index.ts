@@ -56,7 +56,13 @@ export interface CommitNode {
 }
 
 export type BranchInfo = any;
-export type StashEntry = any;
+export interface StashEntry {
+    index: number;
+    message: string;
+    oid: string;
+    parent_oid: string;
+    timestamp: number;
+}
 
 interface AppStore {
   repos: RepoMeta[];          // list of opened repos

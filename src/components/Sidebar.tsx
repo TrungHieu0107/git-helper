@@ -204,12 +204,21 @@ export function Sidebar() {
                {stashes.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                ) : (
-                 stashes.map((s: { message?: string; index?: number }, i: number) => (
-                   <div key={i} className="flex items-center gap-2 py-1.5 px-1 hover:bg-[#2c313a] rounded cursor-pointer group text-[13px] text-slate-300 truncate">
-                      <span className="text-slate-500">≡</span>
-                      <span className="truncate">{s.message || `stash@{${i}}`}</span>
-                   </div>
-                 ))
+                 stashes.map((s, i: number) => {
+                   const timeStr = new Date(s.timestamp * 1000).toLocaleString(undefined, {
+                     year: 'numeric', month: 'short', day: 'numeric',
+                     hour: '2-digit', minute: '2-digit'
+                   });
+                   return (
+                     <div key={i} className="flex flex-col py-1.5 px-1 hover:bg-[#2c313a] rounded cursor-pointer group text-[13px] text-slate-300 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 shrink-0">≡</span>
+                          <span className="truncate">{s.message || `stash@{${s.index}}`}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 pl-4">— {timeStr}</span>
+                     </div>
+                   )
+                 })
                )}
              </div>
            )}
