@@ -10,6 +10,7 @@ pub fn run() {
             commands::repo::open_repo,
             commands::repo::get_recent_repos,
             commands::repo::remove_recent_repo,
+            commands::repo::checkout_branch,
             commands::status::get_status,
             commands::status::get_repo_status,
             commands::status::stage_file,

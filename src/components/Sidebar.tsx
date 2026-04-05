@@ -362,6 +362,11 @@ function BranchTreeItem({ node, activeBranch, level }: Readonly<{ node: BranchNo
         <div className="flex flex-col">
             <div 
                 onClick={() => { if (hasChildren) setExpanded(!expanded); }}
+                onDoubleClick={() => {
+                    if (node.isBranch && !isHead) {
+                        useAppStore.setState({ confirmCheckoutTo: node.fullPath });
+                    }
+                }}
                 className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors
                     ${isHead ? 'bg-[#2c313a]' : 'hover:bg-[#2c313a]'}
                 `}

@@ -86,6 +86,7 @@ interface AppStore {
   stashes: StashEntry[];
   hasMoreCommits: boolean;
   isLoadingMore: boolean;
+  confirmCheckoutTo: string | null;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -109,4 +110,5 @@ export const useAppStore = create<AppStore>(() => ({
   stashes: [],
   hasMoreCommits: true,
   isLoadingMore: false,
+  confirmCheckoutTo: null,
 }));

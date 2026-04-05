@@ -7,6 +7,7 @@ import { TopToolbar } from "./components/TopToolbar";
 import { Sidebar } from "./components/Sidebar";
 import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
+import { CheckoutAlert } from "./components/CheckoutAlert";
 
 function App() {
   const activeRepoPath = useAppStore(state => state.activeRepoPath);
@@ -40,6 +41,8 @@ function App() {
            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
         </div>
       )}
+
+      <CheckoutAlert />
     </div>
   );
 }

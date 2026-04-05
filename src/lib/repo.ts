@@ -54,3 +54,20 @@ export async function loadMoreCommits() {
     useAppStore.setState({ isLoadingMore: false });
   }
 }
+
+export async function checkoutBranch(branchName: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  
+  try {
+    await invoke('checkout_branch', { repoPath: path, branchName });
+    // Refresh the repo state
+    await loadRepo(path);
+  } catch (e) {
+    console.error("Checkout failed:", e);
+    // You might want to show a toast or error alert here
+    alert(`Checkout failed: ${e}`);
+  } finally {
+    useAppStore.setState({ confirmCheckoutTo: null });
+  }
+}

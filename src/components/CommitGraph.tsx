@@ -287,9 +287,17 @@ export function CommitGraph() {
                         : isRemoteOnly ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
                         : `border-[${color(n.color_idx)}]/50`;
                       const style = !info.isHead && !isRemoteOnly ? { backgroundColor: color(n.color_idx) + '30', color: color(n.color_idx), borderColor: color(n.color_idx) + '60' } : undefined;
-                      return (
-                        <span key={name} className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate max-w-[120px] ${info.isHead || isRemoteOnly ? bg : 'border'}`} style={style}>
-                          {info.isHead ? name : (
+                       return (
+                         <span key={name} 
+                           onDoubleClick={(e) => {
+                             e.stopPropagation();
+                             if (info.isHead) return;
+                             const fullRef = (info.isRemote && !info.isLocal) ? `origin/${name}` : name;
+                             useAppStore.setState({ confirmCheckoutTo: fullRef });
+                           }}
+                           className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate cursor-pointer select-none max-w-[120px] ${info.isHead || isRemoteOnly ? bg : 'border'} hover:border-white/50 transition-colors`} 
+                           style={style}>
+                           {info.isHead ? name : (
                             <>
                               <span className="truncate">{name}</span>
                               <div className="flex items-center gap-0.5 opacity-80 shrink-0">

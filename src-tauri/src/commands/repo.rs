@@ -138,3 +138,37 @@ pub fn open_repo(app: tauri::AppHandle, path: String) -> Result<RepoInfo, String
     
     Ok(info)
 }
+
+#[tauri::command]
+pub fn checkout_branch(repo_path: String, branch_name: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Try to find local branch
+    if let Ok(mut branch) = repo.find_branch(&branch_name, git2::BranchType::Local) {
+        let obj = branch.get().peel_to_commit().map_err(|e| e.to_string())?;
+        repo.checkout_tree(obj.as_object(), None).map_err(|e| e.to_string())?;
+        repo.set_head(branch.get().name().unwrap()).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // 2. Try to find remote branch
+    // If branch_name is "origin/main", we look for "main" under remote "origin"
+    if let Ok(mut remote_branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
+        let reference = remote_branch.get();
+        let commit = reference.peel_to_commit().map_err(|e| e.to_string())?;
+        
+        // Extract local name (e.g. "origin/feat/x" -> "feat/x")
+        let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
+        let local_name = if parts.len() > 1 { parts[1] } else { &branch_name };
+        
+        // Create local branch tracking the remote
+        let mut local_branch = repo.branch(local_name, &commit, false).map_err(|e| e.to_string())?;
+        local_branch.get_mut().set_target(commit.id(), "checkout: tracking remote").map_err(|e| e.to_string())?;
+        
+        repo.checkout_tree(commit.as_object(), None).map_err(|e| e.to_string())?;
+        repo.set_head(local_branch.get().name().unwrap()).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    Err(format!("Branch '{}' not found", branch_name))
+}
