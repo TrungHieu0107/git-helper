@@ -1,9 +1,62 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, FolderOpen, GitBranch } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, FolderOpen, GitBranch, Folder } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
 import { invoke } from "@tauri-apps/api/core";
 import { loadRepo } from "../lib/repo";
 import { open } from "@tauri-apps/plugin-dialog";
+
+// Hierarchical Branch Tree Types
+export interface BranchNode {
+    name: string;
+    fullPath: string;
+    isBranch: boolean;
+    children: Map<string, BranchNode>;
+}
+
+function buildBranchTree(branchNames: string[]): BranchNode[] {
+    const rootMap = new Map<string, BranchNode>();
+    
+    branchNames.forEach(fullPath => {
+        const parts = fullPath.split('/');
+        let currentLevel = rootMap;
+        let cumulativePath = "";
+
+        parts.forEach((part, index) => {
+            cumulativePath = cumulativePath ? `${cumulativePath}/${part}` : part;
+            const isLast = index === parts.length - 1;
+            
+            if (!currentLevel.has(part)) {
+                currentLevel.set(part, {
+                    name: part,
+                    fullPath: isLast ? fullPath : cumulativePath,
+                    isBranch: isLast,
+                    children: new Map()
+                });
+            }
+            
+            const node = currentLevel.get(part)!;
+            // If it's not the last part, keep going down
+            if (!isLast) {
+                currentLevel = node.children;
+            } else {
+                // Leaf node representing the branch
+                node.isBranch = true;
+            }
+        });
+    });
+
+    // Convert Map to sorted array
+    const toSortedArray = (map: Map<string, BranchNode>): BranchNode[] => {
+        return Array.from(map.values()).sort((a, b) => {
+            // Folders first, then branches
+            if (!a.isBranch && b.isBranch) return -1;
+            if (a.isBranch && !b.isBranch) return 1;
+            return a.name.localeCompare(b.name);
+        });
+    };
+
+    return toSortedArray(rootMap);
+}
 
 export function Sidebar() {
   const [localOpen, setLocalOpen] = useState(true);
@@ -26,7 +79,7 @@ export function Sidebar() {
   const stashes = useAppStore(state => state.stashes) || [];
 
   // Derive branch lists from commitLog refs (since list_branches is still a stub)
-  const { localBranches, remoteBranches } = useMemo(() => {
+  const { localBranches, remoteBranchesTree } = useMemo(() => {
     const locals = new Set<string>();
     const remotes = new Map<string, string[]>(); // remote name -> branch names
 
@@ -55,15 +108,22 @@ export function Sidebar() {
     }
 
     return {
-      localBranches: Array.from(locals),
-      remoteBranches: remotes,
+      localBranches: buildBranchTree(Array.from(locals)),
+      remoteBranchesTree: new Map(Array.from(remotes.entries()).map(([r, names]) => [r, buildBranchTree(names)])),
     };
   }, [commitLog, activeBranch]);
 
-  // Filter logic
-  const filteredLocal = filter
-    ? localBranches.filter(b => b.toLowerCase().includes(filter.toLowerCase()))
-    : localBranches;
+  // Filter tree (simplified: just filter root names or leaf branch names)
+  const filterTree = (nodes: BranchNode[]): BranchNode[] => {
+      if (!filter) return nodes;
+      return nodes.filter(node => {
+          if (node.isBranch && node.name.toLowerCase().includes(filter.toLowerCase())) return true;
+          // or check children
+          return false;
+      });
+  };
+
+  const filteredLocalTree = filterTree(localBranches);
 
   const switcherRef = useRef<HTMLDivElement>(null);
 
@@ -185,7 +245,7 @@ export function Sidebar() {
         
         <div className="flex items-center gap-2">
            <span className="text-xs bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
-             {filteredLocal.length} branch{filteredLocal.length !== 1 ? 'es' : ''}
+             Branches
            </span>
            <div className="flex-1 flex items-center bg-[#282c33] rounded px-2">
               <input
@@ -205,14 +265,14 @@ export function Sidebar() {
         
         {/* LOCAL */}
         <div className={`flex flex-col min-h-0 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
-           <SectionHeader title="LOCAL" count={filteredLocal.length} open={localOpen} setOpen={setLocalOpen} />
+           <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
            {localOpen && (
-             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
-               {filteredLocal.length === 0 ? (
+             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1 px-1">
+               {filteredLocalTree.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                ) : (
-                 filteredLocal.map(b => (
-                   <BranchRow key={b} name={b} isHead={b === activeBranch} />
+                 filteredLocalTree.map(node => (
+                   <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} />
                  ))
                )}
              </div>
@@ -225,21 +285,21 @@ export function Sidebar() {
 
         {/* REMOTE */}
         <div className={`flex flex-col min-h-0 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
-           <SectionHeader title="REMOTE" count={remoteBranches.size} open={remoteOpen} setOpen={setRemoteOpen} />
+           <SectionHeader title="REMOTE" count={remoteBranchesTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
            {remoteOpen && (
-             <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
-               {remoteBranches.size === 0 ? (
+             <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1 px-1">
+               {remoteBranchesTree.size === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                ) : (
-                 Array.from(remoteBranches.entries()).map(([remote, branchNames]) => (
+                 Array.from(remoteBranchesTree.entries()).map(([remote, tree]) => (
                    <div key={remote}>
                      <div className="flex items-center gap-2 py-1 pl-1">
                         <GitBranch size={12} className="text-[#5c6370]" />
                         <span className="text-[#a0a6b1] font-medium">{remote}</span>
                      </div>
-                     <div className="pl-5">
-                        {branchNames.map(b => (
-                          <BranchRow key={`${remote}/${b}`} name={b} isHead={false} />
+                     <div className="pl-4">
+                        {tree.map(node => (
+                          <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} />
                         ))}
                      </div>
                    </div>
@@ -285,30 +345,78 @@ export function Sidebar() {
   );
 }
 
+function BranchTreeItem({ node, activeBranch, level }: Readonly<{ node: BranchNode; activeBranch: string | null; level: number }>) {
+    const [expanded, setExpanded] = useState(true);
+    const isHead = activeBranch === node.fullPath;
+    const hasChildren = node.children.size > 0;
+
+    const children = Array.from(node.children.values()).sort((a, b) => {
+        if (!a.isBranch && b.isBranch) return -1;
+        if (a.isBranch && !b.isBranch) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    if (!node.isBranch && !hasChildren) return null;
+
+    return (
+        <div className="flex flex-col">
+            <div 
+                onClick={() => { if (hasChildren) setExpanded(!expanded); }}
+                className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors
+                    ${isHead ? 'bg-[#2c313a]' : 'hover:bg-[#2c313a]'}
+                `}
+                style={{ paddingLeft: `${level * 12 + 4}px` }}
+            >
+                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                    {hasChildren ? (
+                        <div className="flex items-center gap-1.5 shrink-0 overflow-hidden">
+                            {expanded ? <ChevronDown size={12} className="text-[#5c6370]" /> : <ChevronRight size={12} className="text-[#5c6370]" />}
+                            <Folder size={14} className="text-amber-600/80 shrink-0" fill="currentColor" />
+                        </div>
+                    ) : (
+                        <div className="shrink-0 w-[24px] flex justify-center">
+                           {isHead ? <CircleDot size={12} className="text-[#3b82f6]" /> : <Circle size={12} className="text-[#5c6370]" />}
+                        </div>
+                    )}
+                    
+                    <span className={`text-[13px] truncate ${isHead ? 'text-[#e5e5e6] font-semibold' : 'text-[#a0a6b1]'}`}>
+                        {node.name}
+                    </span>
+                    
+                    {isHead && <CloudSync size={12} className="text-slate-400 shrink-0 ml-1" />}
+                </div>
+                
+                {node.isBranch && (
+                    <MoreHorizontal size={14} className="text-slate-400 invisible group-hover:visible shrink-0 ml-2" />
+                )}
+            </div>
+
+            {hasChildren && expanded && (
+                <div className="flex flex-col">
+                    {children.map(child => (
+                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function SectionHeader({ title, count, open, setOpen }: Readonly<{ title: string; count: number | string; open: boolean; setOpen: (b: boolean) => void }>) {
   return (
     <div onClick={() => setOpen(!open)} className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-[#5c6370] uppercase cursor-pointer hover:text-slate-300">
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 shrink-0">
          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
          {title}
       </div>
-      <span className="bg-[#282c33] px-1.5 py-0.5 rounded-full">{count}</span>
+      {count !== "" && (
+          <span className="bg-[#282c33] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{count}</span>
+      )}
     </div>
   );
 }
 
-function BranchRow({ name, isHead }: Readonly<{ name: string; isHead: boolean }>) {
-  return (
-    <div className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap ${isHead ? 'bg-[#2c313a]' : 'hover:bg-[#2c313a]'}`}>
-       <div className="flex items-center gap-2 overflow-hidden flex-1">
-          {isHead ? <CircleDot size={12} className="text-[#3b82f6] shrink-0" /> : <Circle size={12} className="text-[#5c6370] shrink-0" />}
-          <span className={`text-[13px] truncate ${isHead ? 'text-[#e5e5e6] font-semibold' : 'text-[#a0a6b1]'}`}>{name}</span>
-          {isHead && <CloudSync size={12} className="text-slate-400 shrink-0 ml-1" />}
-       </div>
-       <MoreHorizontal size={14} className="text-slate-400 invisible group-hover:visible shrink-0 ml-2" />
-    </div>
-  );
-}
+// BranchRow is no longer used, replaced by recursive BranchTreeItem
 
 function SidebarResizeHandle({ onMouseDown }: Readonly<{ onMouseDown: (e: React.MouseEvent) => void }>) {
   return (
