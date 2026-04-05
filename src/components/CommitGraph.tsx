@@ -59,12 +59,40 @@ function buildLaneSpans(commits: CommitNode[], off: number): Map<number, LaneSpa
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; dashed?: boolean };
 
+function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 12) {
+  if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  if (y1 === y2) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const rad = Math.min(r, Math.abs(dx), Math.abs(dy));
+  const dirX = Math.sign(dx);
+  const dirY = Math.sign(dy);
+
+  if (type === 'merge') {
+    // Horizontal first, then Vertical down
+    const arcStartX = x2 - dirX * rad;
+    const arcStartY = y1;
+    const arcEndX = x2;
+    const arcEndY = y1 + dirY * rad;
+    const sweep = (dirX * dirY > 0) ? 1 : 0;
+    return `M ${x1} ${y1} L ${arcStartX} ${arcStartY} A ${rad} ${rad} 0 0 ${sweep} ${arcEndX} ${arcEndY} L ${x2} ${y2}`;
+  } else {
+    // Vertical down first, then Horizontal
+    const arcStartX = x1;
+    const arcStartY = y2 - dirY * rad;
+    const arcEndX = x1 + dirX * rad;
+    const arcEndY = y2;
+    const sweep = (dirX * dirY > 0) ? 0 : 1;
+    return `M ${x1} ${y1} L ${arcStartX} ${arcStartY} A ${rad} ${rad} 0 0 ${sweep} ${arcEndX} ${arcEndY} L ${x2} ${y2}`;
+  }
+}
+
 function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
   const out: Edge[] = [];
   // WIP → first commit
   if (wip && commits.length > 0) {
     const x1 = lx(0), y1 = ly(0), x2 = lx(commits[0].lane), y2 = ly(off);
-    out.push({ path: x1 === x2 ? `M ${x1} ${y1} L ${x2} ${y2}` : `M ${x1} ${y1} L ${x2} ${y1} L ${x2} ${y2}`, colorIdx: commits[0].color_idx, dashed: true });
+    out.push({ path: roundedPath(x1, y1, x2, y2, 'branch-off'), colorIdx: commits[0].color_idx, dashed: true });
   }
   commits.forEach((c, i) => {
     const row = i + off;
@@ -73,20 +101,17 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
       const e = c.edges[pi];
       const ci = e?.color_idx ?? c.color_idx;
       const x1 = lx(c.lane), y1 = ly(row);
+      const type = pi === 0 ? 'branch-off' : 'merge';
+
       if (idx === -1) {
         const tl = e?.to_lane ?? c.lane;
         const x2 = lx(tl), y2 = ly(row + 5);
-        out.push({ path: x1 === x2 ? `M ${x1} ${y1} L ${x2} ${y2}` : `M ${x1} ${y1} L ${x2} ${y1} L ${x2} ${y2}`, colorIdx: ci });
+        out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci });
         return;
       }
       const pRow = idx + off;
       const x2 = lx(commits[idx].lane), y2 = ly(pRow);
-      // Manhattan: horizontal first, then vertical
-      if (x1 === x2) {
-        out.push({ path: `M ${x1} ${y1} L ${x2} ${y2}`, colorIdx: ci });
-      } else {
-        out.push({ path: `M ${x1} ${y1} L ${x2} ${y1} L ${x2} ${y2}`, colorIdx: ci });
-      }
+      out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci });
     });
   });
   return out;

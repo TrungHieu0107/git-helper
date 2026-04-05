@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 0.9.0
-## Last updated: 2026-04-05 - Single SVG Graph + Resizable Columns + Scrollbar
+## Version: 1.0.0
+## Last updated: 2026-04-05 - Manhattan-Routed Commit Graph
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -12,3 +12,5 @@
 - 2026-04-05: Commit Graph Edge Direction Fix — branch-off edges use horizontal-first bezier (M xA 18 C xA 18, xB 18, xB 36), merge edges use vertical-first bezier (M xFrom 36 C xFrom 18, xFrom 18, xTo 18). Avatar fully HTML with hue-based AvatarFallback. classifyEdge() determines type from parent count.
 - 2026-04-05: Commit Graph Bezier Fix — exact control points (branch-off: C x1 27 x2 27; merge: C x1 9 x2 9). Continuous vertical lane lines through nodes. Active lanes tracked per row with consistent SVG width. Debug log added. Custom scrollbar CSS component created in index.css and applied to all scrollable containers.
 - 2026-04-05: Single SVG Graph Rewrite — complete rewrite using one continuous SVG for the graph area. Bezier formula: M x1 y1 C x1 yMid, x2 yMid, x2 y2. Avatar initials inside circle nodes (r=12). LANE_WIDTH=20. ResizableColumns hook + ResizeHandle for Label/Hash/Author columns. Custom scrollbar applied globally.
+- 2026-04-05: Manhattan-Routed Commit Graph — replaced bezier curves with strict horizontal+vertical (L-shaped) routing matching GitKraken reference. Continuous vertical lane lines as background. Large nodes (r=14) with initials for regular commits, small dots (r=5) for merge points. LANE_W=30, ROW_H=50. Branch labels colored by lane.
+- 2026-04-05: Commit Graph Corner Smoothing & Routing Fix — added border radius to Manhattan paths using calculated SVG arcs (A commands) substituting the hard 90-degree corners. Fixed branch-off edge routing direction: from parent to child, branch-off now goes horizontal then vertical up (or vertical down then horizontal from child to parent), whereas merges go vertical up then horizontal from parent to child.
