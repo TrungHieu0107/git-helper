@@ -29,34 +29,6 @@ const lx = (lane: number) => LANE_PAD + lane * LANE_W;
 const ly = (row: number) => row * ROW_H + ROW_H / 2;
 const hue = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return Math.abs(h) % 360; };
 
-// ── Lane span computation (continuous vertical lines) ────────────────
-type LaneSpan = { startRow: number; endRow: number; colorIdx: number };
-
-function buildLaneSpans(commits: CommitNode[], off: number): Map<number, LaneSpan> {
-  const spans = new Map<number, LaneSpan>();
-  const touch = (lane: number, row: number, ci: number) => {
-    if (!spans.has(lane)) { spans.set(lane, { startRow: row, endRow: row, colorIdx: ci }); return; }
-    const s = spans.get(lane)!;
-    if (row < s.startRow) s.startRow = row;
-    if (row > s.endRow) s.endRow = row;
-  };
-  commits.forEach((c, i) => {
-    const row = i + off;
-    touch(c.lane, row, c.color_idx);
-    c.edges.forEach(e => touch(e.to_lane, row, e.color_idx));
-    // Extend to parent rows
-    c.parents.forEach((po, pi) => {
-      const idx = commits.findIndex(n => n.oid === po);
-      if (idx !== -1) {
-        const pRow = idx + off;
-        const toLane = c.edges[pi]?.to_lane ?? commits[idx].lane;
-        touch(toLane, pRow, c.edges[pi]?.color_idx ?? c.color_idx);
-      }
-    });
-  });
-  return spans;
-}
-
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; dashed?: boolean };
 
@@ -137,7 +109,6 @@ export function CommitGraph() {
   const gw = LANE_PAD * 2 + maxLane * LANE_W;
   const th = totalRows * ROW_H;
 
-  const laneSpans = useMemo(() => commitLog ? buildLaneSpans(commitLog, off) : new Map(), [commitLog, off]);
   const edges = useMemo(() => commitLog ? buildEdges(commitLog, off, hasWip) : [], [commitLog, off, hasWip]);
 
   const [hov, setHov] = useState<number | null>(null);
@@ -173,15 +144,6 @@ export function CommitGraph() {
           {/* ═══ SVG Graph Layer ═══ */}
           <svg className="absolute pointer-events-none z-[5]"
             style={{ left: cw.label + 5, top: 0 }} width={gw} height={th}>
-
-            {/* Layer 1: Continuous vertical lane lines */}
-            {Array.from(laneSpans.entries()).map(([lane, span]) => (
-              <line key={`vl-${lane}`}
-                x1={lx(lane)} y1={ly(span.startRow) - NODE_R - 4}
-                x2={lx(lane)} y2={ly(span.endRow) + NODE_R + 4}
-                stroke={color(span.colorIdx)} strokeWidth={2} opacity={0.6}
-              />
-            ))}
 
             {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
             {edges.map((e, i) => (

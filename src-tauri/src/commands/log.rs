@@ -96,19 +96,21 @@ pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, Strin
             Err(_) => continue,
         };
 
-        // Find lane for this commit or create a new one
+        // Find lane for this commit and CLEAR all its occurrences
         let mut my_lane_idx = None;
-        for (i, active_oid) in active_lanes.iter().enumerate() {
+        for (i, active_oid) in active_lanes.iter_mut().enumerate() {
             if let Some(id) = active_oid {
                 if *id == oid {
-                    my_lane_idx = Some(i);
-                    break;
+                    if my_lane_idx.is_none() {
+                        my_lane_idx = Some(i);
+                    }
+                    *active_oid = None; // Sweep ALL occurrences to prevent ghost lanes
                 }
             }
         }
 
         let lane_idx = my_lane_idx.unwrap_or_else(|| {
-            // Find a free lane
+            // Find a free lane starting from left
             for (i, active_oid) in active_lanes.iter().enumerate() {
                 if active_oid.is_none() {
                     return i;
@@ -126,19 +128,44 @@ pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, Strin
             c
         });
 
-        active_lanes[lane_idx] = Some(oid);
-
         let mut parents = Vec::new();
         let mut edges = Vec::new();
 
         let parent_count = commit.parent_count();
         if parent_count > 0 {
             let p0 = commit.parent_id(0).unwrap();
-            active_lanes[lane_idx] = Some(p0);
+            
+            // Check if p0 is already queued somewhere
+            let mut existing_p0_lane = None;
+            for (i, active_oid) in active_lanes.iter().enumerate() {
+                if let Some(id) = active_oid {
+                    if *id == p0 {
+                        existing_p0_lane = Some(i);
+                        break;
+                    }
+                }
+            }
+            
+            let final_to_lane;
+            if let Some(p0_lane) = existing_p0_lane {
+                final_to_lane = p0_lane;
+            } else {
+                // Find leftmost available lane to shift the branch inward (pack to the left)
+                let mut next_lane = lane_idx;
+                for i in 0..=lane_idx {
+                    if active_lanes[i].is_none() {
+                        next_lane = i;
+                        break;
+                    }
+                }
+                active_lanes[next_lane] = Some(p0);
+                final_to_lane = next_lane;
+            }
+            
             parents.push(p0.to_string());
             
             edges.push(EdgeInfo {
-                to_lane: lane_idx,
+                to_lane: final_to_lane,
                 color_idx, // main edge gets lane color
             });
 
@@ -159,7 +186,7 @@ pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, Strin
                 }
 
                 let p_lane = parent_lane.unwrap_or_else(|| {
-                    // Start a new free lane for this sub-parent
+                    // Start a new free lane for this sub-parent (priority to leftmost)
                     for (li, a_oid) in active_lanes.iter().enumerate() {
                         if a_oid.is_none() {
                             active_lanes[li] = Some(p);
@@ -167,11 +194,9 @@ pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, Strin
                         }
                     }
                     active_lanes.push(Some(p));
-                    let li = active_lanes.len() - 1;
-                    li
+                    active_lanes.len() - 1
                 });
 
-                // Assign a color for the sub-path if it didn't have one
                 let parent_color = *color_assignments.entry(p_lane).or_insert_with(|| {
                     let c = next_color_idx % 8;
                     next_color_idx += 1;
@@ -183,9 +208,6 @@ pub fn get_log(repo_path: String, limit: usize) -> Result<Vec<CommitNode>, Strin
                     color_idx: parent_color,
                 });
             }
-        } else {
-            // Root commit
-            active_lanes[lane_idx] = None; 
         }
 
         let author = commit.author();
