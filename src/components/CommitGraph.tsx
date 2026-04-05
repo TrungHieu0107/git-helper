@@ -174,11 +174,10 @@ export function CommitGraph() {
 
             {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
             {edges.map((e, i) => {
-              const isActive = activeOids.has(e.childOid) && !e.isMerge;
               return (
                 <path key={`e-${i}`} d={e.path} fill="none"
                   stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-                  strokeDasharray={e.dashed ? '6 4' : 'none'} strokeOpacity={isActive ? 1 : 0.25} />
+                  strokeDasharray={e.dashed ? '6 4' : 'none'} />
               );
             })}
 
@@ -200,13 +199,11 @@ export function CommitGraph() {
               const h = hue(n.author);
               const isMerge = n.parents.length > 1;
               const r = isMerge ? MERGE_DOT_R : NODE_R;
-              const isActiveNode = activeOids.has(n.oid);
-              const opacity = isActiveNode ? 1 : 0.25;
 
               if (isMerge) {
                 // Merge point — small filled dot
                 return (
-                  <g key={n.oid} opacity={opacity}>
+                  <g key={n.oid}>
                     <circle cx={cx} cy={cy} r={r} fill={c} />
                     {(hov === row || sel === row) && (
                       <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.6} />
@@ -217,7 +214,7 @@ export function CommitGraph() {
 
               // Regular commit — large circle with avatar initial
               return (
-                <g key={n.oid} opacity={opacity}>
+                <g key={n.oid}>
                   <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={2} />
                   <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
                     fill="#fff" fontSize={10} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
@@ -260,12 +257,11 @@ export function CommitGraph() {
             return (
               <div key={n.oid}
                 className={`flex items-center cursor-pointer transition-colors
-                  ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}
-                  ${!isActiveNode ? 'opacity-40' : ''}`}
+                  ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}`}
                 style={{ height: ROW_H }}
                 onClick={() => setSel(row)} onMouseEnter={() => setHov(row)} onMouseLeave={() => setHov(null)}>
                 {/* Branch labels */}
-                <div className="pl-2 flex items-center gap-1 overflow-hidden" style={{ width: cw.label }}>
+                <div className={`pl-2 flex items-center gap-1 overflow-hidden transition-opacity duration-300 ${!isActiveNode ? 'opacity-30 hover:opacity-100' : ''}`} style={{ width: cw.label }}>
                   {(() => {
                     const branchGroups = new Map<string, { isLocal: boolean; isRemote: boolean; isHead: boolean }>();
                     n.refs?.forEach(r => {
