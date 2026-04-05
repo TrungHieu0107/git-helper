@@ -1,18 +1,30 @@
-use git2::{Repository, RemoteCallbacks, FetchOptions, PushOptions, AutotagOption};
+use git2::{Repository, RemoteCallbacks, FetchOptions, PushOptions, AutotagOption, Cred};
+
+fn setup_callbacks() -> RemoteCallbacks<'static> {
+    let mut cb = RemoteCallbacks::new();
+    cb.credentials(|url, username_from_url, allowed_types| {
+        if allowed_types.contains(git2::CredentialType::SSH_KEY) {
+            let user = username_from_url.unwrap_or("git");
+            Cred::ssh_key_from_agent(user)
+        } else if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
+            let config = git2::Config::open_default().unwrap_or_else(|_| git2::Config::new().unwrap());
+            Cred::credential_helper(&config, url, username_from_url)
+        } else if allowed_types.contains(git2::CredentialType::DEFAULT) {
+            Cred::default()
+        } else {
+            Err(git2::Error::from_str("no valid authentication available"))
+        }
+    });
+    cb
+}
 
 #[tauri::command]
 pub fn fetch_remote(repo_path: String, remote: String) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
     let mut remote_obj = repo.find_remote(&remote).map_err(|e| e.to_string())?;
     
-    let mut cb = RemoteCallbacks::new();
-    // For now, assume default credentials (SSH agent, etc.)
-    cb.credentials(|_url, _username, _allowed_types| {
-        git2::Cred::ssh_key_from_agent("git")
-    });
-
     let mut fo = FetchOptions::new();
-    fo.remote_callbacks(cb);
+    fo.remote_callbacks(setup_callbacks());
     fo.download_tags(AutotagOption::All);
 
     remote_obj.fetch(&["refs/heads/*:refs/remotes/origin/*"], Some(&mut fo), None)
@@ -26,13 +38,8 @@ pub fn pull_remote(repo_path: String, remote: String) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
     let mut remote_obj = repo.find_remote(&remote).map_err(|e| e.to_string())?;
     
-    let mut cb = RemoteCallbacks::new();
-    cb.credentials(|_url, _username, _allowed_types| {
-        git2::Cred::ssh_key_from_agent("git")
-    });
-
     let mut fo = FetchOptions::new();
-    fo.remote_callbacks(cb);
+    fo.remote_callbacks(setup_callbacks());
     
     // 1. Fetch
     let head = repo.head().map_err(|e| e.to_string())?;
@@ -43,9 +50,6 @@ pub fn pull_remote(repo_path: String, remote: String) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     // 2. Merge (Simplified: assuming FF for now, or just notify user)
-    // In a real app, we should check if merge is possible.
-    // For this initial un-stubbing, we'll focus on the fetch part which is 90% of the UI value.
-    
     // Find the fetched commit
     let fetch_head = repo.find_reference(&format!("refs/remotes/{}/{}", remote, branch_name))
         .map_err(|e| e.to_string())?;
@@ -76,13 +80,8 @@ pub fn push_remote(repo_path: String, remote: String) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
     let mut remote_obj = repo.find_remote(&remote).map_err(|e| e.to_string())?;
     
-    let mut cb = RemoteCallbacks::new();
-    cb.credentials(|_url, _username, _allowed_types| {
-        git2::Cred::ssh_key_from_agent("git")
-    });
-
     let mut po = PushOptions::new();
-    po.remote_callbacks(cb);
+    po.remote_callbacks(setup_callbacks());
     
     let head = repo.head().map_err(|e| e.to_string())?;
     let branch_name = head.shorthand().ok_or("HEAD is not a branch")?;
