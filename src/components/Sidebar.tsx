@@ -151,14 +151,14 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Scrollable List */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-4 custom-scrollbar">
+      {/* Sections Container (No global scroll, just flex-col) */}
+      <div className="flex-1 flex flex-col overflow-hidden p-2 gap-3">
         
         {/* LOCAL */}
-        <div>
+        <div className={`flex flex-col min-h-0 ${localOpen ? 'shrink' : 'shrink-0'}`}>
            <SectionHeader title="LOCAL" count={filteredLocal.length} open={localOpen} setOpen={setLocalOpen} />
            {localOpen && (
-             <div className="flex flex-col mt-1">
+             <div className="flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
                {filteredLocal.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                ) : (
@@ -171,10 +171,10 @@ export function Sidebar() {
         </div>
 
         {/* REMOTE */}
-        <div>
+        <div className={`flex flex-col min-h-0 ${remoteOpen ? 'shrink' : 'shrink-0'}`}>
            <SectionHeader title="REMOTE" count={remoteBranches.size} open={remoteOpen} setOpen={setRemoteOpen} />
            {remoteOpen && (
-             <div className="flex flex-col mt-1 text-[13px] text-slate-400">
+             <div className="flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
                {remoteBranches.size === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                ) : (
@@ -197,10 +197,10 @@ export function Sidebar() {
         </div>
 
         {/* STASHES */}
-        <div>
+        <div className={`flex flex-col min-h-0 ${stashOpen ? 'shrink' : 'shrink-0'}`}>
            <SectionHeader title="STASHES" count={stashes.length} open={stashOpen} setOpen={setStashOpen} />
            {stashOpen && (
-             <div className="flex flex-col mt-1">
+             <div className="flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
                {stashes.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                ) : (
