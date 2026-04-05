@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, Menu, FolderOpen } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, FolderOpen, GitBranch } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
 import { invoke } from "@tauri-apps/api/core";
 import { loadRepo } from "../lib/repo";
@@ -11,11 +11,52 @@ export function Sidebar() {
   const [stashOpen, setStashOpen] = useState(true);
   const [showRepoSwitcher, setShowRepoSwitcher] = useState(false);
   const [recentRepos, setRecentRepos] = useState<RecentRepo[]>([]);
+  const [filter, setFilter] = useState("");
   
   const repoInfo = useAppStore(state => state.repoInfo);
   const activeBranch = useAppStore(state => state.activeBranch) || "main";
-  const branches = useAppStore(state => state.branches) || [];
+  const commitLog = useAppStore(state => state.commitLog);
   const stashes = useAppStore(state => state.stashes) || [];
+
+  // Derive branch lists from commitLog refs (since list_branches is still a stub)
+  const { localBranches, remoteBranches } = useMemo(() => {
+    const locals = new Set<string>();
+    const remotes = new Map<string, string[]>(); // remote name -> branch names
+
+    if (commitLog) {
+      commitLog.forEach(node => {
+        node.refs.forEach(ref => {
+          if (ref === 'HEAD') return;
+          if (ref.includes('/')) {
+            // Could be "origin/main" format
+            const parts = ref.split('/');
+            const remoteName = parts[0];
+            const branchName = parts.slice(1).join('/');
+            if (!remotes.has(remoteName)) remotes.set(remoteName, []);
+            const list = remotes.get(remoteName)!;
+            if (!list.includes(branchName)) list.push(branchName);
+          } else {
+            locals.add(ref);
+          }
+        });
+      });
+    }
+
+    // Ensure active branch is always visible
+    if (activeBranch && !locals.has(activeBranch)) {
+      locals.add(activeBranch);
+    }
+
+    return {
+      localBranches: Array.from(locals),
+      remoteBranches: remotes,
+    };
+  }, [commitLog, activeBranch]);
+
+  // Filter logic
+  const filteredLocal = filter
+    ? localBranches.filter(b => b.toLowerCase().includes(filter.toLowerCase()))
+    : localBranches;
 
   const switcherRef = useRef<HTMLDivElement>(null);
 
@@ -94,9 +135,17 @@ export function Sidebar() {
         )}
         
         <div className="flex items-center gap-2">
-           <span className="text-xs bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">Viewing 3</span>
+           <span className="text-xs bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
+             {filteredLocal.length} branch{filteredLocal.length !== 1 ? 'es' : ''}
+           </span>
            <div className="flex-1 flex items-center bg-[#282c33] rounded px-2">
-              <input type="text" placeholder="Filter (Ctrl+Alt+F)" className="w-full bg-transparent border-none text-xs py-1 outline-none text-[#a0a6b1] placeholder-[#5c6370]" />
+              <input
+                type="text"
+                placeholder="Filter (Ctrl+Alt+F)"
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                className="w-full bg-transparent border-none text-xs py-1 outline-none text-[#a0a6b1] placeholder-[#5c6370]"
+              />
               <Search size={14} className="text-[#5c6370]" />
            </div>
         </div>
@@ -107,29 +156,42 @@ export function Sidebar() {
         
         {/* LOCAL */}
         <div>
-           <SectionHeader title="LOCAL" count={3} open={localOpen} setOpen={setLocalOpen} />
+           <SectionHeader title="LOCAL" count={filteredLocal.length} open={localOpen} setOpen={setLocalOpen} />
            {localOpen && (
              <div className="flex flex-col mt-1">
-               {branches.map(b => (
-                 <BranchRow key={b} name={b} isHead={b === activeBranch} />
-               ))}
+               {filteredLocal.length === 0 ? (
+                 <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
+               ) : (
+                 filteredLocal.map(b => (
+                   <BranchRow key={b} name={b} isHead={b === activeBranch} />
+                 ))
+               )}
              </div>
            )}
         </div>
 
         {/* REMOTE */}
         <div>
-           <SectionHeader title="REMOTE" count={1} open={remoteOpen} setOpen={setRemoteOpen} />
+           <SectionHeader title="REMOTE" count={remoteBranches.size} open={remoteOpen} setOpen={setRemoteOpen} />
            {remoteOpen && (
-             <div className="flex flex-col mt-1 pl-4 text-[13px] text-slate-400">
-               <div className="flex items-center gap-2 py-1">
-                  <span>📁 origin</span>
-               </div>
-               <div className="pl-4">
-                  {branches.map(b => (
-                    <BranchRow key={`rem-${b}`} name={b} isHead={false} />
-                  ))}
-               </div>
+             <div className="flex flex-col mt-1 text-[13px] text-slate-400">
+               {remoteBranches.size === 0 ? (
+                 <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
+               ) : (
+                 Array.from(remoteBranches.entries()).map(([remote, branchNames]) => (
+                   <div key={remote}>
+                     <div className="flex items-center gap-2 py-1 pl-1">
+                        <GitBranch size={12} className="text-[#5c6370]" />
+                        <span className="text-[#a0a6b1] font-medium">{remote}</span>
+                     </div>
+                     <div className="pl-5">
+                        {branchNames.map(b => (
+                          <BranchRow key={`${remote}/${b}`} name={b} isHead={false} />
+                        ))}
+                     </div>
+                   </div>
+                 ))
+               )}
              </div>
            )}
         </div>
@@ -139,26 +201,25 @@ export function Sidebar() {
            <SectionHeader title="STASHES" count={stashes.length} open={stashOpen} setOpen={setStashOpen} />
            {stashOpen && (
              <div className="flex flex-col mt-1">
-               {stashes.map((s, i) => (
-                 <div key={i} className="flex items-center gap-2 py-1.5 px-1 hover:bg-[#2c313a] rounded cursor-pointer group text-[13px] text-slate-300 truncate">
-                    <span className="text-slate-500">≡</span>
-                    <span className="truncate">{s.message}</span>
-                    <span className="text-xs text-slate-500 ml-auto whitespace-nowrap hidden group-hover:block">{s.time}</span>
-                 </div>
-               ))}
+               {stashes.length === 0 ? (
+                 <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
+               ) : (
+                 stashes.map((s: { message?: string; index?: number }, i: number) => (
+                   <div key={i} className="flex items-center gap-2 py-1.5 px-1 hover:bg-[#2c313a] rounded cursor-pointer group text-[13px] text-slate-300 truncate">
+                      <span className="text-slate-500">≡</span>
+                      <span className="truncate">{s.message || `stash@{${i}}`}</span>
+                   </div>
+                 ))
+               )}
              </div>
            )}
         </div>
-
-        {/* Dummies */}
-        <SectionHeader title="PULL REQUESTS" count={0} open={false} setOpen={() => {}} />
-        <SectionHeader title="ISSUES" count={0} open={false} setOpen={() => {}} />
       </div>
     </aside>
   );
 }
 
-function SectionHeader({ title, count, open, setOpen }: { title: string, count: number|string, open: boolean, setOpen: (b:boolean) => void }) {
+function SectionHeader({ title, count, open, setOpen }: Readonly<{ title: string; count: number | string; open: boolean; setOpen: (b: boolean) => void }>) {
   return (
     <div onClick={() => setOpen(!open)} className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-[#5c6370] uppercase cursor-pointer hover:text-slate-300">
       <div className="flex items-center gap-1">
@@ -170,7 +231,7 @@ function SectionHeader({ title, count, open, setOpen }: { title: string, count: 
   );
 }
 
-function BranchRow({ name, isHead }: { name: string, isHead: boolean }) {
+function BranchRow({ name, isHead }: Readonly<{ name: string; isHead: boolean }>) {
   return (
     <div className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap ${isHead ? 'bg-[#2c313a]' : 'hover:bg-[#2c313a]'}`}>
        <div className="flex items-center gap-2 overflow-hidden flex-1">

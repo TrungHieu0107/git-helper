@@ -1,6 +1,6 @@
 # GitManager App Summary
-## Version: 0.5.0
-## Last updated: 2026-04-05 - Phase 2 Commit Graph Topological Layout
+## Version: 0.7.0
+## Last updated: 2026-04-05 - Commit Graph Edge Direction Fix
 ## Project: GitKit
 
-The project features a GitKraken-style 3-column layout. We have successfully implemented the "Open Repository" flow and integrated the fully dynamic Phase 2 topological Commit Graph layout. Rust algorithms smoothly assign layout paths and output them to the interface. The `CommitGraph.tsx` React component renders SVG tracks matching GitKraken using actual backend branch trees and active stashes accurately!
+GitKraken-style desktop Git client. Commit graph renders per-row SVGs with correct edge directions: branch-off uses horizontal-first bezier, merge uses vertical-first bezier. Avatar is pure HTML with hue-based fallback. Sidebar derives branches dynamically from commitLog refs with filter support.

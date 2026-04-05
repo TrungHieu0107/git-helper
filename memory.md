@@ -1,9 +1,12 @@
 # GitManager App Memory
-## Version: 0.3.0
-## Last updated: 2026-04-05 - GitKraken UI Refactor Completed
+## Version: 0.7.0
+## Last updated: 2026-04-05 - Commit Graph Edge Direction Fix
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
 - 2026-04-05: Implemented "Open Repo" capability and Phase 1 tasks. Intervened with Tauri plugins (`tauri-plugin-dialog`) to open OS folders. Upgraded Rust back-end with modules for Repo validation, Git Status retrieval, Differential patches viewing, Staging toggles, and unified Committing mechanism. Refactored `<App />` layout mapping directly to the `Zustand` store for real-time reactivity without Prop Drilling.
 - 2026-04-05: Completely refactored the interface utilizing the raw GitKraken specs providing a Top Toolbar, unified Left Panel navigation (Repositories, Stashes, Remotes), graphical Commit Row structure maps, and Right Panel advanced Context staging. Complied fully with user request to visually mock components (D3 lanes, remote branches) without artificially skewing `store.ts`. `FEATURE_REGISTRY` & `PROJECT_CONTEXT` up to date.
 - 2026-04-05: Implemented Phase 2: Commit Graph dynamic topological tracking. Moved pseudo stub graph arrays out and wrote complete Git branch iteration via `get_log` using topological and time sorting via `git2::Revwalk`. Computed a real-time `active_lanes` mapping logic directly from Rust that feeds continuous nodes and directional edges safely out to the UI. Fully refactored `CommitGraph.tsx` React logic into dynamically routing SVG Lane vectors to render curved overlapping graph pathways properly isolating branch paths without disrupting the `useAppStore`.
+- 2026-04-05: Commit Graph Visual Fix — rewrote CommitGraph.tsx to match GitKraken style. Separated avatar from graph node (avatar as HTML, graph as per-row SVG). Fixed z-order: pass-through lines → bezier edges → circle → inner dot. 36px row height, no clipping, proper S-curve beziers. Small r=5 circles with r=2 inner dark dots.
+- 2026-04-05: Sidebar Dynamic Data — removed static mock arrays and Pull Requests/Issues dummy sections. Sidebar now derives local/remote branch lists from commitLog refs. Added filter input, empty states, and remote branch grouping by remote name.
+- 2026-04-05: Commit Graph Edge Direction Fix — branch-off edges use horizontal-first bezier (M xA 18 C xA 18, xB 18, xB 36), merge edges use vertical-first bezier (M xFrom 36 C xFrom 18, xFrom 18, xTo 18). Avatar fully HTML with hue-based AvatarFallback. classifyEdge() determines type from parent count.

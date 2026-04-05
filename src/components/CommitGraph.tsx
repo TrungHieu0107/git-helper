@@ -1,272 +1,418 @@
-import React, { useState, useMemo } from 'react';
-import { useAppStore } from '../store';
+import { useState, useMemo } from 'react';
+import { useAppStore, CommitNode, EdgeInfo } from '../store';
 
-const LANE_COLORS = ['#7F77DD','#1D9E75','#BA7517','#D85A30','#378ADD','#D4537E','#639922','#888780'];
-const COL_WIDTH = 16;
-const ROW_HEIGHT = 32;
-const PADDING_TOP = 8;
-const PADDING_LEFT = 20;
-const STROKE_WIDTH = 2;
-const AVATAR_SIZE = 22;
-const AVATAR_RADIUS = AVATAR_SIZE / 2;
-const STASH_CORNER_RADIUS = 4;
+// ── Constants ────────────────────────────────────────────────────────
+const ROW_HEIGHT = 36;
+const AVATAR_SIZE = 24;
+const NODE_RADIUS = 5;
+const INNER_DOT = 2;
+const LW = 18; // LANE_WIDTH
+const GRAPH_PADDING_RIGHT = 8;
+const BG_COLOR = '#0d1117';
 
-type ConnectionPath = {
-  fromColumn: number;
-  fromRow: number;
-  toColumn: number;
-  toRow: number;
-  color: string;
+const LANE_COLORS = [
+  '#7C6FDE', '#2EAA6B', '#D97706', '#DC4A2D',
+  '#2B7FD4', '#C2406A', '#4E9A1F', '#6B7280',
+];
+
+function laneColor(colorIdx: number): string {
+  return LANE_COLORS[colorIdx % LANE_COLORS.length];
+}
+
+function laneX(lane: number): number {
+  return lane * LW + LW / 2;
+}
+
+// ── Edge type classification ─────────────────────────────────────────
+type EdgeType = 'straight' | 'branch-off' | 'merge';
+
+function classifyEdge(
+  _edge: EdgeInfo,
+  fromLane: number,
+  toLane: number,
+  currentCommit: CommitNode,
+): EdgeType {
+  if (fromLane === toLane) return 'straight';
+  if (currentCommit.parents.length > 1) return 'merge';
+  return 'branch-off';
+}
+
+// ── Edge path generation ─────────────────────────────────────────────
+function edgePath(fromLane: number, toLane: number, edgeType: EdgeType): string {
+  const xFrom = laneX(fromLane);
+  const xTo = laneX(toLane);
+
+  if (edgeType === 'straight') {
+    return `M ${xFrom} 0 L ${xFrom} ${ROW_HEIGHT}`;
+  }
+  if (edgeType === 'branch-off') {
+    // Horizontal-first: from commit node (y=18) curve to new lane, then down to y=36
+    return `M ${xFrom} 18 C ${xFrom} 18, ${xTo} 18, ${xTo} 36`;
+  }
+  if (edgeType === 'merge') {
+    // Vertical-first: from y=36 at source lane, curve to merge commit (y=18) on target lane
+    return `M ${xFrom} 36 C ${xFrom} 18, ${xFrom} 18, ${xTo} 18`;
+  }
+  return '';
+}
+
+// ── Per-row edge data ────────────────────────────────────────────────
+type RowEdge = {
+  fromLane: number;
+  toLane: number;
+  colorIdx: number;
+  edgeType: EdgeType;
   dashed?: boolean;
 };
 
+// ── Build per-row rendering data ─────────────────────────────────────
+function useGraphData(commitLog: CommitNode[], graphRowOffset: number) {
+  return useMemo(() => {
+    if (!commitLog || commitLog.length === 0)
+      return { maxLane: 0, rowEdges: new Map<number, RowEdge[]>() };
+
+    let maxLane = 0;
+    const rowEdges = new Map<number, RowEdge[]>();
+
+    const addEdge = (row: number, edge: RowEdge) => {
+      if (!rowEdges.has(row)) rowEdges.set(row, []);
+      rowEdges.get(row)!.push(edge);
+    };
+
+    commitLog.forEach((node, i) => {
+      const nodeRow = i + graphRowOffset;
+      if (node.lane > maxLane) maxLane = node.lane;
+
+      node.parents.forEach((parentOid, pIdx) => {
+        const pRowIdx = commitLog.findIndex(n => n.oid === parentOid);
+        const edgeInfo = node.edges[pIdx];
+        const colorIdx = edgeInfo ? edgeInfo.color_idx : node.color_idx;
+
+        if (pRowIdx !== -1) {
+          const parentRow = pRowIdx + graphRowOffset;
+          const toLane = edgeInfo ? edgeInfo.to_lane : commitLog[pRowIdx].lane;
+          if (toLane > maxLane) maxLane = toLane;
+
+          const eType = classifyEdge(
+            edgeInfo || { to_lane: toLane, color_idx: colorIdx },
+            node.lane, toLane, node
+          );
+
+          // At the commit row: draw the branch-off or merge curve (or straight)
+          addEdge(nodeRow, { fromLane: node.lane, toLane, colorIdx, edgeType: eType });
+
+          // Intermediate rows: straight pass-through on the target lane
+          for (let r = nodeRow + 1; r < parentRow; r++) {
+            addEdge(r, { fromLane: toLane, toLane, colorIdx, edgeType: 'straight' });
+          }
+
+          // At the parent row: if toLane differs from parent's lane we need a merge curve there
+          if (parentRow > nodeRow) {
+            const parentNode = commitLog[pRowIdx];
+            if (toLane !== parentNode.lane) {
+              addEdge(parentRow, {
+                fromLane: toLane,
+                toLane: parentNode.lane,
+                colorIdx,
+                edgeType: 'merge',
+              });
+            }
+          }
+        } else {
+          // Parent outside loaded chunk — extend down
+          const toLane = edgeInfo ? edgeInfo.to_lane : node.lane;
+          if (toLane > maxLane) maxLane = toLane;
+          const eType = node.lane === toLane ? 'straight' as EdgeType : 'branch-off' as EdgeType;
+          addEdge(nodeRow, { fromLane: node.lane, toLane, colorIdx, edgeType: eType });
+          for (let r = nodeRow + 1; r < nodeRow + 5; r++) {
+            addEdge(r, { fromLane: toLane, toLane, colorIdx, edgeType: 'straight' });
+          }
+        }
+      });
+    });
+
+    return { maxLane, rowEdges };
+  }, [commitLog, graphRowOffset]);
+}
+
+// ── Avatar Fallback ──────────────────────────────────────────────────
+function AvatarFallback({ name, email, size = 24 }: Readonly<{ name: string; email: string; size?: number }>) {
+  const initial = (name || email || '?')[0].toUpperCase();
+  const hue = (email || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: `hsl(${hue}, 55%, 40%)`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: 10, fontWeight: 500, color: '#fff', flexShrink: 0,
+    }}>
+      {initial}
+    </div>
+  );
+}
+
+// ── Avatar component ─────────────────────────────────────────────────
+function CommitAvatar({ author, email }: Readonly<{ author: string; email: string }>) {
+  const [imgError, setImgError] = useState(false);
+  const gravatarUrl = `https://www.gravatar.com/avatar/${email}?s=48&d=404`;
+
+  if (imgError) {
+    return <AvatarFallback name={author} email={email} size={AVATAR_SIZE} />;
+  }
+
+  return (
+    <img
+      src={gravatarUrl}
+      alt={author}
+      width={AVATAR_SIZE}
+      height={AVATAR_SIZE}
+      style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
+// ── Per-row SVG renderer ─────────────────────────────────────────────
+function GraphRowSvg({
+  node,
+  edges,
+  svgWidth,
+  isWip,
+}: Readonly<{
+  node: CommitNode | null;
+  edges: RowEdge[];
+  svgWidth: number;
+  isWip?: boolean;
+}>) {
+  const straightEdges = edges.filter(e => e.edgeType === 'straight');
+  const branchOffEdges = edges.filter(e => e.edgeType === 'branch-off');
+  const mergeEdges = edges.filter(e => e.edgeType === 'merge');
+
+  return (
+    <svg
+      width={svgWidth}
+      height={ROW_HEIGHT}
+      style={{ overflow: 'visible', display: 'block', flexShrink: 0 }}
+      viewBox={`0 0 ${svgWidth} ${ROW_HEIGHT}`}
+    >
+      {/* Layer 1: Pass-through straight vertical lines (z-bottom) */}
+      {straightEdges.map((e, i) => (
+        <line
+          key={`st-${i}`}
+          x1={laneX(e.fromLane)} y1={0}
+          x2={laneX(e.fromLane)} y2={ROW_HEIGHT}
+          stroke={laneColor(e.colorIdx)}
+          strokeWidth={2}
+          strokeDasharray={e.dashed ? '6 4' : 'none'}
+        />
+      ))}
+
+      {/* Layer 2: Branch-off edges (horizontal-first curves) */}
+      {branchOffEdges.map((e, i) => (
+        <path
+          key={`bo-${i}`}
+          d={edgePath(e.fromLane, e.toLane, 'branch-off')}
+          fill="none"
+          stroke={laneColor(e.colorIdx)}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray={e.dashed ? '6 4' : 'none'}
+        />
+      ))}
+
+      {/* Layer 3: Merge edges (vertical-first curves) */}
+      {mergeEdges.map((e, i) => (
+        <path
+          key={`mg-${i}`}
+          d={edgePath(e.fromLane, e.toLane, 'merge')}
+          fill="none"
+          stroke={laneColor(e.colorIdx)}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray={e.dashed ? '6 4' : 'none'}
+        />
+      ))}
+
+      {/* Layer 4: Commit node circle */}
+      {node && !isWip && (
+        <>
+          <circle
+            cx={laneX(node.lane)} cy={18}
+            r={NODE_RADIUS}
+            fill={laneColor(node.color_idx)}
+            stroke={laneColor(node.color_idx)}
+            strokeWidth={1.5}
+          />
+          {/* Layer 5: Inner dark dot */}
+          <circle
+            cx={laneX(node.lane)} cy={18}
+            r={INNER_DOT}
+            fill={BG_COLOR}
+          />
+        </>
+      )}
+
+      {/* WIP node */}
+      {isWip && (
+        <>
+          <circle
+            cx={laneX(0)} cy={18}
+            r={NODE_RADIUS + 1}
+            fill="none" stroke="#58a6ff"
+            strokeWidth={1.5} strokeDasharray="2 2"
+          />
+          <circle cx={laneX(0)} cy={18} r={INNER_DOT} fill="#58a6ff" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────
 export function CommitGraph() {
   const commitLog = useAppStore(state => state.commitLog);
   const stagedFiles = useAppStore(state => state.stagedFiles);
   const unstagedFiles = useAppStore(state => state.unstagedFiles);
-  
-  const hasWipRow = stagedFiles.length > 0 || unstagedFiles.length > 0;
+  const repoStatus = useAppStore(state => state.repoStatus);
+
+  const hasWipRow = (repoStatus?.staged_count ?? 0) > 0
+    || (repoStatus?.unstaged_count ?? 0) > 0
+    || stagedFiles.length > 0
+    || unstagedFiles.length > 0;
   const graphRowOffset = hasWipRow ? 1 : 0;
-  const totalRowCount = (commitLog?.length || 0) + graphRowOffset;
 
-  // Compute connections spanning nodes -> parents
-  const connections = useMemo(() => {
-    const paths: ConnectionPath[] = [];
-    if (!commitLog) return paths;
-
-    commitLog.forEach((node, i) => {
-      node.parents.forEach((parentOid, pIdx) => {
-        const pRowIndex = commitLog.findIndex(n => n.oid === parentOid);
-        if (pRowIndex !== -1) {
-          const edgeInfo = node.edges[pIdx];
-          const colorIdx = edgeInfo ? edgeInfo.color_idx : node.color_idx;
-          paths.push({
-            fromColumn: node.lane,
-            fromRow: i + graphRowOffset,
-            toColumn: edgeInfo ? edgeInfo.to_lane : commitLog[pRowIndex].lane,
-            toRow: pRowIndex + graphRowOffset,
-            color: LANE_COLORS[colorIdx % LANE_COLORS.length]
-          });
-        } else {
-            // The parent is outside the loaded chunk (limit reached). We just draw a line extending down indefinitely.
-            const edgeInfo = node.edges[pIdx];
-            const colorIdx = edgeInfo ? edgeInfo.color_idx : node.color_idx;
-            paths.push({
-               fromColumn: node.lane,
-               fromRow: i + graphRowOffset,
-               toColumn: edgeInfo ? edgeInfo.to_lane : node.lane,
-               toRow: totalRowCount + 2, // run off screen
-               color: LANE_COLORS[colorIdx % LANE_COLORS.length]
-            });
-        }
-      });
-    });
-    
-    // WIP mock connections to HEAD (which is row 0 if it exists)
-    if (hasWipRow && commitLog.length > 0) {
-       paths.push({
-         fromColumn: 0,
-         fromRow: 0,
-         toColumn: commitLog[0].lane,
-         toRow: graphRowOffset,
-         color: LANE_COLORS[commitLog[0].color_idx % LANE_COLORS.length],
-         dashed: true
-       });
-    }
-
-    return paths;
-  }, [commitLog, hasWipRow, graphRowOffset, totalRowCount]);
-
-  const columnToX = (columnIndex: number) => PADDING_LEFT + columnIndex * COL_WIDTH;
-  const rowToY = (rowIndex: number) => PADDING_TOP + rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
-
-  function buildCurvedConnectionPath(x1: number, y1: number, x2: number, y2: number) {
-      const shiftY = 15;
-      if (x1 === x2) return `M ${x1} ${y1} V ${y2}`;
-      
-      return `M ${x1} ${y1} C ${x1} ${y1 + shiftY}, ${x2} ${y2 - shiftY}, ${x2} ${y2}`;
-  }
+  const { maxLane, rowEdges } = useGraphData(commitLog, graphRowOffset);
+  const activeLaneCount = maxLane + 1;
+  const svgWidth = activeLaneCount * LW + GRAPH_PADDING_RIGHT;
 
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
 
-  const getAvatarUrl = (author: string) => {
-      // Mock avatar mapping
-      if (author === 'admin') return 'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=48&d=wavatar';
-      return 'https://www.gravatar.com/avatar/ab0203f?s=48&d=identicon';
-  };
+  const wipEdges: RowEdge[] = useMemo(() => {
+    if (!hasWipRow || !commitLog || commitLog.length === 0) return [];
+    const toLane = commitLog[0].lane;
+    const eType: EdgeType = toLane === 0 ? 'straight' : 'branch-off';
+    return [{ fromLane: 0, toLane, colorIdx: commitLog[0].color_idx, edgeType: eType, dashed: true }];
+  }, [hasWipRow, commitLog]);
 
   return (
     <main className="flex-1 flex flex-col bg-[#0f172a] h-full overflow-hidden text-sm">
       {/* Sticky Headers */}
-      <div className="h-[32px] flex items-center border-b border-[#1e293b] px-4 text-[12px] font-semibold text-[#8b949e] tracking-wider uppercase shrink-0 bg-[#0f172a] z-20 w-full min-w-max shadow-sm">
-         <div className="w-[170px] shrink-0 border-r border-[#1e293b]/30">BRANCH / TAG</div>
-         <div className="w-[120px] shrink-0 border-r border-[#1e293b]/30 pl-4">GRAPH</div>
-         <div className="flex-1 pl-4 border-r border-[#1e293b]/30">MESSAGE</div>
-         <div className="w-[80px] shrink-0 border-r border-[#1e293b]/30 pl-4">HASH</div>
-         <div className="w-[120px] shrink-0 pl-4">AUTHOR</div>
+      <div className="h-9 flex items-center border-b border-[#1e293b] px-4 text-[11px] font-semibold text-[#8b949e] tracking-wider uppercase shrink-0 bg-[#0f172a] z-20 w-full min-w-max shadow-sm">
+        <div className="w-[140px] shrink-0 border-r border-[#1e293b]/30 pl-1">BRANCH / TAG</div>
+        <div className="shrink-0 border-r border-[#1e293b]/30 pl-2 flex items-center" style={{ width: 28 + svgWidth }}>GRAPH</div>
+        <div className="flex-1 pl-3 border-r border-[#1e293b]/30">MESSAGE</div>
+        <div className="w-[72px] shrink-0 border-r border-[#1e293b]/30 pl-3">HASH</div>
+        <div className="w-[110px] shrink-0 pl-3">AUTHOR</div>
       </div>
 
       {/* Graph Viewport */}
-      <div className="flex-1 overflow-auto relative custom-scrollbar bg-[#0d1117]" style={{ willChange: 'transform' }}>
-        <div className="relative min-w-max" style={{ height: `${totalRowCount * ROW_HEIGHT + PADDING_TOP + 50}px` }}>
-          
-          {/* Background stripe rows */}
-          <div className="absolute top-0 left-0 w-full z-[1] pointer-events-none" style={{ paddingTop: PADDING_TOP }}>
-              {Array.from({ length: totalRowCount }).map((_, i) => (
-                  <div key={i} className={`border-b border-[#1e293b]/15 ${i % 2 === 0 ? 'bg-[#0f172a]' : 'bg-[#1e293b]/10'}`} style={{ height: ROW_HEIGHT }}></div>
-              ))}
-          </div>
+      <div className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117]" style={{ willChange: 'transform' }}>
+        <div className="min-w-max">
 
-          {/* SVG Graph Layer */}
-          <div className="absolute top-0 bottom-0 pointer-events-none z-[5]" style={{ left: 170, width: 120 }}>
-             <svg className="w-full h-full" style={{ minHeight: '100%' }}>
-                <defs>
-                   <clipPath id="avatar-clip">
-                       <circle cx="0" cy="0" r={AVATAR_RADIUS} />
-                   </clipPath>
-                   <clipPath id="avatar-stash-clip">
-                       <rect x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} rx={STASH_CORNER_RADIUS} />
-                   </clipPath>
-                   <filter id="avatar-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                       <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#000" floodOpacity="0.5" />
-                   </filter>
-                </defs>
+          {/* WIP Row */}
+          {hasWipRow && (
+            <div
+              style={{ display: 'flex', height: ROW_HEIGHT, alignItems: 'center' }}
+              className={`cursor-pointer border-b border-[#1e293b]/20 group transition-colors
+                ${hoveredRow === 0 ? 'bg-[#1e293b]/40' : ''}
+                ${selectedRow === 0 ? 'bg-[#3b82f6]/10' : ''}`}
+              onClick={() => setSelectedRow(0)}
+              onMouseEnter={() => setHoveredRow(0)}
+              onMouseLeave={() => setHoveredRow(null)}
+            >
+              {/* Refs */}
+              <div className="w-[140px] shrink-0 pl-2 flex items-center pr-1">
+                <span className="bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0">WIP</span>
+              </div>
+              {/* Column A: Avatar */}
+              <div style={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+                <div style={{
+                  width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: '50%',
+                  background: '#1e293b', border: '1px solid rgba(88,166,255,0.5)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: 10, color: '#58a6ff', fontWeight: 700 }}>W</span>
+                </div>
+              </div>
+              {/* Column B: Graph SVG */}
+              <GraphRowSvg node={null} edges={wipEdges} svgWidth={svgWidth} isWip />
+              {/* Column C: Message */}
+              <div style={{ flex: 1, overflow: 'hidden' }} className="flex items-center pr-4 pl-3">
+                <div className="h-6 rounded border border-[#245d84]/60 bg-[#0b2942]/65 flex items-center px-2 gap-3 overflow-hidden max-w-full">
+                  <span className="text-[11px] font-mono text-[#79c0ff] shrink-0">// WIP</span>
+                  <span className="text-[10px] text-[#3fb950] shrink-0">+{repoStatus?.staged_count ?? stagedFiles.length} staged</span>
+                  <span className="text-[10px] text-[#f2cc60] shrink-0">+{repoStatus?.unstaged_count ?? unstagedFiles.length} unstaged</span>
+                </div>
+              </div>
+              <div className="w-[72px] shrink-0 pl-3 font-mono opacity-60 text-[#8b949e] text-xs">—</div>
+              <div className="w-[110px] shrink-0 pl-3 opacity-60 text-[#8b949e] truncate text-xs">Working Tree</div>
+            </div>
+          )}
 
-                {/* Lanes - we don't have explicit long lanes array anymore, connections form the lanes */}
+          {/* Commit Rows */}
+          {commitLog?.map((n, idx) => {
+            const row = idx + graphRowOffset;
+            const edges = rowEdges.get(row) || [];
+            return (
+              <div
+                key={n.oid}
+                style={{ display: 'flex', height: ROW_HEIGHT, alignItems: 'center' }}
+                className={`cursor-pointer border-b border-[#1e293b]/20 group transition-colors
+                  ${hoveredRow === row ? 'bg-[#1e293b]/40' : ''}
+                  ${selectedRow === row ? 'bg-[#3b82f6]/10' : ''}`}
+                onClick={() => setSelectedRow(row)}
+                onMouseEnter={() => setHoveredRow(row)}
+                onMouseLeave={() => setHoveredRow(null)}
+              >
+                {/* Refs */}
+                <div className="w-[140px] shrink-0 pl-2 flex items-center gap-1 overflow-hidden pr-1 text-xs">
+                  {n.refs?.map(r => {
+                    let cls = 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50';
+                    if (r.includes('origin/')) cls = 'bg-purple-900/40 text-purple-300 border-purple-700/50';
+                    if (r === 'HEAD') cls = 'bg-sky-900/45 text-sky-300 border-sky-700/60';
+                    return (
+                      <span key={r} className={`border px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap truncate max-w-[70px] ${cls}`}>
+                        {r}
+                      </span>
+                    );
+                  })}
+                </div>
 
-                {/* Connections */}
-                <g className="connections">
-                    {connections.map((conn, idx) => {
-                        const path = buildCurvedConnectionPath(columnToX(conn.fromColumn), rowToY(conn.fromRow), columnToX(conn.toColumn), rowToY(conn.toRow));
-                        return (
-                           <path 
-                              key={`conn-${idx}`}
-                              d={path}
-                              fill="none" stroke={conn.color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" strokeDasharray={conn.dashed ? "6 4" : "none"} opacity={0.8}
-                           />
-                        )
-                    })}
-                </g>
-                
-                {/* WIP Dashed line up to WIP Row */}
-                {hasWipRow && (
-                    <path
-                        d={`M ${columnToX(0)} ${rowToY(0)} V ${rowToY(1)}`}
-                        fill="none" stroke={LANE_COLORS[0]} strokeWidth={STROKE_WIDTH} strokeLinecap="round" strokeDasharray="4 3" opacity={0.65}
-                    />
-                )}
+                {/* Column A: Avatar — pure HTML, never inside SVG */}
+                <div style={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+                  <CommitAvatar author={n.author} email={n.email} />
+                </div>
 
-                {/* Nodes rendering over lines */}
-                <g className="nodes">
-                    {hasWipRow && (
-                        <g transform={`translate(${columnToX(0)}, ${rowToY(0)})`} filter="url(#avatar-shadow)">
-                            <circle cx="0" cy="0" r={AVATAR_RADIUS + 1} fill="#0f172a" stroke="#58a6ff" strokeWidth="2" strokeDasharray="2 2" />
-                            <circle cx="0" cy="0" r="3" fill="#58a6ff" />
-                        </g>
-                    )}
+                {/* Column B: Graph SVG — NO images, NO avatars inside */}
+                <GraphRowSvg node={n} edges={edges} svgWidth={svgWidth} />
 
-                    {commitLog?.map((n, idx) => {
-                        const row = idx + graphRowOffset;
-                        const cx = columnToX(n.lane);
-                        const cy = rowToY(row);
-                        const isHovered = hoveredRow === row;
-                        const isSelected = selectedRow === row;
-                        const color = LANE_COLORS[n.color_idx % LANE_COLORS.length];
-                        const url = getAvatarUrl(n.author);
-                        const isStash = false; // Add stash check later
+                {/* Column C: Message */}
+                <div style={{ flex: 1, overflow: 'hidden' }} className="flex items-center pr-4 pl-3">
+                  <div className="truncate max-w-full text-[#c9d1d9] font-medium text-[13px]">
+                    {n.message}
+                  </div>
+                </div>
 
-                        return (
-                           <g key={n.oid} transform={`translate(${cx}, ${cy}) scale(${isHovered ? 1.1 : 1})`} filter="url(#avatar-shadow)" className="transition-transform">
-                              {isStash ? (
-                                  <>
-                                    <rect x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} rx={4} fill={color} opacity="0.1" />
-                                    <rect x={-AVATAR_RADIUS - 2} y={-AVATAR_RADIUS - 2} width={AVATAR_SIZE+4} height={AVATAR_SIZE+4} rx={4+2} fill="none" stroke={isSelected ? "#f0f6fc" : "rgba(255,255,255,0.9)"} strokeWidth="2" opacity="0.85" strokeDasharray="2 2" />
-                                  </>
-                              ) : (
-                                  <>
-                                    <circle cx="0" cy="0" r={AVATAR_RADIUS} fill={color} />
-                                    <circle cx="0" cy="0" r={AVATAR_RADIUS + 2} fill="none" stroke={isSelected ? "#f0f6fc" : "rgba(255,255,255,0.9)"} strokeWidth="2" opacity="0.9" />
-                                  </>
-                              )}
-                              
-                              <image href={url} x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} clipPath={`url(#${isStash ? 'avatar-stash-clip' : 'avatar-clip'})`} preserveAspectRatio="xMidYMid slice" opacity={isStash ? 0.7 : 1} />
+                {/* Hash */}
+                <div className="w-[72px] shrink-0 pl-3 font-mono text-xs text-[#8b949e] hover:text-white transition-colors">
+                  {n.short_oid}
+                </div>
 
-                              {/* Selection halos */}
-                              {isSelected && !isStash && (
-                                  <circle cx="0" cy="0" r={AVATAR_RADIUS + 4} fill="none" stroke={color} strokeWidth="2" opacity="0.8" />
-                              )}
-                           </g>
-                        )
-                    })}
-                </g>
+                {/* Author */}
+                <div className="w-[110px] shrink-0 pl-3 text-xs text-[#8b949e] truncate">
+                  {n.author}
+                </div>
+              </div>
+            );
+          })}
 
-             </svg>
-          </div>
-
-          {/* Foreground Text Rows */}
-          <div className="absolute top-0 left-0 w-full z-10" style={{ paddingTop: PADDING_TOP }}>
-              
-              {/* WIP Row */}
-              {hasWipRow && (
-                 <div 
-                    className={`flex items-center h-[32px] cursor-pointer border-b border-[#1e293b]/20 group transition-colors ${hoveredRow === 0 ? 'bg-[#1e293b]/40': ''} ${selectedRow === 0 ? 'bg-[#3b82f6]/10': ''}`}
-                    onClick={() => setSelectedRow(0)}
-                    onMouseEnter={() => setHoveredRow(0)}
-                    onMouseLeave={() => setHoveredRow(null)}
-                 >
-                     <div className="w-[170px] shrink-0 pl-4 flex items-center pr-2">
-                        <span className="bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0">WIP</span>
-                     </div>
-                     <div className="w-[120px] shrink-0"></div>
-                     <div className="flex-1 flex items-center pr-4 pl-4 min-w-0">
-                         <div className="h-6 rounded border border-[#245d84]/60 bg-[#0b2942]/65 flex items-center px-2 gap-3 overflow-hidden max-w-full">
-                            <span className="text-[11px] font-mono text-[#79c0ff] shrink-0">// WIP</span>
-                            <span className="text-[10px] text-[#3fb950] shrink-0">+{stagedFiles.length} staged</span>
-                            <span className="text-[10px] text-[#f2cc60] shrink-0">+{unstagedFiles.length} unstaged</span>
-                         </div>
-                     </div>
-                     <div className="w-[80px] shrink-0 pl-4 font-mono opacity-60 text-[#8b949e]">WIP</div>
-                     <div className="w-[120px] shrink-0 pl-4 opacity-60 text-[#8b949e] truncate">Working Tree</div>
-                 </div>
-              )}
-
-              {/* Data Rows */}
-              {commitLog?.map((n, idx) => {
-                  const row = idx + graphRowOffset;
-                  const isStash = false;
-                  return (
-                      <div 
-                          key={n.oid}
-                          className={`flex items-center h-[32px] cursor-pointer border-b border-[#1e293b]/20 group transition-colors ${hoveredRow === row ? 'bg-[#1e293b]/40': ''} ${selectedRow === row ? 'bg-[#3b82f6]/10': ''}`}
-                          onClick={() => setSelectedRow(row)}
-                          onMouseEnter={() => setHoveredRow(row)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                      >
-                          <div className="w-[170px] shrink-0 pl-4 flex items-center gap-1.5 overflow-hidden pr-2 text-xs">
-                             {n.refs && n.refs.map(r => {
-                                 let bgClass = "bg-emerald-900/40 text-emerald-300 border-emerald-700/50";
-                                 if (r.includes('origin/')) bgClass = "bg-purple-900/40 text-purple-300 border-purple-700/50";
-                                 if (r === 'HEAD') bgClass = "bg-sky-900/45 text-sky-300 border-sky-700/60";
-                                 return <span key={r} className={`border px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap truncate max-w-[80px] ${bgClass}`}>{r}</span>
-                             })}
-                          </div>
-                          
-                          <div className="w-[120px] shrink-0 pointer-events-none"></div>
-
-                          <div className="flex-1 flex items-center min-w-0 pr-4 pl-4 gap-2">
-                             <div className={`truncate max-w-full ${isStash ? 'text-[#e5c07b]' : 'text-[#c9d1d9] font-medium'}`}>
-                                 {n.message}
-                             </div>
-                          </div>
-
-                          <div className="w-[80px] shrink-0 pl-4 font-mono text-xs text-[#8b949e] hover:text-white transition-colors">{n.short_oid}</div>
-                          <div className="w-[120px] shrink-0 pl-4 text-xs text-[#8b949e] truncate">{n.author}</div>
-                      </div>
-                  );
-              })}
-
-          </div>
+          {/* Empty state */}
+          {(!commitLog || commitLog.length === 0) && (
+            <div className="flex items-center justify-center h-32 text-[#5c6370] italic text-sm">
+              No commits to display
+            </div>
+          )}
         </div>
       </div>
     </main>
