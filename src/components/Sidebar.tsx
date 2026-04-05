@@ -110,6 +110,12 @@ export function Sidebar() {
   const [localFlex, setLocalFlex] = useState(1);
   const [remoteFlex, setRemoteFlex] = useState(1);
   const [stashFlex, setStashFlex] = useState(1);
+
+  // Horizontal Width
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('sidebarWidth');
+    return saved ? parseInt(saved, 10) : 260;
+  });
   
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -118,7 +124,7 @@ export function Sidebar() {
   const commitLog = useAppStore(state => state.commitLog);
   const stashes = useAppStore(state => state.stashes) || [];
 
-  // Derive branch lists from commitLog refs (since list_branches is still a stub)
+  // Derive branch lists from commitLog refs
   const { localBranches, remoteBranchesTree } = useMemo(() => {
     const locals = new Set<string>();
     const remotes = new Map<string, string[]>(); // remote name -> branch names
@@ -128,7 +134,6 @@ export function Sidebar() {
         node.refs.forEach(ref => {
           if (ref === 'HEAD') return;
           if (ref.includes('/')) {
-            // Could be "origin/main" format
             const parts = ref.split('/');
             const remoteName = parts[0];
             const branchName = parts.slice(1).join('/');
@@ -142,7 +147,6 @@ export function Sidebar() {
       });
     }
 
-    // Ensure active branch is always visible
     if (activeBranch && !locals.has(activeBranch)) {
       locals.add(activeBranch);
     }
@@ -163,9 +167,6 @@ export function Sidebar() {
           return [remote, filteredTree];
       });
       
-      // Keep remote if:
-      // 1. Remote name matches
-      // 2. OR its tree has matching branches
       return new Map(entries.filter(([remote, tree]) => 
           remote.toLowerCase().includes(lowerFilter) || tree.length > 0
       ));
@@ -211,6 +212,7 @@ export function Sidebar() {
     }
   };
 
+  // Vertical Resizing (Internal Sections)
   const startResizing = (section: 'local' | 'remote') => (e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -219,7 +221,6 @@ export function Sidebar() {
     const startStash = stashFlex;
     const totalFlex = localFlex + remoteFlex + stashFlex;
     
-    // We need the height of the container to calculate the delta in flex units
     const containerHeight = containerRef.current?.clientHeight || 500;
     const flexUnitHeight = containerHeight / totalFlex;
 
@@ -253,9 +254,42 @@ export function Sidebar() {
     document.body.style.cursor = 'row-resize';
   };
 
+  // Horizontal Resizing (Sidebar Width)
+  const startHorizontalResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.min(600, Math.max(180, startWidth + deltaX));
+      setSidebarWidth(newWidth);
+      localStorage.setItem('sidebarWidth', newWidth.toString());
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = 'default';
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+  };
+
   return (
-    <aside className="w-[var(--sidebar-width)] bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm relative">
-      
+    <aside 
+      className="bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm relative group/sidebar"
+      style={{ width: `${sidebarWidth}px` }}
+    >
+      {/* Horizontal Resize Handle */}
+      <div 
+        onMouseDown={startHorizontalResizing}
+        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/40 transition-colors z-[101]"
+        title="Drag to resize sidebar"
+      />
+
       {/* Top block (non-scrollable) */}
       <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
         <div className="flex justify-between items-center cursor-pointer hover:text-white" onClick={handleOpenSwitcher}>
@@ -295,10 +329,7 @@ export function Sidebar() {
           </div>
         )}
         
-        <div className="flex items-center gap-2">
-           <span className="text-xs bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
-             Branches
-           </span>
+        <div className="flex items-center">
            <div className="flex-1 flex items-center bg-[#282c33] rounded px-2">
               <input
                 type="text"
@@ -312,7 +343,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Sections Container (No global scroll, just flex-col) */}
+      {/* Sections Container */}
       <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
         
         {/* LOCAL */}
@@ -476,8 +507,6 @@ function SectionHeader({ title, count, open, setOpen }: Readonly<{ title: string
     </div>
   );
 }
-
-// BranchRow is no longer used, replaced by recursive BranchTreeItem
 
 function SidebarResizeHandle({ onMouseDown }: Readonly<{ onMouseDown: (e: React.MouseEvent) => void }>) {
   return (
