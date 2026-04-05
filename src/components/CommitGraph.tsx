@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore } from '../store';
 
 const LANE_COLORS = ['#7F77DD','#1D9E75','#BA7517','#D85A30','#378ADD','#D4537E','#639922','#888780'];
@@ -9,6 +9,7 @@ const PADDING_LEFT = 20;
 const STROKE_WIDTH = 2;
 const AVATAR_SIZE = 22;
 const AVATAR_RADIUS = AVATAR_SIZE / 2;
+const STASH_CORNER_RADIUS = 4;
 
 type ConnectionPath = {
   fromColumn: number;
@@ -132,16 +133,7 @@ export function CommitGraph() {
                    </filter>
                 </defs>
 
-                {/* Lanes */}
-                <g className="lanes">
-                    {lanes.map((lane, idx) => (
-                        <path 
-                           key={`lane-${idx}`}
-                           d={`M ${columnToX(lane.column)} ${rowToY(lane.rowStart)} V ${rowToY(lane.rowEnd)}`}
-                           fill="none" stroke={lane.color} strokeWidth={STROKE_WIDTH} strokeLinecap="round" opacity={0.8}
-                        />
-                    ))}
-                </g>
+                {/* Lanes - we don't have explicit long lanes array anymore, connections form the lanes */}
 
                 {/* Connections */}
                 <g className="connections">
@@ -174,20 +166,22 @@ export function CommitGraph() {
                         </g>
                     )}
 
-                    {nodes.map(n => {
+                    {commitLog?.map((n, idx) => {
+                        const row = idx + graphRowOffset;
                         const cx = columnToX(n.lane);
-                        const cy = rowToY(n.row);
-                        const isHovered = hoveredRow === n.row;
-                        const isSelected = selectedRow === n.row;
-                        const color = LANE_COLORS[n.colorIdx];
+                        const cy = rowToY(row);
+                        const isHovered = hoveredRow === row;
+                        const isSelected = selectedRow === row;
+                        const color = LANE_COLORS[n.color_idx % LANE_COLORS.length];
                         const url = getAvatarUrl(n.author);
+                        const isStash = false; // Add stash check later
 
                         return (
-                           <g key={n.id} transform={`translate(${cx}, ${cy}) scale(${isHovered ? 1.1 : 1})`} filter="url(#avatar-shadow)" className="transition-transform">
-                              {n.stash ? (
+                           <g key={n.oid} transform={`translate(${cx}, ${cy}) scale(${isHovered ? 1.1 : 1})`} filter="url(#avatar-shadow)" className="transition-transform">
+                              {isStash ? (
                                   <>
-                                    <rect x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} rx={STASH_CORNER_RADIUS} fill={color} opacity="0.1" />
-                                    <rect x={-AVATAR_RADIUS - 2} y={-AVATAR_RADIUS - 2} width={AVATAR_SIZE+4} height={AVATAR_SIZE+4} rx={STASH_CORNER_RADIUS+2} fill="none" stroke={isSelected ? "#f0f6fc" : "rgba(255,255,255,0.9)"} strokeWidth="2" opacity="0.85" strokeDasharray="2 2" />
+                                    <rect x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} rx={4} fill={color} opacity="0.1" />
+                                    <rect x={-AVATAR_RADIUS - 2} y={-AVATAR_RADIUS - 2} width={AVATAR_SIZE+4} height={AVATAR_SIZE+4} rx={4+2} fill="none" stroke={isSelected ? "#f0f6fc" : "rgba(255,255,255,0.9)"} strokeWidth="2" opacity="0.85" strokeDasharray="2 2" />
                                   </>
                               ) : (
                                   <>
@@ -196,10 +190,10 @@ export function CommitGraph() {
                                   </>
                               )}
                               
-                              <image href={url} x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} clipPath={`url(#${n.stash ? 'avatar-stash-clip' : 'avatar-clip'})`} preserveAspectRatio="xMidYMid slice" opacity={n.stash ? 0.7 : 1} />
+                              <image href={url} x={-AVATAR_RADIUS} y={-AVATAR_RADIUS} width={AVATAR_SIZE} height={AVATAR_SIZE} clipPath={`url(#${isStash ? 'avatar-stash-clip' : 'avatar-clip'})`} preserveAspectRatio="xMidYMid slice" opacity={isStash ? 0.7 : 1} />
 
                               {/* Selection halos */}
-                              {isSelected && !n.stash && (
+                              {isSelected && !isStash && (
                                   <circle cx="0" cy="0" r={AVATAR_RADIUS + 4} fill="none" stroke={color} strokeWidth="2" opacity="0.8" />
                               )}
                            </g>
@@ -216,7 +210,7 @@ export function CommitGraph() {
               {/* WIP Row */}
               {hasWipRow && (
                  <div 
-                    className={`flex items-center h-[36px] cursor-pointer border-b border-[#1e293b]/20 group transition-colors ${hoveredRow === 0 ? 'bg-[#1e293b]/40': ''} ${selectedRow === 0 ? 'bg-[#3b82f6]/10': ''}`}
+                    className={`flex items-center h-[32px] cursor-pointer border-b border-[#1e293b]/20 group transition-colors ${hoveredRow === 0 ? 'bg-[#1e293b]/40': ''} ${selectedRow === 0 ? 'bg-[#3b82f6]/10': ''}`}
                     onClick={() => setSelectedRow(0)}
                     onMouseEnter={() => setHoveredRow(0)}
                     onMouseLeave={() => setHoveredRow(null)}
@@ -228,8 +222,8 @@ export function CommitGraph() {
                      <div className="flex-1 flex items-center pr-4 pl-4 min-w-0">
                          <div className="h-6 rounded border border-[#245d84]/60 bg-[#0b2942]/65 flex items-center px-2 gap-3 overflow-hidden max-w-full">
                             <span className="text-[11px] font-mono text-[#79c0ff] shrink-0">// WIP</span>
-                            <span className="text-[10px] text-[#3fb950] shrink-0">+2 staged</span>
-                            <span className="text-[10px] text-[#f2cc60] shrink-0">+1 unstaged</span>
+                            <span className="text-[10px] text-[#3fb950] shrink-0">+{stagedFiles.length} staged</span>
+                            <span className="text-[10px] text-[#f2cc60] shrink-0">+{unstagedFiles.length} unstaged</span>
                          </div>
                      </div>
                      <div className="w-[80px] shrink-0 pl-4 font-mono opacity-60 text-[#8b949e]">WIP</div>
@@ -238,13 +232,15 @@ export function CommitGraph() {
               )}
 
               {/* Data Rows */}
-              {nodes.map(n => {
+              {commitLog?.map((n, idx) => {
+                  const row = idx + graphRowOffset;
+                  const isStash = false;
                   return (
                       <div 
-                          key={n.id}
-                          className={`flex items-center h-[36px] cursor-pointer border-b border-[#1e293b]/20 group transition-colors ${hoveredRow === n.row ? 'bg-[#1e293b]/40': ''} ${selectedRow === n.row ? 'bg-[#3b82f6]/10': ''}`}
-                          onClick={() => setSelectedRow(n.row)}
-                          onMouseEnter={() => setHoveredRow(n.row)}
+                          key={n.oid}
+                          className={`flex items-center h-[32px] cursor-pointer border-b border-[#1e293b]/20 group transition-colors ${hoveredRow === row ? 'bg-[#1e293b]/40': ''} ${selectedRow === row ? 'bg-[#3b82f6]/10': ''}`}
+                          onClick={() => setSelectedRow(row)}
+                          onMouseEnter={() => setHoveredRow(row)}
                           onMouseLeave={() => setHoveredRow(null)}
                       >
                           <div className="w-[170px] shrink-0 pl-4 flex items-center gap-1.5 overflow-hidden pr-2 text-xs">
@@ -259,12 +255,12 @@ export function CommitGraph() {
                           <div className="w-[120px] shrink-0 pointer-events-none"></div>
 
                           <div className="flex-1 flex items-center min-w-0 pr-4 pl-4 gap-2">
-                             <div className={`truncate max-w-full ${n.stash ? 'text-[#e5c07b]' : 'text-[#c9d1d9] font-medium'}`}>
+                             <div className={`truncate max-w-full ${isStash ? 'text-[#e5c07b]' : 'text-[#c9d1d9] font-medium'}`}>
                                  {n.message}
                              </div>
                           </div>
 
-                          <div className="w-[80px] shrink-0 pl-4 font-mono text-xs text-[#8b949e] hover:text-white transition-colors">{n.hash.slice(0, 7)}</div>
+                          <div className="w-[80px] shrink-0 pl-4 font-mono text-xs text-[#8b949e] hover:text-white transition-colors">{n.short_oid}</div>
                           <div className="w-[120px] shrink-0 pl-4 text-xs text-[#8b949e] truncate">{n.author}</div>
                       </div>
                   );
