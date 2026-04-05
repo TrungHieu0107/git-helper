@@ -7,12 +7,14 @@ import { TopToolbar } from "./components/TopToolbar";
 import { Sidebar } from "./components/Sidebar";
 import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
+import { MainDiffView } from "./components/MainDiffView";
 import { CheckoutAlert } from "./components/CheckoutAlert";
 import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
   const activeRepoPath = useAppStore(state => state.activeRepoPath);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
+  const selectedDiff = useAppStore(state => state.selectedDiff);
 
   useEffect(() => {
     const unlisten = listen('tauri://file-drop', async (event) => {
@@ -33,7 +35,7 @@ function App() {
       <TopToolbar />
       <div className="flex-1 flex overflow-hidden w-full">
          <Sidebar />
-         <CommitGraph />
+         {selectedDiff ? <MainDiffView /> : <CommitGraph />}
          <RightPanel />
       </div>
       

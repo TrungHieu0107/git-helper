@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAppStore, CommitDetail } from "../store";
 import { GitCommit, Clock, GitBranch, Edit2, Plus, Minus, ArrowRight, Eye, Folder, ChevronRight, ChevronDown } from "lucide-react";
+import { selectFileDiff } from "../lib/repo";
 
 function formatDate(ts: number) {
   const d = new Date(ts * 1000);
@@ -125,7 +126,7 @@ export function CommitDetailPanel() {
             <div 
               className="flex items-center gap-1.5 py-1 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
-              onClick={() => child.isFolder ? toggleFolder(child.fullPath) : null}
+              onClick={() => child.isFolder ? toggleFolder(child.fullPath) : selectFileDiff(child.fullPath, false, detail.oid)}
             >
               {child.isFolder ? (
                 <>
@@ -264,6 +265,7 @@ export function CommitDetailPanel() {
               detail.files.map((f: { path: string; status: string }, i: number) => (
                 <div 
                   key={i}
+                  onClick={() => selectFileDiff(f.path, false, detail.oid)}
                   className="flex items-center gap-2 py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
                 >
                   {statusIcon(f.status)}

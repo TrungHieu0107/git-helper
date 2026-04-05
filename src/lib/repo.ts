@@ -244,15 +244,10 @@ export async function openTerminal() {
   }
 }
 
-export async function getFileDiff(filePath: string, staged: boolean) {
-  const path = useAppStore.getState().activeRepoPath;
-  if (!path) return;
-  try {
-    const diff = await invoke<string>('get_diff', { repoPath: path, path: filePath, staged });
-    useAppStore.setState({ selectedFilePath: filePath, diffContent: diff });
-  } catch (e) {
-    toast.error(`Failed to get diff: ${e}`);
-  }
+export function selectFileDiff(filePath: string, staged: boolean, commitOid?: string) {
+  useAppStore.setState({ 
+    selectedDiff: { path: filePath, staged, commitOid }
+  });
 }
 
 export async function selectCommitDetail(oid: string) {

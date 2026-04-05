@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAppStore, FileStatus } from "../store";
 import { ArrowRight, AlertTriangle, Sparkles, X, ChevronRight, ChevronDown, Folder, GitCommit, ChevronRight as ChevronRightIcon } from "lucide-react";
-import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, getFileDiff } from "../lib/repo";
-import { DiffPanel } from "./DiffPanel";
+import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff } from "../lib/repo";
 import { CommitDetailPanel } from "./CommitDetailPanel";
 
 interface TreeNode {
@@ -211,11 +210,11 @@ export function RightPanel() {
                             status={f.status} 
                             onAction={() => stageFile(f.path)}
                             actionLabel="Stage"
-                            onClick={() => getFileDiff(f.path, false)}
+                            onClick={() => selectFileDiff(f.path, false)}
                           />
                       ))
                     ) : (
-                      renderTree(unstagedTree, stageFile, "Stage", (p) => getFileDiff(p, false))
+                      renderTree(unstagedTree, stageFile, "Stage", (p) => selectFileDiff(p, false))
                     )
                   ) : (
                     <div className="text-xs italic px-6 py-1.5 opacity-50 text-[#8b949e]">(khu vực trống)</div>
@@ -251,11 +250,11 @@ export function RightPanel() {
                             status={f.status} 
                             onAction={() => unstageFile(f.path)}
                             actionLabel="Unstage"
-                            onClick={() => getFileDiff(f.path, true)}
+                            onClick={() => selectFileDiff(f.path, true)}
                           />
                       ))
                     ) : (
-                      renderTree(stagedTree, unstageFile, "Unstage", (p) => getFileDiff(p, true))
+                      renderTree(stagedTree, unstageFile, "Unstage", (p) => selectFileDiff(p, true))
                     )
                   ) : (
                     <div className="text-[12px] italic px-6 py-1.5 opacity-50 text-[#8b949e]">(khu vực trống – chưa có file nào sẵn sàng commit)</div>
@@ -337,9 +336,6 @@ export function RightPanel() {
           </div>
         </>
       )}
-
-      {/* Slide In Diff Placeholder */}
-      <DiffPanel />
 
     </aside>
   );

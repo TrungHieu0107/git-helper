@@ -23,6 +23,7 @@ pub fn run() {
             commands::diff::get_diff,
             commands::diff::create_commit,
             commands::diff::get_commit_detail,
+            commands::diff::get_file_contents,
             commands::stubs::list_branches,
             commands::stubs::list_stashes,
             commands::stubs::create_stash,

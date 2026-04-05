@@ -28,6 +28,7 @@
 - 2026-04-05: Un-stubbed Core Git Features — replaced backend mocks with real `git2-rs` implementation for `list_branches`, `pull`, `push`, `stash`, and `pop`.
 - 2026-04-05: Enhanced Commit Log Paging — updated `get_log` backend to support `offset` and refactored `loadMoreCommits` for efficient paging.
 - 2026-04-05: Integrated TopToolbar Actions — connected Pull, Push, Branch, Stash, and Pop buttons to their respective Git operations.
+- 2026-04-06: Integrated Monaco Editor inside MainDiffView completely replacing CommitGraph conditionally when visualizing code patches. Re-engineered `git2-rs` blob reading to extract whole context via `encoding_rs` to smoothly decode Vietnamese (`windows-1258`) and Japanese (`shift_jis`) sources for developers without triggering unicode errors.
 
 # Project Status Summary
-The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing and smooth corners. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent updates include a hierarchical branch tree, infinite scrolling, and a new double-click branch checkout feature with a sliding confirmation alert.
+The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing and smooth corners. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent updates include a hierarchical branch tree, infinite scrolling, robust HTTP authentication using credential managers, and a global Monaco-powered Diff Viewer replacing the commit graph.

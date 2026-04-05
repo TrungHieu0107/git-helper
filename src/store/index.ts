@@ -89,14 +89,20 @@ export interface CommitDetail {
     files: CommitFileChange[];
 }
 
+export interface SelectedDiff {
+    path: string;
+    staged: boolean;
+    commitOid?: string;
+}
+
 interface AppStore {
   repos: RepoMeta[];          // list of opened repos
   activeRepoPath: string | null;
   activeBranch: string | null;
   activeCommitOid: string | null;
   
-  selectedFilePath: string | null;
-  diffContent: string | null;
+  selectedDiff: SelectedDiff | null;
+  fileEncoding: string;
   stagedFiles: FileStatus[];
   unstagedFiles: FileStatus[];
 
@@ -124,8 +130,8 @@ export const useAppStore = create<AppStore>(() => ({
   activeBranch: null,
   activeCommitOid: null,
 
-  selectedFilePath: null,
-  diffContent: null,
+  selectedDiff: null,
+  fileEncoding: 'utf-8',
   stagedFiles: [],
   unstagedFiles: [],
 
