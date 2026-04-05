@@ -118,6 +118,7 @@ interface AppStore {
   hasMoreCommits: boolean;
   isLoadingMore: boolean;
   confirmCheckoutTo: string | null;
+  confirmDiscardAll: boolean;
   toasts: Toast[];
   commitSearchInput: string;
   selectedCommitDetail: CommitDetail | null;
@@ -146,6 +147,7 @@ export const useAppStore = create<AppStore>(() => ({
   hasMoreCommits: true,
   isLoadingMore: false,
   confirmCheckoutTo: null,
+  confirmDiscardAll: false,
   toasts: [],
   commitSearchInput: '',
   selectedCommitDetail: null,

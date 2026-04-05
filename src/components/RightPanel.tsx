@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppStore, FileStatus } from "../store";
-import { ArrowRight, AlertTriangle, Sparkles, X, ChevronRight, ChevronDown, Folder, GitCommit, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash } from "lucide-react";
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff } from "../lib/repo";
 import { CommitDetailPanel } from "./CommitDetailPanel";
 
@@ -46,6 +46,12 @@ export function RightPanel() {
   const [amend, setAmend] = useState(false);
   const [viewMode, setViewMode] = useState<'path' | 'tree'>('path');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Vertical Resizing State
+  const [unstagedFlex, setUnstagedFlex] = useState(1);
+  const [stagedFlex, setStagedFlex] = useState(1);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   const [width, setWidth] = useState(() => parseInt(localStorage.getItem('git_rightpanel_w') || '320', 10));
 
@@ -71,6 +77,36 @@ export function RightPanel() {
     document.addEventListener('mouseup', onUp);
   };
 
+  const startVerticalResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startUnstaged = unstagedFlex;
+    const startStaged = stagedFlex;
+    const totalFlex = startUnstaged + startStaged;
+    
+    const containerHeight = listContainerRef.current?.clientHeight || 400;
+    const flexUnitHeight = containerHeight / totalFlex;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      const flexDelta = deltaY / flexUnitHeight;
+      const newUnstaged = Math.max(0.1, startUnstaged + flexDelta);
+      const newStaged = Math.max(0.1, totalFlex - newUnstaged);
+      setUnstagedFlex(newUnstaged);
+      setStagedFlex(newStaged);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = 'default';
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'row-resize';
+  };
+
   const handleCommit = async () => {
     const fullMessage = description ? `${message}\n\n${description}` : message;
     const success = await commitRepo(fullMessage, amend);
@@ -79,6 +115,10 @@ export function RightPanel() {
       setDescription('');
       setAmend(false);
     }
+  };
+
+  const handleDiscardAll = () => {
+    useAppStore.setState({ confirmDiscardAll: true });
   };
 
   const isViewingCommit = selectedCommitDetail || isLoadingCommitDetail;
@@ -142,32 +182,46 @@ export function RightPanel() {
   };
 
   return (
-    <aside className="w-[var(--right-width)] flex flex-col bg-[#21252b] border-l border-[#181a1f] shrink-0 text-[#a0a6b1] select-none h-full relative">
+    <aside 
+      className={`flex flex-col bg-[#21252b] border-l border-[#181a1f] shrink-0 text-[#a0a6b1] select-none h-full relative transition-[width] duration-300 ${isCollapsed ? 'items-center border-t border-[#181a1f]' : 'w-[var(--right-width)]'}`}
+      style={{ width: isCollapsed ? '48px' : undefined }}
+    >
       
       {/* Resizer Handle */}
-      <div 
-        onMouseDown={handleResize}
-        className="absolute top-0 left-[-2px] w-[5px] h-full cursor-col-resize hover:bg-[#58a6ff]/40 transition-colors z-[101]"
-        title="Drag to resize right panel"
-      />
+      {!isCollapsed && (
+        <div 
+          onMouseDown={handleResize}
+          className="absolute top-0 left-[-2px] w-[5px] h-full cursor-col-resize hover:bg-[#58a6ff]/40 transition-colors z-[101]"
+          title="Drag to resize right panel"
+        />
+      )}
 
-      {isViewingCommit ? (
+      {isCollapsed ? (
+        <button onClick={() => setIsCollapsed(false)} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white mt-2 transition-colors" title="Expand Right Panel">
+           <ChevronsLeft size={16} />
+        </button>
+      ) : isViewingCommit ? (
         <div className="flex flex-col h-full relative">
-          <button 
-            onClick={() => useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false })}
-            className="absolute top-2 right-2 z-20 p-1 hover:bg-white/5 rounded text-[#5c6370] hover:text-white"
-            title="Back to Staging"
-          >
-            <X size={14} />
-          </button>
-          <CommitDetailPanel />
+          <CommitDetailPanel onCollapse={() => setIsCollapsed(true)} />
         </div>
       ) : (
         <>
           {/* Header */}
-          <header className="h-[36px] border-b border-[#181a1f] flex items-center px-4 justify-between bg-[#21252b] z-10 shrink-0">
-             <div className="flex items-center gap-3">
-               <span className="text-[11px] uppercase tracking-wider text-[#d7dae0] font-semibold">
+          <header className="h-[36px] border-b border-[#181a1f] flex items-center px-3 justify-between bg-[#21252b] z-10 shrink-0">
+             <div className="flex items-center gap-2">
+               <button onClick={() => setIsCollapsed(true)} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors" title="Collapse Right Panel">
+                  <ChevronsRight size={16} />
+               </button>
+               {(stagedFiles.length > 0 || unstagedFiles.length > 0) && (
+                 <button 
+                   onClick={handleDiscardAll} 
+                   className="p-1 text-[#f85149] hover:bg-[#da3633]/20 rounded transition-colors ml-1" 
+                   title="Discard All Changes (reset --hard & clean)"
+                 >
+                   <Trash size={14} />
+                 </button>
+               )}
+               <span className="text-[11px] uppercase tracking-wider text-[#d7dae0] font-semibold ml-1">
                   {stagedFiles.length + unstagedFiles.length} file changes on 
                   <span className="bg-[#58a6ff]/10 text-[#58a6ff] px-1.5 py-0.5 rounded ml-2 border border-[#58a6ff]/20">{activeBranch || '...'}</span>
                </span>
@@ -191,17 +245,24 @@ export function RightPanel() {
           </div>
 
           {/* Scrollable File List */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 text-sm flex flex-col custom-scrollbar">
+          <div ref={listContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden text-sm relative">
              
              {/* Unstaged Files */}
-             <div className="mb-4">
-                <div className="flex items-center gap-1 text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1">
-                   <ChevronDown size={14} />
-                   <span>Unstaged Files ({unstagedFiles.length})</span>
-                </div>
-                
-                <div className="flex flex-col mb-2">
-                  {unstagedFiles.length > 0 ? (
+             <div className="flex flex-col p-2" style={{ flex: unstagedFlex, minHeight: 0 }}>
+                 <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
+                    <span>Unstaged Files ({unstagedFiles.length})</span>
+                    {unstagedFiles.length > 0 && (
+                      <button 
+                        onClick={stageAll}
+                        className="bg-[#238636]/10 border border-[#238636]/30 text-[#3fb950] hover:bg-[#238636] hover:text-white transition-all px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide drop-shadow-[0_0_2px_rgba(63,185,80,0.4)]"
+                      >
+                        Stage All
+                      </button>
+                    )}
+                 </div>
+                 
+                 <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-[#0d1117] rounded border border-[#30363d] py-1">
+                   {unstagedFiles.length > 0 ? (
                     viewMode === 'path' ? (
                       unstagedFiles.map((f, i) => (
                           <FileRow 
@@ -220,27 +281,30 @@ export function RightPanel() {
                     <div className="text-xs italic px-6 py-1.5 opacity-50 text-[#8b949e]">(khu vực trống)</div>
                   )}
                 </div>
-
-                {unstagedFiles.length > 0 && (
-                  <div className="px-2 mt-1">
-                    <button 
-                      onClick={stageAll}
-                      className="w-full bg-[#238636]/10 border border-[#238636]/30 text-[#3fb950] hover:bg-[#238636] hover:text-white transition-all py-1.5 rounded text-[11px] font-bold uppercase tracking-wide drop-shadow-[0_0_2px_rgba(63,185,80,0.4)]"
-                    >
-                      Stage All Changes
-                    </button>
-                  </div>
-                )}
              </div>
 
+             {/* Resizer Handle */}
+             <div 
+               onMouseDown={startVerticalResizing}
+               className="h-1 bg-[#181a1f] w-full cursor-row-resize hover:bg-[#58a6ff]/40 transition-colors shrink-0"
+               title="Drag to resize sections"
+             />
+
              {/* Staged Files */}
-             <div>
-                <div className="flex items-center gap-1 text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1">
-                   <ChevronDown size={14} />
+             <div className="flex flex-col p-2" style={{ flex: stagedFlex, minHeight: 0 }}>
+                <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
                    <span>Staged Files ({stagedFiles.length})</span>
+                   {stagedFiles.length > 0 && (
+                     <button 
+                       onClick={unstageAll}
+                       className="bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] hover:bg-[#da3633] hover:text-white transition-all px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+                     >
+                       Unstage All
+                     </button>
+                   )}
                 </div>
 
-                <div className="flex flex-col mb-2">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-[#0d1117] rounded border border-[#30363d] py-1">
                   {stagedFiles.length > 0 ? (
                     viewMode === 'path' ? (
                       stagedFiles.map((f, i) => (
@@ -260,17 +324,6 @@ export function RightPanel() {
                     <div className="text-[12px] italic px-6 py-1.5 opacity-50 text-[#8b949e]">(khu vực trống – chưa có file nào sẵn sàng commit)</div>
                   )}
                 </div>
-
-                {stagedFiles.length > 0 && (
-                  <div className="px-2 mt-1">
-                    <button 
-                      onClick={unstageAll}
-                      className="w-full bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] hover:bg-[#da3633] hover:text-white transition-all py-1.5 rounded text-[11px] font-bold uppercase tracking-wide"
-                    >
-                      Unstage All Changes
-                    </button>
-                  </div>
-                )}
              </div>
 
           </div>

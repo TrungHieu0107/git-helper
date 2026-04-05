@@ -9,6 +9,7 @@ import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
 import { MainDiffView } from "./components/MainDiffView";
 import { CheckoutAlert } from "./components/CheckoutAlert";
+import { DiscardAlert } from "./components/DiscardAlert";
 import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
@@ -46,6 +47,7 @@ function App() {
       )}
 
       <CheckoutAlert />
+      <DiscardAlert />
       <ToastContainer />
     </div>
   );

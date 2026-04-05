@@ -222,6 +222,17 @@ export async function unstageAll() {
   }
 }
 
+export async function discardAll() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('discard_all', { repoPath: path });
+    await loadRepo(path);
+  } catch (e) {
+    toast.error(`Discard all failed: ${e}`);
+  }
+}
+
 export async function undoLastCommit() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;

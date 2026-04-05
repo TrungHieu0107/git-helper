@@ -159,3 +159,27 @@ pub fn unstage_all(repo_path: String) -> Result<(), String> {
     repo.reset(commit.as_object(), git2::ResetType::Mixed, None).map_err(|e| e.message().to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn discard_all(repo_path: String) -> Result<(), String> {
+    // Use git CLI for robustness with both tracked and untracked files
+    let reset_output = std::process::Command::new("git")
+        .args(["-C", &repo_path, "reset", "--hard"])
+        .output()
+        .map_err(|e| e.to_string())?;
+        
+    if !reset_output.status.success() {
+        return Err(String::from_utf8_lossy(&reset_output.stderr).to_string());
+    }
+        
+    let clean_output = std::process::Command::new("git")
+        .args(["-C", &repo_path, "clean", "-fd"])
+        .output()
+        .map_err(|e| e.to_string())?;
+        
+    if !clean_output.status.success() {
+        return Err(String::from_utf8_lossy(&clean_output.stderr).to_string());
+    }
+
+    Ok(())
+}

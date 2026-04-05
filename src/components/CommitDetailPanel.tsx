@@ -1,7 +1,11 @@
 import { useState, useMemo } from "react";
 import { useAppStore, CommitDetail } from "../store";
-import { GitCommit, Clock, GitBranch, Edit2, Plus, Minus, ArrowRight, Eye, Folder, ChevronRight, ChevronDown } from "lucide-react";
+import { GitCommit, Clock, GitBranch, Edit2, Plus, Minus, ArrowRight, Eye, Folder, ChevronRight, ChevronDown, ChevronsRight } from "lucide-react";
 import { selectFileDiff } from "../lib/repo";
+
+interface CommitDetailPanelProps {
+  onCollapse?: () => void;
+}
 
 function formatDate(ts: number) {
   const d = new Date(ts * 1000);
@@ -68,7 +72,7 @@ function buildTree(files: CommitDetail['files']): TreeNode {
   return root;
 }
 
-export function CommitDetailPanel() {
+export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
   const detail = useAppStore(s => s.selectedCommitDetail);
   const loading = useAppStore(s => s.isLoadingCommitDetail);
   const [viewMode, setViewMode] = useState<'path' | 'tree'>('path');
@@ -151,25 +155,32 @@ export function CommitDetailPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="h-[36px] border-b border-[#181a1f] flex items-center px-4 justify-between bg-[#21252b] z-10 shrink-0">
+      <header className="h-[36px] border-b border-[#181a1f] flex items-center px-3 justify-between bg-[#21252b] z-10 shrink-0">
         <div className="flex items-center gap-2">
-          <GitCommit size={14} className="text-blue-400" />
+          {onCollapse && (
+            <button onClick={onCollapse} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors" title="Collapse Right Panel">
+              <ChevronsRight size={16} />
+            </button>
+          )}
+          <GitCommit size={14} className="text-blue-400 ml-1" />
           <span className="text-[11px] uppercase tracking-wider text-[#d7dae0] font-semibold">
             {detail.files.length} file changes in this commit
           </span>
         </div>
-        <button 
-          className="text-[10px] bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40 px-2 py-0.5 rounded hover:bg-[#238636]/30 transition-colors font-medium"
-        >
-          View Changes
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            className="text-[10px] bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40 px-2 py-0.5 rounded hover:bg-[#238636]/30 transition-colors font-medium"
+          >
+            View Changes
+          </button>
+        </div>
       </header>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
 
         {/* Commit Info Block */}
-        <div className="px-4 py-3 border-b border-[#181a1f]">
+        <div className="px-4 py-3 border-b border-[#181a1f] shrink-0">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[11px] text-[#8b949e] font-mono">commit:</span>
             <span className="text-[13px] text-[#58a6ff] font-mono font-semibold">{detail.short_oid}</span>
@@ -208,7 +219,7 @@ export function CommitDetailPanel() {
         </div>
 
         {/* Changes Section */}
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 flex-1 bg-[#0d1117]">
           {/* Stats */}
           <div className="flex items-center gap-3 mb-3 text-[11px] font-semibold">
             {Object.entries(counts).map(([key, count]) => {

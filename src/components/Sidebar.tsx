@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, FolderOpen, GitBranch, Folder } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, FolderOpen, GitBranch, Folder, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
 import { invoke } from "@tauri-apps/api/core";
 import { loadRepo } from "../lib/repo";
@@ -105,6 +105,7 @@ export function Sidebar() {
   const [showRepoSwitcher, setShowRepoSwitcher] = useState(false);
   const [recentRepos, setRecentRepos] = useState<RecentRepo[]>([]);
   const [filter, setFilter] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Section Heights (px) - use percentage or absolute. Let's use relative weights (flex values)
   const [localFlex, setLocalFlex] = useState(1);
@@ -271,23 +272,34 @@ export function Sidebar() {
 
   return (
     <aside 
-      className="bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm relative group/sidebar"
-      style={{ width: `${sidebarWidth}px` }}
+      className={`bg-[#1e2227] flex flex-col h-full border-r border-[#181a1f] shrink-0 text-[#a0a6b1] select-none text-sm relative group/sidebar transition-[width] duration-300 ${isCollapsed ? 'items-center py-3 border-t border-[#181a1f]' : ''}`}
+      style={{ width: isCollapsed ? '48px' : `${sidebarWidth}px` }}
     >
       {/* Horizontal Resize Handle */}
-      <div 
-        onMouseDown={startHorizontalResizing}
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/40 transition-colors z-[101]"
-        title="Drag to resize sidebar"
-      />
+      {!isCollapsed && (
+        <div 
+          onMouseDown={startHorizontalResizing}
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/40 transition-colors z-[101]"
+          title="Drag to resize sidebar"
+        />
+      )}
 
-      {/* Top block (non-scrollable) */}
-      <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
-        <div className="flex justify-between items-center cursor-pointer hover:text-white" onClick={handleOpenSwitcher}>
-           <span className="font-bold text-[#e5e5e6] flex items-center gap-1 flex-1 min-w-0 truncate">
-              {repoInfo ? repoInfo.name : "GitKit"} ▾
-           </span>
-        </div>
+      {isCollapsed ? (
+        <button onClick={() => setIsCollapsed(false)} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white mt-2 transition-colors" title="Expand Sidebar">
+           <ChevronsRight size={16} />
+        </button>
+      ) : (
+        <>
+          {/* Top block (non-scrollable) */}
+          <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
+            <div className="flex justify-between items-center cursor-pointer hover:text-white" onClick={handleOpenSwitcher}>
+               <span className="font-bold text-[#e5e5e6] flex items-center gap-1 flex-1 min-w-0 truncate">
+                  {repoInfo ? repoInfo.name : "GitKit"} ▾
+               </span>
+               <button onClick={(e) => { e.stopPropagation(); setIsCollapsed(true); }} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors" title="Collapse Sidebar">
+                   <ChevronsLeft size={16} />
+               </button>
+            </div>
         
         {showRepoSwitcher && (
           <div ref={switcherRef} className="absolute top-10 left-3 w-64 bg-[#21262d] border border-[#3e4451] rounded-lg shadow-xl z-50 flex flex-col overflow-hidden">
@@ -340,7 +352,7 @@ export function Sidebar() {
         <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
            <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
            {localOpen && (
-             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1 px-1">
+             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
                {filteredLocalTree.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                ) : (
@@ -360,7 +372,7 @@ export function Sidebar() {
         <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
            <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
            {remoteOpen && (
-             <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1 px-1">
+             <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
                {filteredRemoteTree.size === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                ) : (
@@ -392,7 +404,7 @@ export function Sidebar() {
         <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
            <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
            {stashOpen && (
-             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 pr-1 -mr-1">
+             <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-2">
                {filteredStashes.length === 0 ? (
                  <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                ) : (
@@ -417,7 +429,9 @@ export function Sidebar() {
              </div>
            )}
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 }

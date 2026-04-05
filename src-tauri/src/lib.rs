@@ -20,6 +20,7 @@ pub fn run() {
             commands::status::unstage_file,
             commands::status::stage_all,
             commands::status::unstage_all,
+            commands::status::discard_all,
             commands::diff::get_diff,
             commands::diff::create_commit,
             commands::diff::get_commit_detail,
