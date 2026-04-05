@@ -21,6 +21,7 @@ export async function loadRepo(path: string) {
       branches,
       commitLog: log,
       stashes,
+      hasMoreCommits: log.length === 200, // if we got exactly limit, assume there's more
     });
   } catch (e) {
     useAppStore.setState({ 
@@ -30,5 +31,26 @@ export async function loadRepo(path: string) {
     });
   } finally {
     useAppStore.setState({ isLoadingRepo: false });
+  }
+}
+
+export async function loadMoreCommits() {
+  const state = useAppStore.getState();
+  if (!state.activeRepoPath || state.isLoadingMore || !state.hasMoreCommits) return;
+  useAppStore.setState({ isLoadingMore: true });
+  
+  try {
+    const currentLen = state.commitLog.length;
+    const newLimit = currentLen + 200;
+    const log = await invoke<CommitNode[]>('get_log', { repoPath: state.activeRepoPath, limit: newLimit });
+    
+    useAppStore.setState({ 
+      commitLog: log,
+      hasMoreCommits: log.length > currentLen // if length increased, there might be more
+    });
+  } catch (e) {
+    console.error('Failed to load more commits:', e);
+  } finally {
+    useAppStore.setState({ isLoadingMore: false });
   }
 }

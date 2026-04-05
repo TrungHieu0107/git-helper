@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, CommitNode } from '../store';
+import { loadMoreCommits } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { Monitor, Cloud } from 'lucide-react';
 
@@ -96,6 +97,8 @@ export function CommitGraph() {
   const staged = useAppStore(s => s.stagedFiles);
   const unstaged = useAppStore(s => s.unstagedFiles);
   const status = useAppStore(s => s.repoStatus);
+  const isLoadingMore = useAppStore(s => s.isLoadingMore);
+  const hasMoreCommits = useAppStore(s => s.hasMoreCommits);
 
   const hasWip = (status?.staged_count ?? 0) > 0 || (status?.unstaged_count ?? 0) > 0 || staged.length > 0 || unstaged.length > 0;
   const off = hasWip ? 1 : 0;
@@ -138,7 +141,15 @@ export function CommitGraph() {
       </div>
 
       {/* Scroll */}
-      <div className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117]">
+      <div 
+        className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117]"
+        onScroll={(e) => {
+          const target = e.target as HTMLDivElement;
+          if (hasMoreCommits && !isLoadingMore && target.scrollHeight - target.scrollTop - target.clientHeight < 100) {
+            loadMoreCommits();
+          }
+        }}
+      >
         <div className="relative min-w-max" style={{ minHeight: th }}>
 
           {/* ═══ SVG Graph Layer ═══ */}
@@ -288,7 +299,16 @@ export function CommitGraph() {
           })}
 
           {(!commitLog?.length) && (
-            <div className="flex items-center justify-center h-32 text-[#5c6370] italic">No commits to display</div>
+            <div className="flex items-center justify-center p-8 text-[#8b949e]">
+              No commits found.
+            </div>
+          )}
+
+          {isLoadingMore && (
+            <div className="flex items-center justify-center p-4 text-[#8b949e] gap-2" style={{ width: cw.label + gw + 200 }}>
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-xs">Loading more commits...</span>
+            </div>
           )}
         </div>
       </div>

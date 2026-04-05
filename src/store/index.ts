@@ -78,6 +78,8 @@ interface AppStore {
   branches: BranchInfo[];
   commitLog: CommitNode[];
   stashes: StashEntry[];
+  hasMoreCommits: boolean;
+  isLoadingMore: boolean;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -99,4 +101,6 @@ export const useAppStore = create<AppStore>(() => ({
   branches: [],
   commitLog: [],
   stashes: [],
+  hasMoreCommits: true,
+  isLoadingMore: false,
 }));
