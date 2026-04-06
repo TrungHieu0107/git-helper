@@ -61,23 +61,23 @@ export function CheckoutAlert() {
     <div 
       className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ease-out transform border-b ${
         visible ? "translate-x-0" : "translate-x-full"
-      } ${isConflict || isDirtyState ? "h-auto py-3 bg-[#1c2128]/98 border-red-500/30" : "h-[48px] bg-[#1c2128]/95 border-blue-500/30"}`}
+      } ${isConflict || isDirtyState ? "h-auto py-3 bg-[#1c2128]/98 border-red-500/30" : "min-h-[48px] py-1 bg-[#1c2128]/95 border-blue-500/30"}`}
     >
       {/* Background with blur for premium feel */}
       <div className="absolute inset-0 backdrop-blur-md" />
       
       <div className="relative h-full w-full flex flex-col px-4 justify-center select-none gap-2">
-        <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between w-full max-w-5xl mx-auto gap-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className={`${isConflict || isDirtyState ? "bg-red-500/20" : "bg-blue-500/20"} p-1.5 rounded-full flex items-center justify-center shrink-0`}>
                 <AlertCircle size={18} className={isConflict || isDirtyState ? "text-red-400" : "text-blue-400"} />
             </div>
-            <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-300">
+            <div className="flex flex-col min-w-0">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-slate-300 whitespace-nowrap">
                         {isDirtyState ? "Cannot Switch Branch:" : "Confirm Switch Branch:"}
                     </span>
-                    <span className={`text-sm font-mono font-bold px-2 py-0.5 rounded border ${isConflict || isDirtyState ? "text-red-400 bg-red-500/10 border-red-500/20" : "text-blue-400 bg-blue-500/10 border-blue-500/20"}`}>
+                    <span className={`text-sm font-mono font-bold px-2 py-0.5 rounded border line-break-anywhere break-all line-clamp-2 ${isConflict || isDirtyState ? "text-red-400 bg-red-500/10 border-red-500/20" : "text-blue-400 bg-blue-500/10 border-blue-500/20"}`}>
                         {branchName}
                     </span>
                 </div>
@@ -110,7 +110,7 @@ export function CheckoutAlert() {
         </div>
 
         {isConflict && (
-            <div className="flex flex-col gap-3 mt-2 pb-1 border-t border-red-500/20 pt-3">
+            <div className="flex flex-col gap-3 mt-2 pb-1 border-t border-red-500/20 pt-3 max-w-5xl mx-auto w-full">
                 <div className="flex flex-col gap-1">
                     <span className="text-[12px] font-semibold text-red-400 uppercase tracking-wider">Local changes would be overwritten:</span>
                     <div className="max-h-24 overflow-y-auto bg-black/20 rounded p-2 flex flex-col gap-1 border border-white/5">
