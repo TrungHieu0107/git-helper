@@ -169,6 +169,9 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
         </div>
         <div className="flex items-center gap-2">
           <button 
+            onClick={() => {
+              useAppStore.setState({ selectedRowIndex: 0, selectedCommitDetail: null });
+            }}
             className="text-[10px] bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40 px-2 py-0.5 rounded hover:bg-[#238636]/30 transition-colors font-medium"
           >
             View Changes

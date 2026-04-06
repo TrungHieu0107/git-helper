@@ -11,6 +11,13 @@ export interface FileStatus {
     old_path: string | null;
 }
 
+export type CheckoutError = 
+  | { type: 'Conflict', data: { files: string[] } }
+  | { type: 'DirtyState', data: { state: string } }
+  | { type: 'NotFound', data: { branch: string } }
+  | { type: 'DetachedHead', data: { oid: string } }
+  | { type: 'Generic', data: { message: string } };
+
 export interface RepoInfo {
     path: string;
     name: string;
@@ -119,10 +126,12 @@ interface AppStore {
   isLoadingMore: boolean;
   confirmCheckoutTo: string | null;
   confirmDiscardAll: boolean;
+  checkoutError: CheckoutError | null;
   toasts: Toast[];
   commitSearchInput: string;
   selectedCommitDetail: CommitDetail | null;
   isLoadingCommitDetail: boolean;
+  selectedRowIndex: number | null;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -148,10 +157,12 @@ export const useAppStore = create<AppStore>(() => ({
   isLoadingMore: false,
   confirmCheckoutTo: null,
   confirmDiscardAll: false,
+  checkoutError: null,
   toasts: [],
   commitSearchInput: '',
   selectedCommitDetail: null,
   isLoadingCommitDetail: false,
+  selectedRowIndex: null,
 }));
 
 export const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, CommitNode } from '../store';
 import { loadMoreCommits, selectCommitDetail } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
-import { Monitor, Cloud } from 'lucide-react';
+import { Monitor, Cloud, ChevronDown } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────
 const ROW_H = 36;
@@ -91,6 +91,112 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
   return out;
 }
 
+// ── BranchLabels Component ───────────────────────────────────────────
+function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: number, isActive: boolean }) {
+  const [open, setOpen] = useState(false);
+  
+  const branchGroups: [string, any][] = useMemo(() => {
+    const groups = new Map<string, { isLocal: boolean; isRemote: boolean; isHead: boolean }>();
+    let hasHead = false;
+    refs?.forEach(r => {
+      if (r === 'HEAD') {
+        hasHead = true;
+        return;
+      }
+      let name = r;
+      let isRemote = false;
+      if (r.startsWith('origin/')) {
+        name = r.substring(7);
+        isRemote = true;
+      }
+      const existing = groups.get(name) || { isLocal: false, isRemote: false, isHead: false };
+      if (isRemote) existing.isRemote = true;
+      else existing.isLocal = true;
+      groups.set(name, existing);
+    });
+    
+    const branchEntries = Array.from(groups.entries());
+    if (branchEntries.length === 0 && hasHead) {
+      return [['HEAD', { isLocal: true, isRemote: false, isHead: true }]];
+    }
+    return branchEntries;
+  }, [refs]);
+
+  if (branchGroups.length === 0) return null;
+
+  const [primary, ...others] = branchGroups;
+
+  const renderBadge = ([name, info]: [string, any], isDropdown = false) => {
+    const isRemoteOnly = info.isRemote && !info.isLocal;
+    const isHead = info.isHead;
+    const clr = color(colorIdx);
+    
+    const bg = isHead ? 'bg-sky-900/50 text-sky-300 border-sky-600/50'
+      : isRemoteOnly ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
+      : `border-[${clr}]/50`;
+      
+    const style = !isHead && !isRemoteOnly ? { backgroundColor: clr + '30', color: clr, borderColor: clr + '60' } : undefined;
+
+    return (
+      <span key={name} 
+        onClick={(e) => {
+          if (isDropdown) {
+            e.stopPropagation();
+            if (isHead) return;
+            const fullRef = (info.isRemote && !info.isLocal) ? `origin/${name}` : name;
+            useAppStore.setState({ confirmCheckoutTo: fullRef });
+            setOpen(false);
+          }
+        }}
+        onDoubleClick={(e) => {
+          if (!isDropdown) {
+            e.stopPropagation();
+            if (isHead) return;
+            const fullRef = (info.isRemote && !info.isLocal) ? `origin/${name}` : name;
+            useAppStore.setState({ confirmCheckoutTo: fullRef });
+          }
+        }}
+        className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate cursor-pointer select-none ${isDropdown ? 'max-w-none' : 'max-w-[120px]'} ${isHead || isRemoteOnly ? bg : 'border'} hover:border-white/50 transition-colors shadow-sm`}
+        style={style}>
+        {isHead ? name : (
+          <>
+            <span className="truncate">{name}</span>
+            <div className="flex items-center gap-0.5 opacity-80 shrink-0">
+              {info.isLocal && <Monitor size={10} />}
+              {info.isRemote && <Cloud size={10} />}
+            </div>
+          </>
+        )}
+      </span>
+    );
+  };
+
+  return (
+    <div className={`relative flex items-center gap-1 transition-opacity duration-300 ${!isActive ? 'opacity-30 hover:opacity-100' : ''}`}
+      onMouseEnter={() => others.length > 0 && setOpen(true)}
+      onMouseLeave={() => setOpen(false)}>
+      
+      {renderBadge(primary)}
+
+      {others.length > 0 && (
+        <div className="bg-[#1e293b] text-[#8b949e] border border-[#334155] px-1 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 cursor-default hover:text-white transition-colors h-[18px]">
+          +{others.length}
+          <ChevronDown size={10} />
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && others.length > 0 && (
+        <div className="absolute top-full left-0 z-[100] pt-1 -mt-1 group">
+          <div className="bg-[#0d1117] border border-[#30363d] rounded-md shadow-2xl p-1.5 flex flex-col gap-1 min-w-[140px] animate-in fade-in slide-in-from-top-1 duration-150">
+            {others.map(b => renderBadge(b, true))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────
 export function CommitGraph() {
   const commitLog = useAppStore(s => s.commitLog);
@@ -144,7 +250,8 @@ export function CommitGraph() {
   }, [filteredCommits, hasWip]);
 
   const [hov, setHov] = useState<number | null>(null);
-  const [sel, setSel] = useState<number | null>(null);
+  const sel = useAppStore(s => s.selectedRowIndex);
+  const setSel = (index: number | null) => useAppStore.setState({ selectedRowIndex: index });
   const { widths: cw, onMouseDown } = useResizableColumns(
     { label: DEF_LABEL_W, hash: DEF_HASH_W, author: DEF_AUTHOR_W },
     { label: 80, hash: 50, author: 60 },
@@ -284,55 +391,8 @@ export function CommitGraph() {
                 onMouseEnter={() => setHov(row)} 
                 onMouseLeave={() => setHov(null)}>
                 {/* Branch labels */}
-                <div className={`pl-2 flex items-center gap-1 overflow-hidden transition-opacity duration-300 ${!isActiveNode ? 'opacity-30 hover:opacity-100' : ''}`} style={{ width: cw.label }}>
-                  {(() => {
-                    const branchGroups = new Map<string, { isLocal: boolean; isRemote: boolean; isHead: boolean }>();
-                    n.refs?.forEach(r => {
-                      if (r === 'HEAD') {
-                        branchGroups.set('HEAD', { isLocal: true, isRemote: false, isHead: true });
-                        return;
-                      }
-                      let name = r;
-                      let isRemote = false;
-                      if (r.startsWith('origin/')) {
-                        name = r.substring(7);
-                        isRemote = true;
-                      }
-                      const existing = branchGroups.get(name) || { isLocal: false, isRemote: false, isHead: false };
-                      if (isRemote) existing.isRemote = true;
-                      else existing.isLocal = true;
-                      branchGroups.set(name, existing);
-                    });
-
-                    return Array.from(branchGroups.entries()).map(([name, info]: [string, any]) => {
-                      const isRemoteOnly = info.isRemote && !info.isLocal;
-                      const bg = info.isHead ? 'bg-sky-900/50 text-sky-300 border-sky-600/50'
-                        : isRemoteOnly ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
-                        : `border-[${color(n.color_idx)}]/50`;
-                      const style = !info.isHead && !isRemoteOnly ? { backgroundColor: color(n.color_idx) + '30', color: color(n.color_idx), borderColor: color(n.color_idx) + '60' } : undefined;
-                       return (
-                         <span key={name} 
-                           onDoubleClick={(e) => {
-                             e.stopPropagation();
-                             if (info.isHead) return;
-                             const fullRef = (info.isRemote && !info.isLocal) ? `origin/${name}` : name;
-                             useAppStore.setState({ confirmCheckoutTo: fullRef });
-                           }}
-                           className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate cursor-pointer select-none max-w-[120px] ${info.isHead || isRemoteOnly ? bg : 'border'} hover:border-white/50 transition-colors`} 
-                           style={style}>
-                           {info.isHead ? name : (
-                            <>
-                              <span className="truncate">{name}</span>
-                              <div className="flex items-center gap-0.5 opacity-80 shrink-0">
-                                {info.isLocal && <Monitor size={10} />}
-                                {info.isRemote && <Cloud size={10} />}
-                              </div>
-                            </>
-                          )}
-                        </span>
-                      );
-                    });
-                  })()}
+                <div className="pl-2 overflow-visible shrink-0" style={{ width: cw.label }}>
+                  <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActiveNode} />
                 </div>
                 {/* Graph spacer */}
                 <div style={{ width: gw + 5 }} />

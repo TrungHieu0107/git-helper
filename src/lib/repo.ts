@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail, CheckoutError } from '../store';
 import { toast } from './toast';
 
 export async function loadRepo(path: string) {
@@ -65,20 +65,35 @@ export async function loadMoreCommits() {
   }
 }
 
-export async function checkoutBranch(branchName: string) {
+export async function checkoutBranch(branchName: string, options = { force: false, merge: false, create: false }) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   
   try {
-    await invoke('checkout_branch', { repoPath: path, branchName });
+    useAppStore.setState({ checkoutError: null });
+    await invoke('checkout_branch', { repoPath: path, branchName, options });
     // Refresh the repo state
     await loadRepo(path);
     toast.success(`Switched to branch "${branchName}"`);
-  } catch (e) {
-    console.error("Checkout failed:", e);
-    toast.error(`Checkout failed: ${e}`);
-  } finally {
     useAppStore.setState({ confirmCheckoutTo: null });
+  } catch (e: any) {
+    console.error("Checkout failed structure:", e);
+    
+    // e should be of type CheckoutError if it came from our Result<.., CheckoutError>
+    const checkoutError = e as CheckoutError;
+    useAppStore.setState({ checkoutError });
+
+    if (checkoutError.type === 'Generic') {
+      toast.error(`Checkout failed: ${checkoutError.data.message}`);
+    } else if (checkoutError.type === 'NotFound') {
+      toast.error(`Branch "${branchName}" not found.`);
+    } else if (checkoutError.type === 'DirtyState') {
+      toast.error(`Repository is in a ${checkoutError.data.state} state. Resolve it first.`);
+    } else if (checkoutError.type === 'DetachedHead') {
+      toast.info(`Switched to detached HEAD at ${checkoutError.data.oid.substring(0, 7)}`);
+      await loadRepo(path);
+      useAppStore.setState({ confirmCheckoutTo: null });
+    }
   }
 }
 

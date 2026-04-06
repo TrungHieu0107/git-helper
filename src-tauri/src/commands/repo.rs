@@ -1,8 +1,26 @@
-use git2::Repository;
+use git2::{Repository, RepositoryState, build::CheckoutBuilder};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CheckoutOptions {
+    pub force: bool,
+    pub merge: bool,
+    pub create: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type", content = "data")]
+pub enum CheckoutError {
+    Conflict { files: Vec<String> },
+    DirtyState { state: String },
+    NotFound { branch: String },
+    DetachedHead { oid: String },
+    Generic { message: String },
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct RepoInfo {
@@ -139,37 +157,124 @@ pub fn open_repo(app: tauri::AppHandle, path: String) -> Result<RepoInfo, String
     Ok(info)
 }
 
+/// Helper: extract conflict files from the shared collector, consuming and dropping the checkout_builder first
+fn extract_conflicts(conflict_files: &Arc<Mutex<Vec<String>>>) -> Vec<String> {
+    conflict_files.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
 #[tauri::command]
-pub fn checkout_branch(repo_path: String, branch_name: String) -> Result<(), String> {
-    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+pub fn checkout_branch(repo_path: String, branch_name: String, options: CheckoutOptions) -> Result<(), CheckoutError> {
+    let repo = Repository::open(&repo_path).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
     
+    // Check for unfinished operations (Unmerged Paths / In-progress Ops)
+    let state = repo.state();
+    if state != RepositoryState::Clean && !options.force {
+        return Err(CheckoutError::DirtyState { 
+            state: format!("{:?}", state).to_lowercase() 
+        });
+    }
+
+    // Use Arc<Mutex<>> so the closure and surrounding code can share conflict_files
+    let conflict_files = Arc::new(Mutex::new(Vec::<String>::new()));
+
     // 1. Try to find local branch
     if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Local) {
-        let obj = branch.get().peel_to_commit().map_err(|e| e.to_string())?;
-        repo.checkout_tree(obj.as_object(), None).map_err(|e| e.to_string())?;
-        repo.set_head(branch.get().name().unwrap()).map_err(|e| e.to_string())?;
+        let commit = branch.get().peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+        
+        // Build checkout in a block so checkout_builder is dropped before we access conflict_files
+        let checkout_result = {
+            let mut checkout_builder = build_checkout(&options, &conflict_files);
+            repo.checkout_tree(commit.as_object(), Some(&mut checkout_builder))
+        };
+        
+        if let Err(e) = checkout_result {
+            let conflicts = extract_conflicts(&conflict_files);
+            if !conflicts.is_empty() {
+                return Err(CheckoutError::Conflict { files: conflicts });
+            }
+            return Err(CheckoutError::Generic { message: e.to_string() });
+        }
+        
+        repo.set_head(branch.get().name().unwrap()).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
         return Ok(());
     }
 
-    // 2. Try to find remote branch
+    // 2. Try to find remote branch (Auto-tracking)
     if let Ok(remote_branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
         let reference = remote_branch.get();
-        let commit = reference.peel_to_commit().map_err(|e| e.to_string())?;
+        let commit = reference.peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
         
         // Extract local name (e.g. "origin/feat/x" -> "feat/x")
         let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
         let local_name = if parts.len() > 1 { parts[1] } else { &branch_name };
         
         // Create local branch tracking the remote
-        let mut local_branch = repo.branch(local_name, &commit, false).map_err(|e| e.to_string())?;
-        local_branch.get_mut().set_target(commit.id(), "checkout: tracking remote").map_err(|e| e.to_string())?;
+        let local_branch = repo.branch(local_name, &commit, false).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
         
-        repo.checkout_tree(commit.as_object(), None).map_err(|e| e.to_string())?;
-        repo.set_head(local_branch.get().name().unwrap()).map_err(|e| e.to_string())?;
+        let checkout_result = {
+            let mut checkout_builder = build_checkout(&options, &conflict_files);
+            repo.checkout_tree(commit.as_object(), Some(&mut checkout_builder))
+        };
+        
+        if let Err(e) = checkout_result {
+            let conflicts = extract_conflicts(&conflict_files);
+            if !conflicts.is_empty() {
+                return Err(CheckoutError::Conflict { files: conflicts });
+            }
+            return Err(CheckoutError::Generic { message: e.to_string() });
+        }
+        
+        repo.set_head(local_branch.get().name().unwrap()).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
         return Ok(());
     }
 
-    Err(format!("Branch '{}' not found", branch_name))
+    // 3. Try to switch to a commit hash (Detached HEAD)
+    if let Ok(obj) = repo.revparse_single(&branch_name) {
+        if let Some(commit) = obj.as_commit() {
+            let commit_id = commit.id();
+            
+            let checkout_result = {
+                let mut checkout_builder = build_checkout(&options, &conflict_files);
+                repo.checkout_tree(&obj, Some(&mut checkout_builder))
+            };
+            
+            if let Err(e) = checkout_result {
+                let conflicts = extract_conflicts(&conflict_files);
+                if !conflicts.is_empty() {
+                    return Err(CheckoutError::Conflict { files: conflicts });
+                }
+                return Err(CheckoutError::Generic { message: e.to_string() });
+            }
+            repo.set_head_detached(commit_id).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+            return Err(CheckoutError::DetachedHead { oid: commit_id.to_string() });
+        }
+    }
+
+    Err(CheckoutError::NotFound { branch: branch_name })
+}
+
+/// Build a CheckoutBuilder with common options and the conflict notify callback
+fn build_checkout<'a>(options: &CheckoutOptions, conflict_files: &'a Arc<Mutex<Vec<String>>>) -> CheckoutBuilder<'a> {
+    let mut checkout_builder = CheckoutBuilder::new();
+    if options.force {
+        checkout_builder.force();
+    } else if options.merge {
+        checkout_builder.conflict_style_merge(true);
+    } else {
+        checkout_builder.safe();
+    }
+
+    let cf = Arc::clone(conflict_files);
+    checkout_builder.notify(move |_checkout_notif, path, _baseline, _target, _workdir| {
+        if let Some(p) = path {
+            if let Ok(mut files) = cf.lock() {
+                files.push(p.to_string_lossy().to_string());
+            }
+        }
+        true
+    });
+
+    checkout_builder
 }
 
 #[tauri::command]
