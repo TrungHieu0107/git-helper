@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, CommitNode } from '../store';
-import { loadMoreCommits, selectCommitDetail, safeCheckout, checkoutBranch } from '../lib/repo';
-import { toast } from '../lib/toast';
+import { loadMoreCommits, selectCommitDetail, safeSwitchBranch } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { Monitor, Cloud, ChevronDown } from 'lucide-react';
 
@@ -144,35 +143,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       if (isHead) return;
       if (isDropdown) setOpen(false);
 
-      try {
-        const result = await safeCheckout(fullRef);
-        switch (result.action) {
-          case 'Clean':
-          case 'DirtyNoConflict':
-            await checkoutBranch(fullRef);
-            break;
-          case 'DirtyWithConflict':
-            useAppStore.setState({ 
-              confirmCheckoutTo: fullRef,
-              checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
-            });
-            break;
-          case 'DirtyState':
-            useAppStore.setState({ 
-              confirmCheckoutTo: fullRef,
-              checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
-            });
-            break;
-          case 'AlreadyOnBranch':
-            toast.info(`Already on branch "${fullRef}"`);
-            break;
-          case 'NotFound':
-            toast.error(`Branch "${fullRef}" not found.`);
-            break;
-        }
-      } catch (err) {
-        toast.error(`Pre-checkout check failed: ${err}`);
-      }
+      await safeSwitchBranch(fullRef);
     };
 
     return (

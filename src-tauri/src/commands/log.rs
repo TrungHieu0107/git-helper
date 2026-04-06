@@ -40,18 +40,16 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
     
     // Add all branches
     if let Ok(branches) = repo.branches(None) {
-        for branch_result in branches {
-            if let Ok((branch, _)) = branch_result {
-                if let (Ok(Some(name)), Some(oid)) = (branch.name(), branch.get().target()) {
-                    refs_map.entry(oid).or_default().push(name.to_string());
-                }
+        for (branch, _) in branches.flatten() {
+            if let (Ok(Some(name)), Some(oid)) = (branch.name(), branch.get().target()) {
+                refs_map.entry(oid).or_default().push(name.to_string());
             }
         }
     }
     
     // Add all tags (lightweight and annotated)
     if let Ok(tags) = repo.tag_names(None) {
-        for tag_name in tags.iter().filter_map(|s| s) {
+        for tag_name in tags.iter().flatten() {
             if let Ok(obj) = repo.revparse_single(tag_name) {
                 let id = if let Some(tag) = obj.as_tag() {
                     tag.target_id()

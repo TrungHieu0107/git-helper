@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
 import { useAppStore } from "../store";
-import { checkoutBranch, safeCheckout } from "../lib/repo";
-import { toast } from "../lib/toast";
+import { safeSwitchBranch } from "../lib/repo";
 
 // Hierarchical Branch Tree Types
 export interface BranchNode {
@@ -399,41 +398,7 @@ function BranchSelector() {
     setSearchTerm("");
     if (activeBranch === branch.name) return;
 
-    try {
-      const result = await safeCheckout(branch.name);
-
-      switch (result.action) {
-        case 'AlreadyOnBranch':
-          toast.info(`Already on branch "${branch.displayName}"`);
-          break;
-        case 'Clean':
-          // No uncommitted changes — checkout directly
-          await checkoutBranch(branch.name);
-          break;
-        case 'DirtyNoConflict':
-          // No conflicts — checkout directly (changes carry over)
-          await checkoutBranch(branch.name);
-          break;
-        case 'DirtyWithConflict':
-          // Conflicts detected — show conflict files in the checkout alert
-          useAppStore.setState({ 
-            confirmCheckoutTo: branch.name,
-            checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
-          });
-          break;
-        case 'DirtyState':
-          useAppStore.setState({ 
-            confirmCheckoutTo: branch.name,
-            checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
-          });
-          break;
-        case 'NotFound':
-          toast.error(`Branch "${branch.displayName}" not found.`);
-          break;
-      }
-    } catch (e) {
-      toast.error(`Pre-checkout check failed: ${e}`);
-    }
+    await safeSwitchBranch(branch.name);
   };
 
   return (
@@ -527,34 +492,7 @@ function BranchTreeItem({ node, activeBranch, level, filter = "" }: { node: Bran
                 onClick={() => { if (hasChildren) setExpanded(!expanded); }}
                 onDoubleClick={async () => {
                     if (node.isBranch && !isHead) {
-                        try {
-                            const result = await safeCheckout(node.fullPath);
-                            switch (result.action) {
-                                case 'Clean':
-                                    await checkoutBranch(node.fullPath);
-                                    break;
-                                case 'DirtyNoConflict':
-                                    await checkoutBranch(node.fullPath);
-                                    break;
-                                case 'DirtyWithConflict':
-                                    useAppStore.setState({ 
-                                        confirmCheckoutTo: node.fullPath,
-                                        checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
-                                    });
-                                    break;
-                                case 'DirtyState':
-                                    useAppStore.setState({ 
-                                        confirmCheckoutTo: node.fullPath,
-                                        checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
-                                    });
-                                    break;
-                                case 'NotFound':
-                                    toast.error(`Branch "${node.fullPath}" not found.`);
-                                    break;
-                            }
-                        } catch (e) {
-                            toast.error(`Pre-checkout check failed: ${e}`);
-                        }
+                        await safeSwitchBranch(node.fullPath);
                     }
                 }}
                 className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors

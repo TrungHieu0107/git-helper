@@ -229,8 +229,8 @@ pub fn get_file_contents(
         }
     }
 
-    let is_bin_old = old_bytes.as_ref().map_or(false, |b| is_binary(b));
-    let is_bin_new = new_bytes.as_ref().map_or(false, |b| is_binary(b));
+    let is_bin_old = old_bytes.as_ref().is_some_and(|b| is_binary(b));
+    let is_bin_new = new_bytes.as_ref().is_some_and(|b| is_binary(b));
     
     if is_bin_old || is_bin_new {
         return Ok(FileContents {

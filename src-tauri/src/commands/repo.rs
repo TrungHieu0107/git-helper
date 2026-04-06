@@ -323,7 +323,7 @@ pub fn safe_checkout(repo_path: String, branch_name: String) -> Result<SafeCheck
     } else if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
         Some(branch.get().peel_to_commit().map_err(|e| e.to_string())?)
     } else if let Ok(obj) = repo.revparse_single(&branch_name) {
-        obj.as_commit().map(|c| c.clone())
+        obj.as_commit().cloned()
     } else {
         return Ok(SafeCheckoutResult::NotFound { branch: branch_name });
     };
@@ -413,7 +413,7 @@ pub fn open_terminal(path: String) -> Result<(), String> {
     std::process::Command::new("powershell")
         .arg("-NoExit")
         .arg("-Command")
-        .arg(&format!("cd '{}'", path))
+        .arg(format!("cd '{}'", path))
         .spawn()
         .map_err(|e| e.to_string())?;
     Ok(())

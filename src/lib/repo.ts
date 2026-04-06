@@ -21,6 +21,42 @@ export async function safeCheckout(branchName: string): Promise<SafeCheckoutResu
   return await invoke<SafeCheckoutResult>('safe_checkout', { repoPath: path, branchName });
 }
 
+/**
+ * Automates the standard safe checkout UI flow. Calls safe_checkout and 
+ * appropriately redirects to direct checkout, alert dialogs, or toast messages.
+ */
+export async function safeSwitchBranch(branchName: string) {
+  try {
+    const result = await safeCheckout(branchName);
+    switch (result.action) {
+      case 'Clean':
+      case 'DirtyNoConflict':
+        await checkoutBranch(branchName);
+        break;
+      case 'DirtyWithConflict':
+        useAppStore.setState({ 
+          confirmCheckoutTo: branchName,
+          checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
+        });
+        break;
+      case 'DirtyState':
+        useAppStore.setState({ 
+          confirmCheckoutTo: branchName,
+          checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
+        });
+        break;
+      case 'AlreadyOnBranch':
+        toast.info(`Already on branch "${branchName}"`);
+        break;
+      case 'NotFound':
+        toast.error(`Branch "${branchName}" not found.`);
+        break;
+    }
+  } catch (err) {
+    toast.error(`Pre-checkout check failed: ${err}`);
+  }
+}
+
 
 export async function loadRepo(path: string) {
   useAppStore.setState({ isLoadingRepo: true, repoError: null });
