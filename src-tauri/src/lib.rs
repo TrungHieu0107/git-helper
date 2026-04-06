@@ -11,6 +11,7 @@ pub fn run() {
             commands::repo::get_recent_repos,
             commands::repo::remove_recent_repo,
             commands::repo::checkout_branch,
+            commands::repo::safe_checkout,
             commands::repo::create_branch,
             commands::repo::undo_last_commit,
             commands::repo::open_terminal,

@@ -277,6 +277,111 @@ fn build_checkout<'a>(options: &CheckoutOptions, conflict_files: &'a Arc<Mutex<V
     checkout_builder
 }
 
+// ── Safe Checkout ────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "action")]
+pub enum SafeCheckoutResult {
+    /// Already on the target branch — no action needed
+    AlreadyOnBranch,
+    /// Working tree is clean — checkout can proceed immediately
+    Clean,
+    /// Working tree is dirty but no conflicts with target — user can stash + switch
+    DirtyNoConflict,
+    /// Working tree is dirty AND has conflicts with target — cannot switch
+    DirtyWithConflict { files: Vec<String> },
+    /// Repo is in a special state (merge, rebase, etc.)
+    DirtyState { state: String },
+    /// Branch not found
+    NotFound { branch: String },
+}
+
+#[tauri::command]
+pub fn safe_checkout(repo_path: String, branch_name: String) -> Result<SafeCheckoutResult, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // Edge case: repo in special state (merge, rebase, etc.)
+    let state = repo.state();
+    if state != RepositoryState::Clean {
+        return Ok(SafeCheckoutResult::DirtyState {
+            state: format!("{:?}", state).to_lowercase(),
+        });
+    }
+    
+    // Check if already on this branch
+    if let Ok(head) = repo.head() {
+        if let Some(current) = head.shorthand() {
+            if current == branch_name {
+                return Ok(SafeCheckoutResult::AlreadyOnBranch);
+            }
+        }
+    }
+    
+    // Check if branch exists (local, remote, or commit hash)
+    let target_commit = if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Local) {
+        Some(branch.get().peel_to_commit().map_err(|e| e.to_string())?)
+    } else if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
+        Some(branch.get().peel_to_commit().map_err(|e| e.to_string())?)
+    } else if let Ok(obj) = repo.revparse_single(&branch_name) {
+        obj.as_commit().map(|c| c.clone())
+    } else {
+        return Ok(SafeCheckoutResult::NotFound { branch: branch_name });
+    };
+    
+    let commit = match target_commit {
+        Some(c) => c,
+        None => return Ok(SafeCheckoutResult::NotFound { branch: branch_name }),
+    };
+    
+    // Step 1: Check working tree status
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true).include_ignored(false);
+    let statuses = repo.statuses(Some(&mut opts)).map_err(|e| e.to_string())?;
+    
+    let has_changes = statuses.iter().any(|entry| {
+        let s = entry.status();
+        // Ignore purely untracked files — they don't block checkout
+        !s.is_empty() && s != git2::Status::WT_NEW
+    });
+    
+    if !has_changes {
+        // Step 3: Clean — can checkout directly
+        return Ok(SafeCheckoutResult::Clean);
+    }
+    
+    // Step 2: Dry-run checkout to detect conflicts
+    let conflict_files = Arc::new(Mutex::new(Vec::<String>::new()));
+    {
+        let cf = Arc::clone(&conflict_files);
+        let mut checkout_builder = CheckoutBuilder::new();
+        // Use "none" mode for a dry-run — don't actually modify the working directory
+        checkout_builder.dry_run();
+        checkout_builder.safe();
+        checkout_builder.notify_on(git2::CheckoutNotificationType::CONFLICT);
+        checkout_builder.notify(move |_notif, path, _baseline, _target, _workdir| {
+            if let Some(p) = path {
+                if let Ok(mut files) = cf.lock() {
+                    files.push(p.to_string_lossy().to_string());
+                }
+            }
+            true
+        });
+        
+        // Perform the dry-run checkout
+        let _ = repo.checkout_tree(commit.as_object(), Some(&mut checkout_builder));
+    }
+    
+    let conflicts = conflict_files.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    
+    if conflicts.is_empty() {
+        // Step 5: Dirty but no conflict — user can stash and switch
+        Ok(SafeCheckoutResult::DirtyNoConflict)
+    } else {
+        // Step 4: Conflicts detected — report and abort
+        Ok(SafeCheckoutResult::DirtyWithConflict { files: conflicts })
+    }
+}
+
 #[tauri::command]
 pub fn create_branch(repo_path: String, name: String, start_point: Option<String>) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;

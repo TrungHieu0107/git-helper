@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
 import { useAppStore } from "../store";
-import { checkoutBranch } from "../lib/repo";
+import { checkoutBranch, safeCheckout } from "../lib/repo";
+import { toast } from "../lib/toast";
 
 // Hierarchical Branch Tree Types
 export interface BranchNode {
@@ -398,21 +399,40 @@ function BranchSelector() {
     setSearchTerm("");
     if (activeBranch === branch.name) return;
 
-    const { stagedFiles, unstagedFiles, repoStatus } = useAppStore.getState();
-    
-    // A repo is "clean" for checkout purposes if there are no staged changes, 
-    // no modified/deleted (unstaged) files, and no conflicts.
-    // Untracked files do NOT block checkout in Git.
-    const isClean = repoStatus 
-      ? (repoStatus.staged_count === 0 && repoStatus.unstaged_count === 0 && repoStatus.conflict_count === 0)
-      : (stagedFiles.length === 0 && unstagedFiles.filter(f => f.status !== 'untracked').length === 0);
+    try {
+      const result = await safeCheckout(branch.name);
 
-    if (isClean) {
-      // Immediate checkout if clean
-      await checkoutBranch(branch.name);
-    } else {
-      // Trigger confirmation if dirty
-      useAppStore.setState({ confirmCheckoutTo: branch.name });
+      switch (result.action) {
+        case 'AlreadyOnBranch':
+          toast.info(`Already on branch "${branch.displayName}"`);
+          break;
+        case 'Clean':
+          // No uncommitted changes — checkout directly
+          await checkoutBranch(branch.name);
+          break;
+        case 'DirtyNoConflict':
+          // No conflicts — checkout directly (changes carry over)
+          await checkoutBranch(branch.name);
+          break;
+        case 'DirtyWithConflict':
+          // Conflicts detected — show conflict files in the checkout alert
+          useAppStore.setState({ 
+            confirmCheckoutTo: branch.name,
+            checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
+          });
+          break;
+        case 'DirtyState':
+          useAppStore.setState({ 
+            confirmCheckoutTo: branch.name,
+            checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
+          });
+          break;
+        case 'NotFound':
+          toast.error(`Branch "${branch.displayName}" not found.`);
+          break;
+      }
+    } catch (e) {
+      toast.error(`Pre-checkout check failed: ${e}`);
     }
   };
 
@@ -507,16 +527,33 @@ function BranchTreeItem({ node, activeBranch, level, filter = "" }: { node: Bran
                 onClick={() => { if (hasChildren) setExpanded(!expanded); }}
                 onDoubleClick={async () => {
                     if (node.isBranch && !isHead) {
-                        const { stagedFiles, unstagedFiles, repoStatus } = useAppStore.getState();
-                        
-                        const isClean = repoStatus 
-                            ? (repoStatus.staged_count === 0 && repoStatus.unstaged_count === 0 && repoStatus.conflict_count === 0)
-                            : (stagedFiles.length === 0 && unstagedFiles.filter(f => f.status !== 'untracked').length === 0);
-                        
-                        if (isClean) {
-                            await checkoutBranch(node.fullPath);
-                        } else {
-                            useAppStore.setState({ confirmCheckoutTo: node.fullPath });
+                        try {
+                            const result = await safeCheckout(node.fullPath);
+                            switch (result.action) {
+                                case 'Clean':
+                                    await checkoutBranch(node.fullPath);
+                                    break;
+                                case 'DirtyNoConflict':
+                                    await checkoutBranch(node.fullPath);
+                                    break;
+                                case 'DirtyWithConflict':
+                                    useAppStore.setState({ 
+                                        confirmCheckoutTo: node.fullPath,
+                                        checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
+                                    });
+                                    break;
+                                case 'DirtyState':
+                                    useAppStore.setState({ 
+                                        confirmCheckoutTo: node.fullPath,
+                                        checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
+                                    });
+                                    break;
+                                case 'NotFound':
+                                    toast.error(`Branch "${node.fullPath}" not found.`);
+                                    break;
+                            }
+                        } catch (e) {
+                            toast.error(`Pre-checkout check failed: ${e}`);
                         }
                     }
                 }}

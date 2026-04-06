@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, CommitNode } from '../store';
-import { loadMoreCommits, selectCommitDetail } from '../lib/repo';
+import { loadMoreCommits, selectCommitDetail, safeCheckout, checkoutBranch } from '../lib/repo';
+import { toast } from '../lib/toast';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { Monitor, Cloud, ChevronDown } from 'lucide-react';
 
@@ -137,25 +138,47 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       
     const style = !isHead && !isRemoteOnly ? { backgroundColor: clr + '30', color: clr, borderColor: clr + '60' } : undefined;
 
+    const handleBranchClick = async (e: React.MouseEvent, fullRef: string, isFromDropdown: boolean) => {
+      if (isDropdown !== isFromDropdown) return;
+      e.stopPropagation();
+      if (isHead) return;
+      if (isDropdown) setOpen(false);
+
+      try {
+        const result = await safeCheckout(fullRef);
+        switch (result.action) {
+          case 'Clean':
+          case 'DirtyNoConflict':
+            await checkoutBranch(fullRef);
+            break;
+          case 'DirtyWithConflict':
+            useAppStore.setState({ 
+              confirmCheckoutTo: fullRef,
+              checkoutError: { type: 'Conflict', data: { files: result.files || [] } }
+            });
+            break;
+          case 'DirtyState':
+            useAppStore.setState({ 
+              confirmCheckoutTo: fullRef,
+              checkoutError: { type: 'DirtyState', data: { state: result.state || 'unknown' } }
+            });
+            break;
+          case 'AlreadyOnBranch':
+            toast.info(`Already on branch "${fullRef}"`);
+            break;
+          case 'NotFound':
+            toast.error(`Branch "${fullRef}" not found.`);
+            break;
+        }
+      } catch (err) {
+        toast.error(`Pre-checkout check failed: ${err}`);
+      }
+    };
+
     return (
       <span key={name} 
-        onClick={(e) => {
-          if (isDropdown) {
-            e.stopPropagation();
-            if (isHead) return;
-            const fullRef = (info.isRemote && !info.isLocal) ? `origin/${name}` : name;
-            useAppStore.setState({ confirmCheckoutTo: fullRef });
-            setOpen(false);
-          }
-        }}
-        onDoubleClick={(e) => {
-          if (!isDropdown) {
-            e.stopPropagation();
-            if (isHead) return;
-            const fullRef = (info.isRemote && !info.isLocal) ? `origin/${name}` : name;
-            useAppStore.setState({ confirmCheckoutTo: fullRef });
-          }
-        }}
+        onClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name, true)}
+        onDoubleClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name, false)}
         className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate cursor-pointer select-none ${isDropdown ? 'max-w-none' : 'max-w-[120px]'} ${isHead || isRemoteOnly ? bg : 'border'} hover:border-white/50 transition-colors shadow-sm`}
         style={style}>
         {isHead ? name : (

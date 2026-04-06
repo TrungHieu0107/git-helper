@@ -2,6 +2,26 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail, CheckoutError } from '../store';
 import { toast } from './toast';
 
+// ── Safe Checkout ────────────────────────────────────────────────────────────
+
+export interface SafeCheckoutResult {
+  action: 'AlreadyOnBranch' | 'Clean' | 'DirtyNoConflict' | 'DirtyWithConflict' | 'DirtyState' | 'NotFound';
+  files?: string[];
+  state?: string;
+  branch?: string;
+}
+
+/**
+ * Performs a pre-checkout validation against the backend.
+ * Returns a structured result telling the caller what to do next.
+ */
+export async function safeCheckout(branchName: string): Promise<SafeCheckoutResult> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) throw new Error('No repo open');
+  return await invoke<SafeCheckoutResult>('safe_checkout', { repoPath: path, branchName });
+}
+
+
 export async function loadRepo(path: string) {
   useAppStore.setState({ isLoadingRepo: true, repoError: null });
   
