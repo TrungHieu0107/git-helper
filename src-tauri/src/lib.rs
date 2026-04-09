@@ -36,6 +36,7 @@ pub fn run() {
             commands::stubs::pop_stash,
             commands::stubs::drop_stash,
             commands::remote::fetch_remote,
+            commands::remote::fetch_all_remotes,
             commands::remote::pull_remote,
             commands::remote::push_remote,
             commands::remote::push_branch_to_remote,

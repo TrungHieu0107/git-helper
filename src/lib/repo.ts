@@ -197,6 +197,19 @@ export async function checkoutBranch(branchName: string, options = { force: fals
   }
 }
 
+export async function fetchAllRepo() {
+  const { activeRepoPath } = useAppStore.getState();
+  if (!activeRepoPath) return;
+
+  try {
+    await invoke('fetch_all_remotes', { repoPath: activeRepoPath });
+    toast.success('Fetched all remotes successfully');
+    await loadRepo(activeRepoPath);
+  } catch (e) {
+    toast.error(`Fetch failed: ${e}`);
+  }
+}
+
 export async function pullRepo() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;

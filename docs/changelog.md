@@ -1,9 +1,13 @@
 # Changelog
-## Version: 1.4.1
-## Last updated: 2026-04-09 – Startup Fix
+## Version: 1.5.0
+## Last updated: 2026-04-09 – Fetch All Feature
 ## Project: GitKit
 
 All notable changes to this project will be documented in this file.
+
+## [1.5.0] - 2026-04-09
+### Added
+- **Fetch All Remotes**: Added a "Fetch" button to the toolbar. It fetches updates from all configured remotes and automatically refreshes the UI state including the commit graph and branches.
 
 ## [1.4.1] - 2026-04-09
 ### Fixed

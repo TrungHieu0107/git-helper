@@ -1,15 +1,22 @@
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, Search, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
+import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushRepo, createStash, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { pullRepo, pushRepo, fetchAllRepo, createStash, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 
 export function TopToolbar() {
+  const { activeRepoPath, isLoadingRepo } = useAppStore();
+  const [fetching, setFetching] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
+
+  const handleFetch = async () => {
+    setFetching(true);
+    try { await fetchAllRepo(); } finally { setFetching(false); }
+  };
 
   const handlePull = async () => {
     setPulling(true);
@@ -19,6 +26,12 @@ export function TopToolbar() {
   const handlePush = async () => {
     setPushing(true);
     try { await pushRepo(); } finally { setPushing(false); }
+  };
+
+  const handleRefresh = async () => {
+    if (activeRepoPath) {
+      await loadRepo(activeRepoPath);
+    }
   };
 
   return (
@@ -40,8 +53,9 @@ export function TopToolbar() {
 
         <div className="w-px h-6 bg-[#30363d]" />
         
-        {/* Pull / Push */}
+        {/* Fetch / Pull / Push */}
         <div className="flex items-center space-x-4 text-[#58a6ff]">
+          <ToolbarButton icon={<Download size={18} />} label="Fetch" onClick={handleFetch} loading={fetching} />
           <ToolbarButton icon={<ArrowDown size={18} />} label="Pull" onClick={handlePull} loading={pulling} />
           <ToolbarButton icon={<ArrowUp size={18} />} label="Push" onClick={handlePush} loading={pushing} />
         </div>
@@ -68,13 +82,17 @@ export function TopToolbar() {
         
       </div>
 
-      {/* Right: Search / Meta */}
+      {/* Right: Refresh / Meta */}
       <div className="flex-1 flex items-center justify-end space-x-2">
         <div className="flex items-center gap-1 cursor-pointer hover:bg-[#30363d]/50 p-2 rounded text-[#adbac7]">
            <span className="text-[12px] font-medium">Actions ▾</span>
         </div>
-        <div className="cursor-pointer text-[#768390] hover:text-[#adbac7] p-2">
-           <Search size={18} />
+        <div 
+          onClick={handleRefresh}
+          className={`cursor-pointer p-2 transition-all duration-300 ${isLoadingRepo ? 'text-blue-400' : 'text-[#768390] hover:text-[#adbac7]'}`}
+          title="Reload state (Ctrl+R)"
+        >
+           <RotateCw size={18} className={isLoadingRepo ? "animate-spin" : ""} />
         </div>
       </div>
 

@@ -27,9 +27,30 @@ pub fn fetch_remote(repo_path: String, remote: String) -> Result<(), String> {
     fo.remote_callbacks(setup_callbacks());
     fo.download_tags(AutotagOption::All);
 
-    remote_obj.fetch(&["refs/heads/*:refs/remotes/origin/*"], Some(&mut fo), None)
+    // Use a more generic refspec that maps remote branches to their local remote-tracking counterparts
+    let refspec = format!("refs/heads/*:refs/remotes/{}/*", remote);
+    remote_obj.fetch(&[&refspec], Some(&mut fo), None)
         .map_err(|e| e.to_string())?;
         
+    Ok(())
+}
+
+#[tauri::command]
+pub fn fetch_all_remotes(repo_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let remotes = repo.remotes().map_err(|e| e.to_string())?;
+    
+    for remote_name in remotes.iter().flatten() {
+        let mut remote_obj = repo.find_remote(remote_name).map_err(|e| e.to_string())?;
+        let mut fo = FetchOptions::new();
+        fo.remote_callbacks(setup_callbacks());
+        fo.download_tags(AutotagOption::All);
+        
+        let refspec = format!("refs/heads/*:refs/remotes/{}/*", remote_name);
+        remote_obj.fetch(&[&refspec], Some(&mut fo), None)
+            .map_err(|e| e.to_string())?;
+    }
+    
     Ok(())
 }
 
