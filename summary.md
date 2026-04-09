@@ -1,9 +1,5 @@
-# Project Status: Documented & Integrated
-## Status: Ready for Expansion
-## Last Updated: 2026-04-10
-
-### Latest Changes
-- Generated a **Comprehensive Documentation Suite** in `/docs`, including Architecture, Specs, User Flows, and Developer Reference.
-- Updated root **README.md** to serve as a high-fidelity landing page and documentation hub.
-- Implemented **Selective Stash** mode and **Auto-Refresh on Focus** for a seamless Git workflow.
-- Standardized backend stashing and persistence layers.
+# Project Status: Modularized & Stable
+## Last Updated: 2026-04-09
+## Backend: Decomposed monolithic commands into domain-scoped modules (repo, branch, stash, log, diff, remote).
+## Frontend: Sliced the monolithic Zustand store into domain-specific slices (repoSlice, logSlice, stashSlice, uiSlice).
+## Status: Backend builds (cargo check pass), Frontend types verified (tsc pass modulo minor lint). Ready for Phase 2: Multi-repo support.

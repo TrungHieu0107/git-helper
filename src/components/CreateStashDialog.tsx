@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Archive, X, Check, Loader2, AlertTriangle, FileText, Plus, Info } from 'lucide-react';
 import { useAppStore, FileStatus } from '../store';
-import { createStash, stashUnstaged, saveCurrentState } from '../lib/repo';
+import { stashUnstaged, saveCurrentState } from '../lib/repo';
 import { toast } from '../lib/toast';
 
 interface CreateStashDialogProps {

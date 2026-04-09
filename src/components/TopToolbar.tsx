@@ -2,8 +2,8 @@ import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
-import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushRepo, fetchAllRepo, createStash, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { useAppStore } from "../store";
+import { pullRepo, pushRepo, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";
 
@@ -115,7 +115,7 @@ export function TopToolbar() {
 function RepoSelector() {
   const { repoInfo, activeRepoPath } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [recent, setRecent] = useState<RecentRepo[]>([]);
+  const [recent, setRecent] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

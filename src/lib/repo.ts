@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail, CheckoutError, RepoMeta } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult } from '../store';
 import { toast } from './toast';
 
 // ── Branch Validation Types ──────────────────────────────────────────────────
@@ -43,6 +43,8 @@ export interface SafeCheckoutResult {
 export interface AppStateData {
   tabs: { path: string, name: string }[];
   active_tab: string | null;
+  stash_mode: 'all' | 'unstaged';
+  include_untracked: boolean;
 }
 
 export interface StashUnstagedOptions {
@@ -313,7 +315,7 @@ export async function applyStash(stackIndex: number) {
     if (result.type === 'Conflict') {
       // Handle Conflicts
       useAppStore.setState({ stashConflict: { files: result.data.files, index: stackIndex, isPop: false } });
-      toast.warning("Stash applied with conflicts. Please resolve them manually.");
+      toast.info("Stash applied with conflicts. Please resolve them manually.");
     } else {
       toast.success("Applied stash successfully");
     }
@@ -344,7 +346,7 @@ export async function popStash(stackIndex: number) {
 
     if (result.type === 'Conflict') {
       useAppStore.setState({ stashConflict: { files: result.data.files, index: stackIndex, isPop: true } });
-      toast.warning("Conflicts detected. Stash was applied but NOT dropped.");
+      toast.info("Conflicts detected. Stash was applied but NOT dropped.");
     } else {
       toast.success("Popped stash successfully");
     }

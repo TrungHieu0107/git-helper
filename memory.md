@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 1.8.0
-## Last updated: 2026-04-10 – Comprehensive Documentation Suite
+## Version: 1.9.0
+## Last updated: 2026-04-10 – Backend & Frontend Architectural Refactor
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -45,6 +45,13 @@
 - 2026-04-09: Advanced Stash Management — replaced the stash ellipsis icon with a right-click context menu. Implemented a selective stash feature ("Unstaged Only") using `git stash push --keep-index` via the backend `stash_save_advanced` command. Created a high-fidelity `CreateStashDialog` with real-time file previews, custom messages, and untracked file support. Fixed `ReferenceError: MoreHorizontal is not defined` in the Sidebar.
 - 2026-04-09: Stash Preference Persistence — integrated stash settings (mode and include untracked) into the app-wide persistence layer. The app now remembers your last used stash configuration across restarts.
 - 2026-04-09: Deep Auto-Refresh on Focus — implemented a high-performance refresh system that re-synced staged/unstaged file status and diff content on window focus. Used Tauri-native window events, 300ms debouncing, and Monaco `setValue()` safe updates to ensure a flicker-free, robust experience.
+- 2026-04-10: **Backend & Frontend Architectural Refactor** – Successfully transitioned the monolithic codebase into a domain-scoped modular architecture to improve maintainability and performance.
+    - **Backend**: Decomposed the monolithic `commands.rs` (and associated repo logic) into `commands/repo/` (`meta.rs`, `ops.rs`), `commands/branch/`, and `commands/stash/`. Updated `lib.rs` to register commands from new modules.
+    - **Status Logic**: Re-implemented status reporting in `status.rs` with native `git2` rename tracking and improved staging detection.
+    - **Frontend State**: Sliced the monolithic `AppStore` into domain-specific slices (`repoSlice`, `logSlice`, `stashSlice`, `uiSlice`) using Zustand's `StateCreator` pattern.
+    - **Types & Integration**: Re-exported all core types from `store/index.ts` to maintain functional parity; verified type safety with `tsc` and backend integrity with `cargo check`.
+    - **Logic Consistency**: Synchronized `AppStateData` and `RepoState` schemas between Rust and TypeScript to ensure persistent state stability.
+
 - 2026-04-10: Comprehensive Documentation Suite — performed a full codebase analysis and generated a set of professional technical documents in the `/docs` directory. This includes `architecture.md` (tech stack, data flow), `spec.md` (feature status), `user_flow.md` (Mermaid interaction maps), `docs.md` (developer reference), `bug_registry.md` (technical debt), and `changelog.md` (reconstructed history). Updated root `README.md` to serve as a high-fidelity documentation hub.
 
 # Project Status: Documentation Hub

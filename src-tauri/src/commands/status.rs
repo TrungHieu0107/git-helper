@@ -12,7 +12,11 @@ pub struct FileStatus {
 pub fn get_status(repo_path: String) -> Result<Vec<FileStatus>, String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(true).include_ignored(false);
+    opts.include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_ignored(false)
+        .renames_head_to_index(true)
+        .renames_index_to_workdir(true);
 
     let statuses = repo.statuses(Some(&mut opts)).map_err(|e| e.message().to_string())?;
     let mut result = Vec::new();
@@ -21,6 +25,14 @@ pub fn get_status(repo_path: String) -> Result<Vec<FileStatus>, String> {
         let status = entry.status();
         let path = entry.path().unwrap_or("").to_string();
         
+        // Find old_path for renames
+        let old_path = if status.intersects(git2::Status::INDEX_RENAMED | git2::Status::WT_RENAMED) {
+            entry.head_to_index().and_then(|diff| diff.old_file().path().map(|p| p.to_string_lossy().to_string()))
+                .or_else(|| entry.index_to_workdir().and_then(|diff| diff.old_file().path().map(|p| p.to_string_lossy().to_string())))
+        } else {
+            None
+        };
+
         let mut string_status = "unstaged";
         if status.intersects(git2::Status::WT_NEW | git2::Status::INDEX_NEW) && !status.intersects(git2::Status::WT_MODIFIED | git2::Status::INDEX_MODIFIED) {
              string_status = if status.contains(git2::Status::INDEX_NEW) { "staged" } else { "untracked" };
@@ -32,11 +44,10 @@ pub fn get_status(repo_path: String) -> Result<Vec<FileStatus>, String> {
              string_status = "conflicted";
         }
 
-        // Just mapping standard to either staged, unstaged, untracked, conflicted
         result.push(FileStatus {
             path,
             status: string_status.to_string(),
-            old_path: None, // Simplified for now
+            old_path,
         });
     }
 
@@ -144,25 +155,23 @@ pub fn get_repo_status(path: String) -> Result<RepoStatus, String> {
 
 #[tauri::command]
 pub fn unstage_all(repo_path: String) -> Result<(), String> {
-    let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
     let head = match repo.head() {
         Ok(h) => h,
         Err(_) => {
-            // If no HEAD exists, just clear the index to unstage everything
-            let mut index = repo.index().map_err(|e| e.message().to_string())?;
-            index.clear().map_err(|e| e.message().to_string())?;
-            index.write().map_err(|e| e.message().to_string())?;
+            let mut index = repo.index().map_err(|e| e.to_string())?;
+            index.clear().map_err(|e| e.to_string())?;
+            index.write().map_err(|e| e.to_string())?;
             return Ok(());
         }
     };
-    let commit = head.peel_to_commit().map_err(|e| e.message().to_string())?;
-    repo.reset(commit.as_object(), git2::ResetType::Mixed, None).map_err(|e| e.message().to_string())?;
+    let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
+    repo.reset(commit.as_object(), git2::ResetType::Mixed, None).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn discard_all(repo_path: String) -> Result<(), String> {
-    // Use git CLI for robustness with both tracked and untracked files
     let reset_output = std::process::Command::new("git")
         .args(["-C", &repo_path, "reset", "--hard"])
         .output()
