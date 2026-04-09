@@ -60,6 +60,8 @@ export interface CommitNode {
     lane: number;
     color_idx: number;
     edges: EdgeInfo[];
+    node_type: 'commit' | 'stash';
+    base_oid?: string;
 }
 
 export type BranchInfo = any;

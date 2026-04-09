@@ -70,6 +70,8 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
     out.push({ path: roundedPath(x1, y1, x2, y2, 'branch-off'), colorIdx: commits[0].color_idx, childOid: 'WIP', isMerge: false, dashed: true });
   }
   commits.forEach((c, i) => {
+    if (c.node_type === 'stash') return; // Stashes have custom L-shape edges built separately
+
     const row = i + off;
     c.parents.forEach((po, pi) => {
       const idx = commits.findIndex(n => n.oid === po);
@@ -88,6 +90,30 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
       const x2 = lx(commits[idx].lane), y2 = ly(pRow);
       out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci, childOid: c.oid, isMerge: pi > 0 });
     });
+  });
+  return out;
+}
+
+function buildStashEdges(commits: CommitNode[], off: number): Edge[] {
+  const out: Edge[] = [];
+  commits.forEach((c, i) => {
+    if (c.node_type !== 'stash' || !c.base_oid) return;
+    
+    // Find base commit row
+    const baseIdx = commits.findIndex(n => n.oid === c.base_oid);
+    if (baseIdx === -1) return;
+
+    const row = i + off;
+    const pRow = baseIdx + off;
+    
+    const x1 = lx(commits[baseIdx].lane); // Base commit X
+    const y1 = ly(pRow);                 // Base commit Y
+    const x2 = lx(c.lane);               // Stash node X
+    const y2 = ly(row);                  // Stash node Y
+
+    // L-shape: Horizontal from base to stash lane, then Vertical up to stash node (with rounding)
+    const path = roundedPath(x1, y1, x2, y2, 'merge');
+    out.push({ path, colorIdx: c.color_idx, childOid: c.oid, isMerge: false, dashed: true });
   });
   return out;
 }
@@ -227,6 +253,7 @@ export function CommitGraph() {
   const th = totalRows * ROW_H;
 
   const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip) : [], [filteredCommits, off, hasWip]);
+  const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off) : [], [filteredCommits, off]);
 
   const activeOids = useMemo(() => {
     const set = new Set<string>();
@@ -298,6 +325,13 @@ export function CommitGraph() {
           <svg className="absolute pointer-events-none z-[5]"
             style={{ left: cw.label + 5, top: 0 }} width={gw} height={th}>
 
+            {/* Layer 1: Stash connection lines (behind branch lines) */}
+            {stashEdges.map((e, i) => (
+              <path key={`se-${i}`} d={e.path} fill="none"
+                stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.6}
+                strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
+            ))}
+
             {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
             {edges.map((e: Edge, i: number) => {
               return (
@@ -325,6 +359,26 @@ export function CommitGraph() {
               const h = hue(n.author);
               const isMerge = n.parents.length > 1;
               const r = isMerge ? MERGE_DOT_R : NODE_R;
+
+              if (n.node_type === 'stash') {
+                // Stash — rounded square
+                const s = NODE_R * 2;
+                return (
+                  <g key={n.oid}>
+                    <rect x={cx - NODE_R} y={cy - NODE_R} width={s} height={s} rx={4}
+                      fill={`hsl(${h}, 30%, 20%)`} stroke={c} strokeWidth={2} strokeDasharray="3 2" />
+                    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+                      fill="#fff" fontSize={9} fontWeight={700} style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                      S
+                    </text>
+                    <title className="z-50">{n.short_oid}: {n.message}</title>
+                    {(hov === row || sel === row) && (
+                      <rect x={cx - NODE_R - 2} y={cy - NODE_R - 2} width={s + 4} height={s + 4} rx={6}
+                        fill="none" stroke={sel === row ? '#fff' : c} strokeWidth={1.5} opacity={0.7} />
+                    )}
+                  </g>
+                );
+              }
 
               if (isMerge) {
                 // Merge point — small filled dot
@@ -405,7 +459,14 @@ export function CommitGraph() {
                 <div style={{ width: gw + 5 }} />
                 {/* Message */}
                 <div className="flex-1 flex items-center pl-3 pr-4 min-w-0">
-                  <span className="truncate text-[#c9d1d9] text-[13px]">{n.message}</span>
+                  {n.node_type === 'stash' ? (
+                    <div className="flex items-center gap-2">
+                       <span className="bg-[#2a1b1b] text-[#ffa5a5] border border-[#ff4444]/30 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">STASH</span>
+                       <span className="truncate text-[#ffa5a5]/90 text-[13px] italic">{n.message}</span>
+                    </div>
+                  ) : (
+                    <span className="truncate text-[#c9d1d9] text-[13px]">{n.message}</span>
+                  )}
                 </div>
                 {/* Hash */}
                 <div className="pl-3 font-mono text-xs text-[#8b949e] hover:text-white transition-colors" style={{ width: cw.hash }}>{n.short_oid}</div>

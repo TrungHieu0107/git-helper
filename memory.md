@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 1.0.0
-## Last updated: 2026-04-09 - Commit Row Context Menu
+## Version: 1.2.2
+## Last updated: 2026-04-09 – Rounded Stash Path Corners
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -33,7 +33,8 @@
 - 2026-04-06: Implemented branch label grouping in the commit graph. Now only shows one primary branch badge per commit with a `+N` indicator if more branches/tags exist. Added an interactive hover dropdown that lists all additional branches, allowing users to trigger checkouts directly from the dropdown. 
 - 2026-04-06: Added Repository Selector to TopToolbar. Replaced static "Git Helper" logo area with a dynamic dropdown listing recent repositories. Integrated with backend `get_recent_repos` and added "Open local repository..." capability using `@tauri-apps/plugin-dialog`. This allows users to switch between multiple Git projects or add new ones without leaving the main interface.
 - 2026-04-06: Synchronized commit graph selection with the global store. Moved `selectedRowIndex` to `AppStore` to allow components like `CommitDetailPanel` to update the graph highlight. Enabled the **View Changes** button in the commit detail header to switch the UI back to the **WIP** (Working Tree) state by setting index to 0 and clearing commit details.
-- 2026-04-09: Advanced Branching System — replaced legacy branch creation with a robust, secondary-stage dialog (CreateBranchDialog.tsx). Implemented 3 creation modes: **Local Only**, **Create + Push** (with upstream tracking), and **From Remote** (searchable fetch tracking). Backend upgrades in `repo.rs` and `remote.rs` include `validate_branch_name` (debounced real-time naming/duplicate check), `check_working_tree` (dirty tree detection for auto-stash workflow), and `list_remote_branches`. Integrated the new dialog into `TopToolbar` and `CommitContextMenu` with glassmorphism styling and success state cards.
+- 2026-04-09: Stash Lane Isolation — fixed a visual bug where stash nodes and lines overlapped with branch lines. Enhanced the backend layout engine to perform occupancy checks against `active_lanes` when placing stashes, ensuring each stash occupies a dedicated, conflict-free column.
+- 2026-04-09: Rounded Stash Corners — updated `CommitGraph.tsx` to use `roundedPath` for stash connection lines. This applies a border radius to the horizontal-to-vertical corner, making the stash visualization consistent with the rest of the commit graph.
 
 # Project Status Summary
-The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing and smooth corners. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent additions include an Advanced Branching System with multi-mode creation (Local/Push/Remote tracking), real-time name validation, and smart auto-stashing. Other features include a right-click context menu on commit rows, a dynamic Repository Selector, a hierarchical branch tree, infinite scrolling, and a global Monaco-powered Diff Viewer.
+The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing, Advanced Branching, and Inline Stash visualization. Users can see stashes attached to their base commits via dashed L-shaped paths. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent additions include real-time name validation, smart auto-stashing, and right-click context menus. Other features include a dynamic Repository Selector, infinite scrolling, and a Monaco-powered Diff Viewer.

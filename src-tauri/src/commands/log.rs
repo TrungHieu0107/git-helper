@@ -21,12 +21,32 @@ pub struct CommitNode {
     pub lane: usize,
     pub color_idx: usize,
     pub edges: Vec<EdgeInfo>,
+    pub node_type: String, // "commit" or "stash"
+    pub base_oid: Option<String>, // only for stashes
 }
 
 #[tauri::command]
 pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<CommitNode>, String> {
-    let repo = Repository::open(&repo_path)
+    let mut repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
+
+    // 1. Fetch stashes first (collect OIDs first to avoid nested borrow)
+    let mut stash_metadata = Vec::new();
+    let _ = repo.stash_foreach(|index, message, id| {
+        stash_metadata.push((*id, message.to_string(), index));
+        true
+    });
+
+    let mut stashes_by_base: HashMap<Oid, Vec<(Oid, String, i64, usize)>> = HashMap::new();
+    for (id, message, index) in stash_metadata {
+        if let Ok(stash_commit) = repo.find_commit(id) {
+            if stash_commit.parent_count() > 0 {
+                let base_oid = stash_commit.parent_id(0).unwrap();
+                let timestamp = stash_commit.time().seconds();
+                stashes_by_base.entry(base_oid).or_default().push((id, message, timestamp, index));
+            }
+        }
+    }
 
     let mut revwalk = repo.revwalk()
         .map_err(|e| format!("Failed to create revwalk: {}", e))?;
@@ -35,10 +55,9 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
     revwalk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
         .map_err(|e| format!("Failed to set sorting: {}", e))?;
 
-    // Map all references (branches, tags, HEAD) to OIDs
+    // Map all references
     let mut refs_map: HashMap<Oid, Vec<String>> = HashMap::new();
     
-    // Add all branches
     if let Ok(branches) = repo.branches(None) {
         for (branch, _) in branches.flatten() {
             if let (Ok(Some(name)), Some(oid)) = (branch.name(), branch.get().target()) {
@@ -47,7 +66,6 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
         }
     }
     
-    // Add all tags (lightweight and annotated)
     if let Ok(tags) = repo.tag_names(None) {
         for tag_name in tags.iter().flatten() {
             if let Ok(obj) = repo.revparse_single(tag_name) {
@@ -61,27 +79,27 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
         }
     }
     
-    // Add HEAD
     if let Ok(head) = repo.head() {
         if let Some(oid) = head.target() {
             let refs = refs_map.entry(oid).or_default();
             if !refs.contains(&"HEAD".to_string()) {
-                refs.insert(0, "HEAD".to_string()); // Put HEAD at the front
+                refs.insert(0, "HEAD".to_string());
             }
         }
     }
 
-    // Push all reference OIDs to revwalk to cover the whole graph
     for oid in refs_map.keys() {
         let _ = revwalk.push(*oid);
     }
-    // Also push HEAD explicitly if repo has no branches yet
     let _ = revwalk.push_head();
 
-    let mut commits = Vec::new();
+    let mut result_nodes = Vec::new();
     let mut active_lanes: Vec<Option<Oid>> = Vec::new();
     let mut color_assignments: HashMap<usize, usize> = HashMap::new();
     let mut next_color_idx = 0;
+
+    // Cache for author info to use for stashes if needed, or just use Generic
+    // But stashes are commits, so they HAVE authors.
 
     for oid_result in revwalk.skip(offset).take(limit) {
         let oid = match oid_result {
@@ -94,7 +112,7 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
             Err(_) => continue,
         };
 
-        // Find lane for this commit and CLEAR all its occurrences
+        // Find lane for this commit
         let mut my_lane_idx = None;
         for (i, active_oid) in active_lanes.iter_mut().enumerate() {
             if let Some(id) = active_oid {
@@ -102,29 +120,67 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
                     if my_lane_idx.is_none() {
                         my_lane_idx = Some(i);
                     }
-                    *active_oid = None; // Sweep ALL occurrences to prevent ghost lanes
+                    *active_oid = None;
                 }
             }
         }
 
         let lane_idx = my_lane_idx.unwrap_or_else(|| {
-            // Find a free lane starting from left
             for (i, active_oid) in active_lanes.iter().enumerate() {
                 if active_oid.is_none() {
                     return i;
                 }
             }
-            // Or push a new one
             active_lanes.push(None);
             active_lanes.len() - 1
         });
 
-        // Assign core color to lane if uninitialized
         let color_idx = *color_assignments.entry(lane_idx).or_insert_with(|| {
             let c = next_color_idx % 8;
             next_color_idx += 1;
             c
         });
+
+        // INJECT STASHES HERE (before the commit)
+        if let Some(mut stashes) = stashes_by_base.remove(&oid) {
+            // Track lanes occupied at this specific row range
+            // (all currently active branch lines + the commit's own lane)
+            let mut row_occupied: std::collections::HashSet<usize> = active_lanes.iter().enumerate()
+                .filter(|(_, p)| p.is_some())
+                .map(|(i, _)| i)
+                .collect();
+            row_occupied.insert(lane_idx);
+
+            // Sort stashes by index descending (stash@{0} is newest)
+            stashes.sort_by(|a, b| b.3.cmp(&a.3));
+
+            for (s_oid, s_msg, s_time, s_idx) in stashes {
+                // Find first free lane to the right of base commit
+                let mut s_lane = lane_idx + 1;
+                while row_occupied.contains(&s_lane) {
+                    s_lane += 1;
+                }
+                row_occupied.insert(s_lane); // Claim it for this stash row
+
+                let s_author = commit.author();
+                
+                result_nodes.push(CommitNode {
+                    oid: s_oid.to_string(),
+                    short_oid: format!("stash@{{{}}}", s_idx),
+                    parents: vec![oid.to_string()],
+                    author: s_author.name().unwrap_or("Stash").to_string(),
+                    email: s_author.email().unwrap_or("").to_string(),
+                    timestamp: s_time,
+                    message: s_msg,
+                    refs: vec![],
+                    lane: s_lane,
+                    color_idx, // Use base commit's color for group identity
+                    edges: vec![], 
+                    node_type: "stash".to_string(),
+                    base_oid: Some(oid.to_string()),
+                });
+            }
+        }
 
         let mut parents = Vec::new();
         let mut edges = Vec::new();
@@ -132,8 +188,6 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
         let parent_count = commit.parent_count();
         if parent_count > 0 {
             let p0 = commit.parent_id(0).unwrap();
-            
-            // Check if p0 is already queued somewhere
             let mut existing_p0_lane = None;
             for (i, active_oid) in active_lanes.iter().enumerate() {
                 if let Some(id) = active_oid {
@@ -148,7 +202,6 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
             if let Some(p0_lane) = existing_p0_lane {
                 final_to_lane = p0_lane;
             } else {
-                // Find leftmost available lane to shift the branch inward (pack to the left)
                 let mut next_lane = lane_idx;
                 for i in 0..=lane_idx {
                     if active_lanes[i].is_none() {
@@ -161,18 +214,11 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
             }
             
             parents.push(p0.to_string());
-            
-            edges.push(EdgeInfo {
-                to_lane: final_to_lane,
-                color_idx, // main edge gets lane color
-            });
+            edges.push(EdgeInfo { to_lane: final_to_lane, color_idx });
 
-            // Handle multi-parents (merges)
             for i in 1..parent_count {
                 let p = commit.parent_id(i).unwrap();
                 parents.push(p.to_string());
-
-                // Does this parent already exist in active_lanes?
                 let mut parent_lane = None;
                 for (li, a_oid) in active_lanes.iter().enumerate() {
                     if let Some(id) = a_oid {
@@ -182,9 +228,7 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
                         }
                     }
                 }
-
                 let p_lane = parent_lane.unwrap_or_else(|| {
-                    // Start a new free lane for this sub-parent (priority to leftmost)
                     for (li, a_oid) in active_lanes.iter().enumerate() {
                         if a_oid.is_none() {
                             active_lanes[li] = Some(p);
@@ -194,45 +238,36 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
                     active_lanes.push(Some(p));
                     active_lanes.len() - 1
                 });
-
-                let parent_color = *color_assignments.entry(p_lane).or_insert_with(|| {
+                let p_color = *color_assignments.entry(p_lane).or_insert_with(|| {
                     let c = next_color_idx % 8;
                     next_color_idx += 1;
                     c
                 });
-                
-                edges.push(EdgeInfo {
-                    to_lane: p_lane,
-                    color_idx: parent_color,
-                });
+                edges.push(EdgeInfo { to_lane: p_lane, color_idx: p_color });
             }
         }
 
         let author = commit.author();
-        let name = author.name().unwrap_or("Unknown").to_string();
-        let email = author.email().unwrap_or("unknown@example.com").to_string();
-        let message = commit.summary().unwrap_or("").to_string();
-        let timestamp = commit.time().seconds();
         let short_oid = commit.as_object().short_id()
              .map(|b| String::from_utf8_lossy(&b).into_owned())
              .unwrap_or_else(|_| oid.to_string()[0..7].to_string());
 
-        let node_refs = refs_map.get(&oid).cloned().unwrap_or_else(Vec::new);
-
-        commits.push(CommitNode {
+        result_nodes.push(CommitNode {
             oid: oid.to_string(),
             short_oid,
             parents,
-            author: name,
-            email,
-            timestamp,
-            message,
-            refs: node_refs,
+            author: author.name().unwrap_or("Unknown").to_string(),
+            email: author.email().unwrap_or("").to_string(),
+            timestamp: commit.time().seconds(),
+            message: commit.summary().unwrap_or("").to_string(),
+            refs: refs_map.get(&oid).cloned().unwrap_or_default(),
             lane: lane_idx,
             color_idx,
             edges,
+            node_type: "commit".to_string(),
+            base_oid: None,
         });
     }
 
-    Ok(commits)
+    Ok(result_nodes)
 }

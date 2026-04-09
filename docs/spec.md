@@ -1,17 +1,19 @@
 # Spec
-## Version: 1.1.0
-## Last updated: 2026-04-09 – Added Advanced Branching System
+## Version: 1.2.0
+## Last updated: 2026-04-09 – Added Inline Stash Visualization
 ## Project: GitKit
 
 Detailed technical specifications for the GitKit Manager App.
 
 ### Core Features
 - Committing & Staging (working tree diff, stage/unstage, commit)
-- Commit Graph Visualization (GitKraken Style using Canvas/SVG, Manhattan routing)
+- Commit Graph Visualization:
+    - GitKraken Style using Manhattan routing.
+    - **Inline Stash Visualization**:
+        - Square nodes with dashed primary borders.
+        - L-shaped dashed paths connecting stashes to base commits.
+        - Virtual row injection for stashes above their base commits.
 - Branch Management (list, checkout, advanced creation, remote tracking)
-- Advanced Branch Creation:
-    - Debounced server-side validation.
-    - Automated working tree check and stashing integration.
-    - Flexible creation modes: Local, Push-to-Remote, Remote-Tracking.
+- Advanced Branch Creation (validation, auto-stash, multiple modes)
 - Remote Operations (Fetch, Pull, Push)
-- Stash Visualization (List, apply, drop, automatic stashing for branch switching)
+- Stash Visualization (List, apply, drop, inline graph tracking)
