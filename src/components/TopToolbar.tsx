@@ -7,7 +7,7 @@ import { pullRepo, pushRepo, fetchAllRepo, createStash, popStash, undoLastCommit
 import { CreateBranchDialog } from "./CreateBranchDialog";
 
 export function TopToolbar() {
-  const { activeRepoPath, isLoadingRepo } = useAppStore();
+  const { activeRepoPath, isLoadingRepo, repoStatus } = useAppStore();
   const [fetching, setFetching] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
@@ -56,8 +56,8 @@ export function TopToolbar() {
         {/* Fetch / Pull / Push */}
         <div className="flex items-center space-x-4 text-[#58a6ff]">
           <ToolbarButton icon={<Download size={18} />} label="Fetch" onClick={handleFetch} loading={fetching} />
-          <ToolbarButton icon={<ArrowDown size={18} />} label="Pull" onClick={handlePull} loading={pulling} />
-          <ToolbarButton icon={<ArrowUp size={18} />} label="Push" onClick={handlePush} loading={pushing} />
+          <ToolbarButton icon={<ArrowDown size={18} />} label="Pull" onClick={handlePull} loading={pulling} count={repoStatus?.behind || 0} />
+          <ToolbarButton icon={<ArrowUp size={18} />} label="Push" onClick={handlePush} loading={pushing} count={repoStatus?.ahead || 0} />
         </div>
 
         <div className="w-px h-6 bg-[#30363d]" />
@@ -209,16 +209,37 @@ function RepoSelector() {
   );
 }
 
-function ToolbarButton({ icon, label, disabled = false, loading = false, onClick }: { icon: React.ReactNode, label: string, disabled?: boolean, loading?: boolean, onClick?: () => void }) {
+function ToolbarButton({ 
+  icon, 
+  label, 
+  disabled = false, 
+  loading = false, 
+  onClick,
+  count = 0
+}: { 
+  icon: React.ReactNode, 
+  label: string, 
+  disabled?: boolean, 
+  loading?: boolean, 
+  onClick?: () => void,
+  count?: number
+}) {
   const isDisabled = disabled || loading;
   return (
     <div 
       onClick={() => !isDisabled && onClick?.()}
-      className={`flex flex-col items-center justify-center cursor-pointer group ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
        <div className={`text-slate-300 ${!isDisabled && 'group-hover:text-white transition-colors'}`}>
          {loading ? <Loader2 size={18} className="animate-spin" /> : icon}
        </div>
+       
+       {count > 0 && (
+         <div className="absolute -top-1.5 -right-2 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-[#1c2128] shadow-sm transform scale-90">
+           {count}
+         </div>
+       )}
+
        <span className="text-[10px] text-slate-500 mt-0.5">{label}</span>
     </div>
   );

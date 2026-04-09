@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from "./store";
-import { loadRepo, restoreAppState } from "./lib/repo";
+import { loadRepo, restoreAppState, refreshActiveRepoStatus } from "./lib/repo";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { TopTabBar } from "./components/TopTabBar";
 import { TopToolbar } from "./components/TopToolbar";
@@ -26,8 +26,16 @@ function App() {
       const paths = event.payload as string[];
       if (paths.length > 0) await loadRepo(paths[0]);
     });
+
+    // Auto-refresh status when window is focused
+    const handleFocus = () => {
+      refreshActiveRepoStatus();
+    };
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       unlisten.then(f => f());
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

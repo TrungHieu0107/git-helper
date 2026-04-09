@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 1.5.0
-## Last updated: 2026-04-09 – Fetch All Feature
+## Version: 1.7.1
+## Last updated: 2026-04-10 – Performance Optimization & UI Polish
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -40,6 +40,8 @@
 - 2026-04-09: Persistent Sessions — added a Rust-based persistence layer to save and restore open repository tabs and the active tab ID across application reloads (Ctrl+R) and restarts. Created `app_state.json` in the app data directory to store the session state.
 - 2026-04-09: App Startup Fix — resolved `ReferenceError: restoreAppState is not defined` by adding the missing import to `App.tsx`.
 - 2026-04-09: Fetch All Remotes — implemented a "Fetch" button that executes `git fetch --all`. Added a new Rust command `fetch_all_remotes` and integrated it into the toolbar. The app automatically refreshes the commit graph after fetching.
+- 2026-04-09: Auto-Refresh on Focus — added a light-weight status refresh mechanism that triggers whenever the application window gains focus. This keeps the staged/unstaged file lists up-to-date with external changes automatically.
+- 2026-04-09: Sync Counts & Logic Fixes — implemented ahead/behind commit counts on the Pull/Push buttons. Fixed a missing import for `refreshActiveRepoStatus` and resolved a Monaco disposal error by adding a unique key to the Diff Editor.
 
 # Project Status Summary
 The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing, Advanced Branching, and Inline Stash visualization. Users can see stashes attached to their base commits via dashed L-shaped paths. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent additions include real-time name validation, smart auto-stashing, and right-click context menus. Other features include a dynamic Repository Selector, infinite scrolling, and a Monaco-powered Diff Viewer.

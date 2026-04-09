@@ -432,6 +432,24 @@ export async function undoLastCommit() {
   }
 }
 
+export async function refreshActiveRepoStatus() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  
+  try {
+    const status = await invoke<FileStatus[]>('get_status', { repoPath: path });
+    const repoStatus = await invoke<RepoStatus>('get_repo_status', { path });
+    
+    useAppStore.setState({ 
+      unstagedFiles: status.filter(f => f.status === 'unstaged' || f.status === 'untracked' || f.status === 'conflicted'),
+      stagedFiles: status.filter(f => f.status === 'staged'),
+      repoStatus 
+    });
+  } catch (e) {
+    console.error('Failed to refresh status on focus:', e);
+  }
+}
+
 export async function openTerminal() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;

@@ -1,9 +1,20 @@
 # Changelog
-## Version: 1.5.0
-## Last updated: 2026-04-09 – Fetch All Feature
+## Version: 1.7.0
+## Last updated: 2026-04-09 – Sync Counts & Bug Fixes
 ## Project: GitKit
 
 All notable changes to this project will be documented in this file.
+
+## [1.7.0] - 2026-04-09
+### Added
+- **Sync Counts**: The Pull and Push buttons now display the number of commits your local branch is ahead of or behind its upstream remote.
+### Fixed
+- **App Startup**: Resolved a `ReferenceError` preventing the auto-refresh logic from running.
+- **Monaco Editor**: Fixed a critical "TextModel disposed" error that occurred when switching rapidly between file diffs.
+
+## [1.6.0] - 2026-04-09
+### Added
+- **Auto-Refresh on Focus**: The application now automatically reloads the list of staged and unstaged files whenever you switch back to the application window. This ensures your workspace is always in sync with changes made in external tools or the terminal.
 
 ## [1.5.0] - 2026-04-09
 ### Added

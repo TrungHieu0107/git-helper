@@ -223,47 +223,58 @@ export function MainDiffView() {
         </div>
       </div>
 
-      {/* Editor Content */}
-      <div className="flex-1 relative">
-        {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#8b949e] gap-3">
+      {/* Editor Content Area */}
+      <div className="flex-1 relative overflow-hidden">
+        
+        {/* Monaco Diff Editor - Always mounted to prevent disposal errors */}
+        {!isBinary && (
+          <DiffEditor
+            original={oldContent || ""}
+            modified={newContent || ""}
+            language={language}
+            theme="vs-dark"
+            onMount={handleEditorMount}
+            options={{
+              renderSideBySide: isSplitMode,
+              readOnly: true,
+              minimap: { enabled: false },
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+              fontSize: 12,
+              scrollBeyondLastLine: false,
+              renderOverviewRuler: false,
+              ignoreTrimWhitespace: false,
+              wordWrap: "off",
+              useInlineViewWhenSpaceIsLimited: false,
+              hideUnchangedRegions: {
+                enabled: !isFullFile,
+                revealLineCount: 5,
+                minimumLineCount: 3,
+                contextLineCount: 3,
+              }
+            }}
+          />
+        )}
+
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#8b949e] gap-3 bg-[#0d1117] z-[50]">
              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
              <span className="text-xs">Loading diff...</span>
           </div>
-        ) : error ? (
-           <div className="absolute inset-0 flex items-center justify-center text-red-400 p-6 text-center text-sm font-mono bg-[#0d1117]">
+        )}
+
+        {/* Error Overlay */}
+        {error && (
+           <div className="absolute inset-0 flex items-center justify-center text-red-400 p-6 text-center text-sm font-mono bg-[#0d1117] z-[60]">
               Error: {error}
            </div>
-        ) : isBinary ? (
-           <div className="absolute inset-0 flex items-center justify-center text-[#8b949e] italic text-sm">
+        )}
+
+        {/* Binary Overlay */}
+        {isBinary && (
+           <div className="absolute inset-0 flex items-center justify-center text-[#8b949e] italic text-sm bg-[#0d1117] z-[40]">
              Binary file cannot be displayed
            </div>
-        ) : (
-           <DiffEditor
-             original={oldContent || ""}
-             modified={newContent || ""}
-             language={language}
-             theme="vs-dark"
-             onMount={handleEditorMount}
-             options={{
-               renderSideBySide: isSplitMode,
-               readOnly: true,
-               minimap: { enabled: false },
-               fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-               fontSize: 12,
-               scrollBeyondLastLine: false,
-               renderOverviewRuler: false,
-               ignoreTrimWhitespace: false, // Git cares about whitespace
-               wordWrap: "off",
-               useInlineViewWhenSpaceIsLimited: false,
-               hideUnchangedRegions: {
-                 enabled: !isFullFile,
-                 revealLineCount: 5,
-                 minimumLineCount: 3,
-                 contextLineCount: 3,
-               }
-             }}
-           />
         )}
       </div>
 
