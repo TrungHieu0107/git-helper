@@ -33,6 +33,8 @@ pub fn run() {
             commands::stubs::list_branches,
             commands::stubs::list_stashes,
             commands::stubs::create_stash,
+            commands::stubs::check_stash_preconditions,
+            commands::stubs::apply_stash,
             commands::stubs::pop_stash,
             commands::stubs::drop_stash,
             commands::remote::fetch_remote,

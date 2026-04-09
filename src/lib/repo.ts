@@ -102,7 +102,11 @@ export async function loadRepo(path: string) {
     // We fetch these even if they are stubs for now
     const branches = await invoke<BranchInfo[]>('list_branches', { repoPath: path });
     const log = await invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0 });
-    const stashes = await invoke<StashEntry[]>('list_stashes', { repoPath: path });
+    const backendStashes = await invoke<any[]>('list_stashes', { repoPath: path });
+    const stashes = backendStashes.map(s => ({
+      ...s,
+      stackIndex: s.index
+    }));
     const fileStatuses = await invoke<FileStatus[]>('get_status', { repoPath: path });
 
     const stagedFiles = fileStatuses.filter(f => f.status === 'staged');
@@ -251,16 +255,79 @@ export async function createStash() {
   }
 }
 
-export async function popStash(index: number = 0) {
+export async function applyStash(stackIndex: number) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  
+
   try {
-    await invoke('pop_stash', { repoPath: path, index });
-    await loadRepo(path);
-    toast.success("Applied stash");
+    // 1. Precondition Check
+    const state = await invoke<RepoState>('check_stash_preconditions', { repoPath: path });
+    if (state !== 'Clean') {
+      const errorMsg = state === 'HasConflicts' 
+        ? "Working tree already has conflicts. Resolve them first."
+        : `Repository is in a ${state} state. Resolve it first.`;
+      toast.error(errorMsg);
+      return;
+    }
+
+    // 2. Perform Apply
+    const result = await invoke<StashApplyResult>('apply_stash', { repoPath: path, index: stackIndex });
+    
+    await loadRepo(path); // Refresh UI to show applied changes
+
+    if (result.type === 'Conflict') {
+      // Handle Conflicts
+      useAppStore.setState({ stashConflict: { files: result.data.files, index: stackIndex, isPop: false } });
+      toast.warning("Stash applied with conflicts. Please resolve them manually.");
+    } else {
+      toast.success("Applied stash successfully");
+    }
+  } catch (e) {
+    toast.error(`Apply stash failed: ${e}`);
+  }
+}
+
+export async function popStash(stackIndex: number) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    // 1. Precondition Check
+    const state = await invoke<RepoState>('check_stash_preconditions', { repoPath: path });
+    if (state !== 'Clean') {
+      const errorMsg = state === 'HasConflicts' 
+        ? "Working tree already has conflicts. Resolve them first."
+        : `Repository is in a ${state} state. Resolve it first.`;
+      toast.error(errorMsg);
+      return;
+    }
+
+    // 2. Perform Pop (Atomic apply + conditional drop on backend)
+    const result = await invoke<StashApplyResult>('pop_stash', { repoPath: path, index: stackIndex });
+    
+    await loadRepo(path); // Refresh UI
+
+    if (result.type === 'Conflict') {
+      useAppStore.setState({ stashConflict: { files: result.data.files, index: stackIndex, isPop: true } });
+      toast.warning("Conflicts detected. Stash was applied but NOT dropped.");
+    } else {
+      toast.success("Popped stash successfully");
+    }
   } catch (e) {
     toast.error(`Pop stash failed: ${e}`);
+  }
+}
+
+export async function dropStash(stackIndex: number) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    await invoke('drop_stash', { repoPath: path, index: stackIndex });
+    await loadRepo(path);
+    toast.success("Dropped stash entry");
+  } catch (e) {
+    toast.error(`Drop stash failed: ${e}`);
   }
 }
 

@@ -11,6 +11,7 @@ import { RightPanel } from "./components/RightPanel";
 import { MainDiffView } from "./components/MainDiffView";
 import { CheckoutAlert } from "./components/CheckoutAlert";
 import { DiscardAlert } from "./components/DiscardAlert";
+import { StashAlerts } from "./components/StashAlerts";
 import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
@@ -64,6 +65,7 @@ function App() {
 
       <CheckoutAlert />
       <DiscardAlert />
+      <StashAlerts />
       <ToastContainer />
     </div>
   );

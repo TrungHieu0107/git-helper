@@ -85,6 +85,42 @@ pub fn list_branches(repo_path: String) -> Result<Vec<BranchInfo>, String> {
     Ok(branches)
 }
 
+#[derive(Serialize)]
+#[serde(tag = "type", content = "data")]
+pub enum StashApplyResult {
+    Success,
+    Conflict { files: Vec<String> },
+}
+
+#[derive(Serialize)]
+pub enum RepoState {
+    Clean,
+    Merging,
+    Rebasing,
+    CherryPicking,
+    HasConflicts,
+}
+
+#[tauri::command]
+pub fn check_stash_preconditions(repo_path: String) -> Result<RepoState, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    let state = repo.state();
+    match state {
+        git2::RepositoryState::Merge => return Ok(RepoState::Merging),
+        git2::RepositoryState::Rebase | git2::RepositoryState::RebaseInteractive | git2::RepositoryState::RebaseMerge => return Ok(RepoState::Rebasing),
+        git2::RepositoryState::CherryPick | git2::RepositoryState::CherryPickSequence => return Ok(RepoState::CherryPicking),
+        _ => {}
+    }
+
+    let index = repo.index().map_err(|e| e.to_string())?;
+    if index.has_conflicts() {
+        return Ok(RepoState::HasConflicts);
+    }
+
+    Ok(RepoState::Clean)
+}
+
 #[tauri::command]
 pub fn list_stashes(repo_path: String) -> Result<Vec<StashEntry>, String> {
     let mut repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
@@ -130,11 +166,60 @@ pub fn create_stash(repo_path: String, message: Option<String>) -> Result<(), St
     Ok(())
 }
 
+fn get_conflicts(repo: &Repository) -> Result<Vec<String>, String> {
+    let index = repo.index().map_err(|e| e.to_string())?;
+    let conflicted_files: Vec<String> = index
+        .iter()
+        .filter(|entry| (entry.flags & 0x3000) >> 12 != 0)
+        .map(|entry| String::from_utf8_lossy(&entry.path).to_string())
+        .collect();
+    
+    // De-duplicate paths (conflicts have multiple entries per path)
+    let mut unique_conflicts = conflicted_files;
+    unique_conflicts.sort();
+    unique_conflicts.dedup();
+    
+    Ok(unique_conflicts)
+}
+
 #[tauri::command]
-pub fn pop_stash(repo_path: String, index: usize) -> Result<(), String> {
+pub fn apply_stash(repo_path: String, index: usize) -> Result<StashApplyResult, String> {
     let mut repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
-    repo.stash_pop(index, None).map_err(|e| e.to_string())?;
-    Ok(())
+    
+    // Perform apply
+    repo.stash_apply(index, None).map_err(|e| e.to_string())?;
+    
+    // Check for conflicts manually as libgit2 returns Ok(()) even with conflicts
+    let conflicted_files = get_conflicts(&repo)?;
+    
+    if conflicted_files.is_empty() {
+        Ok(StashApplyResult::Success)
+    } else {
+        Ok(StashApplyResult::Conflict { files: conflicted_files })
+    }
+}
+
+#[tauri::command]
+pub fn pop_stash(repo_path: String, index: usize) -> Result<StashApplyResult, String> {
+    let mut repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // libgit2 stash_pop is NOT what we want if we want to check conflicts before dropping.
+    // However, stash_pop in libgit2 returns Ok(()) and automatically drops if successful?
+    // Actually, libgit2's stash_pop will drop the stash even if there are merge conflicts.
+    // TO BE SAFE: We apply first, check conflicts, and only THEN drop.
+    
+    repo.stash_apply(index, None).map_err(|e| e.to_string())?;
+    
+    let conflicted_files = get_conflicts(&repo)?;
+    
+    if conflicted_files.is_empty() {
+        // No conflicts -> Drop the stash
+        repo.stash_drop(index).map_err(|e| e.to_string())?;
+        Ok(StashApplyResult::Success)
+    } else {
+        // Conflicts exist -> Do NOT drop the stash (it's safe for the user to try again after resolving)
+        Ok(StashApplyResult::Conflict { files: conflicted_files })
+    }
 }
 
 #[tauri::command]

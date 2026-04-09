@@ -18,6 +18,12 @@ export type CheckoutError =
   | { type: 'DetachedHead', data: { oid: string } }
   | { type: 'Generic', data: { message: string } };
 
+export type StashApplyResult = 
+  | { type: 'Success' }
+  | { type: 'Conflict', data: { files: string[] } };
+
+export type RepoState = 'Clean' | 'Merging' | 'Rebasing' | 'CherryPicking' | 'HasConflicts';
+
 export interface RepoInfo {
     path: string;
     name: string;
@@ -66,7 +72,7 @@ export interface CommitNode {
 
 export type BranchInfo = any;
 export interface StashEntry {
-    index: number;
+    stackIndex: number;
     message: string;
     oid: string;
     parent_oid: string;
@@ -129,6 +135,8 @@ interface AppStore {
   isLoadingMore: boolean;
   confirmCheckoutTo: string | null;
   confirmDiscardAll: boolean;
+  confirmStashDrop: StashEntry | null;
+  stashConflict: { files: string[], index: number, isPop: boolean } | null;
   checkoutError: CheckoutError | null;
   toasts: Toast[];
   commitSearchInput: string;
@@ -161,6 +169,8 @@ export const useAppStore = create<AppStore>(() => ({
   isLoadingMore: false,
   confirmCheckoutTo: null,
   confirmDiscardAll: false,
+  confirmStashDrop: null,
+  stashConflict: null,
   checkoutError: null,
   toasts: [],
   commitSearchInput: '',
