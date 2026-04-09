@@ -92,3 +92,84 @@ pub fn push_remote(repo_path: String, remote: String) -> Result<(), String> {
         
     Ok(())
 }
+
+// ── Push Specific Branch ─────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn push_branch_to_remote(
+    repo_path: String,
+    branch_name: String,
+    remote: String,
+    set_upstream: bool,
+) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let mut remote_obj = repo.find_remote(&remote).map_err(|e| e.to_string())?;
+
+    let mut po = PushOptions::new();
+    po.remote_callbacks(setup_callbacks());
+
+    let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
+    remote_obj.push(&[&refspec], Some(&mut po))
+        .map_err(|e| e.to_string())?;
+
+    // Set upstream tracking if requested
+    if set_upstream {
+        let mut branch = repo
+            .find_branch(&branch_name, git2::BranchType::Local)
+            .map_err(|e| e.to_string())?;
+        let upstream_ref = format!("{}/{}", remote, branch_name);
+        branch
+            .set_upstream(Some(&upstream_ref))
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+// ── List Remote Branches ─────────────────────────────────────────────────────
+
+#[derive(serde::Serialize)]
+pub struct RemoteBranchInfo {
+    pub name: String,
+    pub remote: String,
+    pub oid: String,
+}
+
+#[tauri::command]
+pub fn list_remote_branches(repo_path: String) -> Result<Vec<RemoteBranchInfo>, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let mut branches = Vec::new();
+
+    if let Ok(iter) = repo.branches(Some(git2::BranchType::Remote)) {
+        for branch_result in iter {
+            if let Ok((branch, _)) = branch_result {
+                let full_name = branch.name().ok().flatten().unwrap_or("").to_string();
+                // Skip HEAD refs
+                if full_name.ends_with("/HEAD") {
+                    continue;
+                }
+                // Extract remote name and branch name (e.g. "origin/main" -> remote="origin", name="main")
+                let parts: Vec<&str> = full_name.splitn(2, '/').collect();
+                let (remote_name, branch_name) = if parts.len() == 2 {
+                    (parts[0].to_string(), parts[1].to_string())
+                } else {
+                    ("origin".to_string(), full_name.clone())
+                };
+
+                let oid = branch
+                    .get()
+                    .target()
+                    .map(|o| o.to_string())
+                    .unwrap_or_default();
+
+                branches.push(RemoteBranchInfo {
+                    name: branch_name,
+                    remote: remote_name,
+                    oid,
+                });
+            }
+        }
+    }
+
+    Ok(branches)
+}

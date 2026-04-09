@@ -382,17 +382,164 @@ pub fn safe_checkout(repo_path: String, branch_name: String) -> Result<SafeCheck
     }
 }
 
+// ── Branch Validation ─────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BranchValidation {
+    pub valid: bool,
+    pub error: Option<String>,
+    pub suggestion: Option<String>,
+}
+
+fn validate_name(name: &str) -> BranchValidation {
+    let name = name.trim();
+    if name.is_empty() {
+        return BranchValidation { valid: false, error: Some("Branch name cannot be empty".into()), suggestion: None };
+    }
+    // No spaces, tildes, carets, colons, question marks, asterisks, open-brackets, backslashes, control chars
+    if name.chars().any(|c| matches!(c, ' ' | '~' | '^' | ':' | '?' | '*' | '[' | '\\') || c.is_control()) {
+        return BranchValidation { valid: false, error: Some("Branch name contains invalid characters".into()), suggestion: None };
+    }
+    if name.starts_with('/') || name.starts_with('.') {
+        return BranchValidation { valid: false, error: Some("Branch name cannot start with / or .".into()), suggestion: None };
+    }
+    if name.ends_with('/') || name.ends_with(".lock") || name.ends_with('.') {
+        return BranchValidation { valid: false, error: Some("Invalid branch name".into()), suggestion: None };
+    }
+    if name.contains("..") || name.contains("//") {
+        return BranchValidation { valid: false, error: Some("Invalid branch name".into()), suggestion: None };
+    }
+    if name.contains('@') && name.contains('{') {
+        return BranchValidation { valid: false, error: Some("Branch name cannot contain @{".into()), suggestion: None };
+    }
+    BranchValidation { valid: true, error: None, suggestion: None }
+}
+
 #[tauri::command]
-pub fn create_branch(repo_path: String, name: String, start_point: Option<String>) -> Result<(), String> {
+pub fn validate_branch_name(repo_path: String, name: String) -> Result<BranchValidation, String> {
+    let name = name.trim().to_string();
+    let mut result = validate_name(&name);
+    if !result.valid {
+        return Ok(result);
+    }
+
+    // Check for duplicate against local branches
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    if repo.find_branch(&name, git2::BranchType::Local).is_ok() {
+        // Suggest alternative
+        let mut suffix = 2;
+        loop {
+            let candidate = format!("{}-{}", name, suffix);
+            if repo.find_branch(&candidate, git2::BranchType::Local).is_err() {
+                result.valid = false;
+                result.error = Some("Branch already exists".into());
+                result.suggestion = Some(candidate);
+                return Ok(result);
+            }
+            suffix += 1;
+            if suffix > 100 { break; }
+        }
+        result.valid = false;
+        result.error = Some("Branch already exists".into());
+        return Ok(result);
+    }
+
+    Ok(result)
+}
+
+// ── Working Tree Check ───────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct WorkingTreeCheck {
+    pub has_staged: bool,
+    pub has_unstaged: bool,
+    pub has_untracked: bool,
+    pub is_detached: bool,
+    pub head_branch: Option<String>,
+    pub head_oid: String,
+}
+
+#[tauri::command]
+pub fn check_working_tree(repo_path: String) -> Result<WorkingTreeCheck, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(true).recurse_untracked_dirs(true).include_ignored(false);
+    let statuses = repo.statuses(Some(&mut opts)).map_err(|e| e.to_string())?;
+    
+    let mut has_staged = false;
+    let mut has_unstaged = false;
+    let mut has_untracked = false;
+    
+    for entry in statuses.iter() {
+        let s = entry.status();
+        if s.intersects(git2::Status::INDEX_NEW | git2::Status::INDEX_MODIFIED | git2::Status::INDEX_DELETED | git2::Status::INDEX_RENAMED | git2::Status::INDEX_TYPECHANGE) {
+            has_staged = true;
+        }
+        if s.intersects(git2::Status::WT_MODIFIED | git2::Status::WT_DELETED | git2::Status::WT_TYPECHANGE | git2::Status::WT_RENAMED) {
+            has_unstaged = true;
+        }
+        if s == git2::Status::WT_NEW {
+            has_untracked = true;
+        }
+    }
+    
+    let is_detached = repo.head_detached().unwrap_or(false);
+    let (head_branch, head_oid) = if let Ok(head) = repo.head() {
+        let branch = head.shorthand().map(|s| s.to_string());
+        let oid = head.target().map(|o| o.to_string()).unwrap_or_default();
+        (if is_detached { None } else { branch }, oid)
+    } else {
+        (None, String::new())
+    };
+    
+    Ok(WorkingTreeCheck {
+        has_staged,
+        has_unstaged,
+        has_untracked,
+        is_detached,
+        head_branch,
+        head_oid,
+    })
+}
+
+// ── Create Branch (Upgraded) ─────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CreateBranchResult {
+    pub name: String,
+    pub oid: String,
+    pub short_oid: String,
+}
+
+#[tauri::command]
+pub fn create_branch(repo_path: String, name: String, start_point: Option<String>) -> Result<CreateBranchResult, String> {
+    let name = name.trim().to_string();
+    
+    // Validate first
+    let validation = validate_name(&name);
+    if !validation.valid {
+        return Err(validation.error.unwrap_or_else(|| "Invalid branch name".into()));
+    }
+    
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // Check duplicate
+    if repo.find_branch(&name, git2::BranchType::Local).is_ok() {
+        return Err(format!("Branch '{}' already exists", name));
+    }
     
     let target = match start_point {
         Some(s) => repo.revparse_single(&s).map_err(|e| e.to_string())?.peel_to_commit().map_err(|e| e.to_string())?,
         None => repo.head().map_err(|e| e.to_string())?.peel_to_commit().map_err(|e| e.to_string())?,
     };
+    
+    let oid = target.id().to_string();
+    let short_oid = oid[..7.min(oid.len())].to_string();
 
     repo.branch(&name, &target, false).map_err(|e| e.to_string())?;
-    Ok(())
+    
+    Ok(CreateBranchResult { name, oid, short_oid })
 }
 
 #[tauri::command]

@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppStore, CommitNode } from '../store';
 import { loadMoreCommits, selectCommitDetail, safeSwitchBranch } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { Monitor, Cloud, ChevronDown } from 'lucide-react';
+import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
 
 // ── Constants ────────────────────────────────────────────────────────
 const ROW_H = 36;
@@ -251,6 +252,17 @@ export function CommitGraph() {
     { label: 80, hash: 50, author: 60 },
   );
 
+  // ── Context Menu State ──────────────────────────────────────────
+  const [ctxMenu, setCtxMenu] = useState<{ commit: CommitNode; pos: ContextMenuPosition } | null>(null);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, commit: CommitNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ commit, pos: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  const closeContextMenu = useCallback(() => setCtxMenu(null), []);
+
   useEffect(() => {
     if (commitLog?.length)
       console.log('GRAPH DEBUG:', commitLog.slice(0, 5).map(c => ({ oid: c.short_oid, lane: c.lane, edges: c.edges, parents: c.parents.map(p => p.slice(0, 7)) })));
@@ -381,7 +393,8 @@ export function CommitGraph() {
                 onClick={() => {
                   setSel(row);
                   selectCommitDetail(n.oid);
-                }} 
+                }}
+                onContextMenu={(e) => handleContextMenu(e, n)}
                 onMouseEnter={() => setHov(row)} 
                 onMouseLeave={() => setHov(null)}>
                 {/* Branch labels */}
@@ -416,6 +429,15 @@ export function CommitGraph() {
           )}
         </div>
       </div>
+
+      {/* ═══ Context Menu ═══ */}
+      {ctxMenu && (
+        <CommitContextMenu
+          commit={ctxMenu.commit}
+          position={ctxMenu.pos}
+          onClose={closeContextMenu}
+        />
+      )}
     </main>
   );
 }

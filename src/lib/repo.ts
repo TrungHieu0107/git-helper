@@ -2,6 +2,35 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail, CheckoutError } from '../store';
 import { toast } from './toast';
 
+// ── Branch Validation Types ──────────────────────────────────────────────────
+
+export interface BranchValidation {
+  valid: boolean;
+  error: string | null;
+  suggestion: string | null;
+}
+
+export interface WorkingTreeCheck {
+  has_staged: boolean;
+  has_unstaged: boolean;
+  has_untracked: boolean;
+  is_detached: boolean;
+  head_branch: string | null;
+  head_oid: string;
+}
+
+export interface CreateBranchResult {
+  name: string;
+  oid: string;
+  short_oid: string;
+}
+
+export interface RemoteBranchInfo {
+  name: string;
+  remote: string;
+  oid: string;
+}
+
 // ── Safe Checkout ────────────────────────────────────────────────────────────
 
 export interface SafeCheckoutResult {
@@ -207,16 +236,75 @@ export async function popStash(index: number = 0) {
   }
 }
 
-export async function createBranch(name: string, startPoint?: string) {
+export async function createBranch(name: string, startPoint?: string): Promise<CreateBranchResult | null> {
   const path = useAppStore.getState().activeRepoPath;
-  if (!path) return;
+  if (!path) return null;
   
   try {
-    await invoke('create_branch', { repo_path: path, name, start_point: startPoint });
+    const result = await invoke<CreateBranchResult>('create_branch', { repoPath: path, name, startPoint });
     await loadRepo(path);
     toast.success(`Created branch "${name}"`);
+    return result;
   } catch (e) {
     toast.error(`Failed to create branch: ${e}`);
+    return null;
+  }
+}
+
+export async function validateBranchName(name: string): Promise<BranchValidation> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return { valid: false, error: 'No repo open', suggestion: null };
+  return await invoke<BranchValidation>('validate_branch_name', { repoPath: path, name });
+}
+
+export async function checkWorkingTree(): Promise<WorkingTreeCheck | null> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return null;
+  return await invoke<WorkingTreeCheck>('check_working_tree', { repoPath: path });
+}
+
+export async function pushBranchToRemote(branchName: string, remote = 'origin', setUpstream = true): Promise<boolean> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return false;
+  try {
+    await invoke('push_branch_to_remote', { repoPath: path, branchName, remote, setUpstream });
+    toast.success(`Pushed "${branchName}" to ${remote}`);
+    return true;
+  } catch (e) {
+    toast.error(`Push failed: ${e}`);
+    return false;
+  }
+}
+
+export async function listRemoteBranches(): Promise<RemoteBranchInfo[]> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return [];
+  return await invoke<RemoteBranchInfo[]>('list_remote_branches', { repoPath: path });
+}
+
+export async function fetchAndListRemote(): Promise<RemoteBranchInfo[]> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return [];
+  try {
+    toast.info('Fetching remote branches...');
+    await invoke('fetch_remote', { repoPath: path, remote: 'origin' });
+    const branches = await listRemoteBranches();
+    return branches;
+  } catch (e) {
+    toast.error(`Fetch failed: ${e}`);
+    return [];
+  }
+}
+
+export async function autoStash(branchName: string): Promise<boolean> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return false;
+  try {
+    await invoke('create_stash', { repoPath: path, message: `auto-stash before create branch ${branchName}` });
+    return true;
+  } catch (e) {
+    toast.error(`Auto-stash failed: ${e}`);
+    return false;
   }
 }
 

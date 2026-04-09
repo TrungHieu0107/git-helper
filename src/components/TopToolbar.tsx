@@ -3,11 +3,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, Search, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushRepo, createStash, popStash, createBranch, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { pullRepo, pushRepo, createStash, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { CreateBranchDialog } from "./CreateBranchDialog";
 
 export function TopToolbar() {
   const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
+  const [showCreateBranch, setShowCreateBranch] = useState(false);
 
   const handlePull = async () => {
     setPulling(true);
@@ -51,10 +53,7 @@ export function TopToolbar() {
           <ToolbarButton 
             icon={<GitBranch size={18} />} 
             label="Branch" 
-            onClick={() => {
-              const name = prompt("Enter new branch name:");
-              if (name) createBranch(name);
-            }} 
+            onClick={() => setShowCreateBranch(true)} 
           />
           <ToolbarButton icon={<Archive size={18} />} label="Stash" onClick={createStash} />
           <ToolbarButton icon={<Navigation size={18} />} label="Pop" onClick={() => popStash(0)} />
@@ -78,6 +77,10 @@ export function TopToolbar() {
            <Search size={18} />
         </div>
       </div>
+
+      {showCreateBranch && (
+        <CreateBranchDialog onClose={() => setShowCreateBranch(false)} />
+      )}
 
     </div>
   );

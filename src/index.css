@@ -72,3 +72,153 @@ body {
 .scrollbar-autohide:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.22);
 }
+
+/* ── Commit Context Menu ─────────────────────────────────────────── */
+.commit-context-menu {
+  background: rgba(22, 27, 34, 0.97);
+  backdrop-filter: blur(12px) saturate(1.6);
+  border: 1px solid rgba(48, 54, 61, 0.8);
+  border-radius: 10px;
+  min-width: 220px;
+  max-width: 300px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 8px 30px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: ctx-menu-in 0.12s ease-out;
+  user-select: none;
+}
+
+.commit-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #c9d1d9;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  outline: none;
+  white-space: nowrap;
+}
+
+.commit-context-menu-item:hover {
+  background: rgba(56, 139, 253, 0.15);
+  color: #e6edf3;
+}
+
+.commit-context-menu-item:active {
+  background: rgba(56, 139, 253, 0.25);
+}
+
+@keyframes ctx-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Create Branch Dialog ────────────────────────────────────────── */
+
+.create-branch-dialog {
+  background: rgba(22, 27, 34, 0.98);
+  backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid rgba(48, 54, 61, 0.9);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: dialog-in 0.18s ease-out;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Segmented Control */
+.branch-segmented-control {
+  display: flex;
+  gap: 2px;
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.branch-segmented-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8b949e;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.branch-segmented-item:hover {
+  color: #c9d1d9;
+  background: rgba(48, 54, 61, 0.4);
+}
+
+.branch-segmented-item.active {
+  color: #e6edf3;
+  background: #21262d;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Source Dropdown */
+.branch-source-dropdown {
+  background: rgba(13, 17, 23, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: dropdown-in 0.12s ease-out;
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Warning Banner */
+.branch-warning-banner {
+  background: rgba(210, 153, 34, 0.08);
+  border: 1px solid rgba(210, 153, 34, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+}

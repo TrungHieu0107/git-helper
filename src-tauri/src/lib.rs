@@ -13,6 +13,8 @@ pub fn run() {
             commands::repo::checkout_branch,
             commands::repo::safe_checkout,
             commands::repo::create_branch,
+            commands::repo::validate_branch_name,
+            commands::repo::check_working_tree,
             commands::repo::undo_last_commit,
             commands::repo::open_terminal,
             commands::status::get_status,
@@ -34,6 +36,8 @@ pub fn run() {
             commands::remote::fetch_remote,
             commands::remote::pull_remote,
             commands::remote::push_remote,
+            commands::remote::push_branch_to_remote,
+            commands::remote::list_remote_branches,
             commands::log::get_log,
         ])
         .run(tauri::generate_context!())

@@ -1,6 +1,6 @@
 # GitManager App Memory
 ## Version: 1.0.0
-## Last updated: 2026-04-05 - Manhattan-Routed Commit Graph
+## Last updated: 2026-04-09 - Commit Row Context Menu
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -33,6 +33,7 @@
 - 2026-04-06: Implemented branch label grouping in the commit graph. Now only shows one primary branch badge per commit with a `+N` indicator if more branches/tags exist. Added an interactive hover dropdown that lists all additional branches, allowing users to trigger checkouts directly from the dropdown. 
 - 2026-04-06: Added Repository Selector to TopToolbar. Replaced static "Git Helper" logo area with a dynamic dropdown listing recent repositories. Integrated with backend `get_recent_repos` and added "Open local repository..." capability using `@tauri-apps/plugin-dialog`. This allows users to switch between multiple Git projects or add new ones without leaving the main interface.
 - 2026-04-06: Synchronized commit graph selection with the global store. Moved `selectedRowIndex` to `AppStore` to allow components like `CommitDetailPanel` to update the graph highlight. Enabled the **View Changes** button in the commit detail header to switch the UI back to the **WIP** (Working Tree) state by setting index to 0 and clearing commit details.
+- 2026-04-09: Advanced Branching System — replaced legacy branch creation with a robust, secondary-stage dialog (CreateBranchDialog.tsx). Implemented 3 creation modes: **Local Only**, **Create + Push** (with upstream tracking), and **From Remote** (searchable fetch tracking). Backend upgrades in `repo.rs` and `remote.rs` include `validate_branch_name` (debounced real-time naming/duplicate check), `check_working_tree` (dirty tree detection for auto-stash workflow), and `list_remote_branches`. Integrated the new dialog into `TopToolbar` and `CommitContextMenu` with glassmorphism styling and success state cards.
 
 # Project Status Summary
-The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing and smooth corners. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent updates include a dynamic Repository Selector in the TopToolbar for quick project switching, a hierarchical branch tree, infinite scrolling, and a global Monaco-powered Diff Viewer replacing the commit graph when viewing file patches.
+The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing and smooth corners. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent additions include an Advanced Branching System with multi-mode creation (Local/Push/Remote tracking), real-time name validation, and smart auto-stashing. Other features include a right-click context menu on commit rows, a dynamic Repository Selector, a hierarchical branch tree, infinite scrolling, and a global Monaco-powered Diff Viewer.

@@ -12,3 +12,9 @@
 | `stage_all` | `repo_path: String` | `Result<(), String>` | Implemented |
 | `get_diff` | `repo_path: String, path: String, staged: bool` | `Result<String, String>` | Implemented |
 | `create_commit` | `repo_path: String, message: String, amend: bool` | `Result<String, String>` | Implemented |
+| `create_branch` | `repoPath: String, name: String, startPoint: Option<String>` | `Result<CreateBranchResult, String>` | Upgraded |
+| `validate_branch_name`| `repoPath: String, name: String` | `Result<BranchValidation, String>` | Implemented |
+| `check_working_tree` | `repoPath: String` | `Result<WorkingTreeCheck, String>` | Implemented |
+| `push_branch_to_remote`| `repoPath, branchName, remote, setUpstream` | `Result<(), String>` | Implemented |
+| `list_remote_branches`| `repoPath: String` | `Result<Vec<RemoteBranchInfo>, String>` | Implemented |
+| `create_stash` | `repoPath: String, message: Option<String>` | `Result<(), String>` | Implemented |

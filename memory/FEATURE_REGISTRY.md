@@ -11,6 +11,6 @@
 | Sidebar Dynamic Data | Done | Derives branch lists from commitLog refs. Removed Pull Requests/Issues dummies. Added filter, empty states, remote grouping. |
 | Commit Graph Edge Direction Fix | Done | Branch-off uses horizontal-first bezier, merge uses vertical-first bezier. Avatar fully decoupled as HTML with hue-based fallback. Edge classification via parent count. |
 | Commit Graph Bezier Fix | Done | Exact bezier control points (branch-off: C x1 27 x2 27; merge: C x1 9 x2 9). Continuous vertical lane lines through nodes. Active lanes tracked per row. Consistent SVG width. Debug log added. |
-| Phase 3: Branch Management | Pending | |
-| Phase 4: Remote Operations | Pending | |
-| Phase 5: Stash Visualization | Pending | |
+| Phase 3: Branch Management | Done | Advanced creation (validation, auto-stash), remote tracking, push-to-remote. |
+| Phase 4: Remote Operations | Partial | Push specific branch implemented. |
+| Phase 5: Stash Visualization | Partial | Auto-stashing for branch switching. |
