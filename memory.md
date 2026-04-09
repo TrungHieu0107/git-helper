@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 1.2.2
-## Last updated: 2026-04-09 – Rounded Stash Path Corners
+## Version: 1.4.1
+## Last updated: 2026-04-09 – Fixed restoreAppState Import
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -35,6 +35,10 @@
 - 2026-04-06: Synchronized commit graph selection with the global store. Moved `selectedRowIndex` to `AppStore` to allow components like `CommitDetailPanel` to update the graph highlight. Enabled the **View Changes** button in the commit detail header to switch the UI back to the **WIP** (Working Tree) state by setting index to 0 and clearing commit details.
 - 2026-04-09: Stash Lane Isolation — fixed a visual bug where stash nodes and lines overlapped with branch lines. Enhanced the backend layout engine to perform occupancy checks against `active_lanes` when placing stashes, ensuring each stash occupies a dedicated, conflict-free column.
 - 2026-04-09: Rounded Stash Corners — updated `CommitGraph.tsx` to use `roundedPath` for stash connection lines. This applies a border radius to the horizontal-to-vertical corner, making the stash visualization consistent with the rest of the commit graph.
+- 2026-04-09: Top Tab Bar & Multi-Repo Navigation — implemented a premium tabbed interface at the top of the application. Added a "Home" tab (default) and dynamic tabs for each opened repository. Updated `AppStore` and `loadRepo` to track multiple open repositories. Enhanced the "Home" view (WelcomeScreen) to display all currently open repositories as interactive cards alongside recent history.
+- 2026-04-09: Home Tab Rendering Fix — resolved a critical bug where clicking the "Home" tab resulted in a blank screen (crash). Root cause was missing imports (`Monitor` icon and `RecentRepo` type) in `WelcomeScreen.tsx`.
+- 2026-04-09: Persistent Sessions — added a Rust-based persistence layer to save and restore open repository tabs and the active tab ID across application reloads (Ctrl+R) and restarts. Created `app_state.json` in the app data directory to store the session state.
+- 2026-04-09: App Startup Fix — resolved `ReferenceError: restoreAppState is not defined` by adding the missing import to `App.tsx`.
 
 # Project Status Summary
 The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing, Advanced Branching, and Inline Stash visualization. Users can see stashes attached to their base commits via dashed L-shaped paths. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent additions include real-time name validation, smart auto-stashing, and right-click context menus. Other features include a dynamic Repository Selector, infinite scrolling, and a Monaco-powered Diff Viewer.

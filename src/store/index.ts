@@ -106,6 +106,7 @@ export interface SelectedDiff {
 
 interface AppStore {
   repos: RepoMeta[];          // list of opened repos
+  activeTabId: string;        // 'home' or repo path
   activeRepoPath: string | null;
   activeBranch: string | null;
   activeCommitOid: string | null;
@@ -138,6 +139,7 @@ interface AppStore {
 
 export const useAppStore = create<AppStore>(() => ({
   repos: [],
+  activeTabId: 'home',
   activeRepoPath: null,
   activeBranch: null,
   activeCommitOid: null,

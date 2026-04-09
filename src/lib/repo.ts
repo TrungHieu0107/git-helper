@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail, CheckoutError } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, StashEntry, FileStatus, CommitDetail, CheckoutError, RepoMeta } from '../store';
 import { toast } from './toast';
 
 // ── Branch Validation Types ──────────────────────────────────────────────────
@@ -38,6 +38,11 @@ export interface SafeCheckoutResult {
   files?: string[];
   state?: string;
   branch?: string;
+}
+
+export interface AppStateData {
+  tabs: { path: string, name: string }[];
+  active_tab: string | null;
 }
 
 /**
@@ -103,8 +108,15 @@ export async function loadRepo(path: string) {
     const stagedFiles = fileStatuses.filter(f => f.status === 'staged');
     const unstagedFiles = fileStatuses.filter(f => f.status === 'unstaged' || f.status === 'untracked' || f.status === 'conflicted');
 
+    const state = useAppStore.getState();
+    const existingRepo = state.repos.find(r => r.path === path);
+    const updatedRepos = existingRepo 
+      ? state.repos 
+      : [...state.repos, { path: info.path, name: info.name }];
+
     useAppStore.setState({
       activeRepoPath: info.path,
+      activeTabId: info.path,
       activeBranch: info.head_branch,
       repoInfo: info,
       repoStatus: status,
@@ -113,8 +125,11 @@ export async function loadRepo(path: string) {
       stashes,
       stagedFiles,
       unstagedFiles,
+      repos: updatedRepos,
       hasMoreCommits: log.length === 200,
     });
+
+    saveCurrentState();
   } catch (e) {
     useAppStore.setState({ 
       repoError: typeof e === 'string' ? e : 'Failed to open repository',
@@ -431,4 +446,70 @@ export async function selectCommitDetail(oid: string) {
     toast.error(`Failed to load commit: ${e}`);
     useAppStore.setState({ isLoadingCommitDetail: false });
   }
+}
+
+export async function switchTab(tabId: string) {
+  if (tabId === 'home') {
+    useAppStore.setState({ 
+      activeTabId: 'home',
+      activeRepoPath: null,
+      selectedDiff: null,
+      repoInfo: null
+    });
+    saveCurrentState();
+    return;
+  }
+
+  // If repo is already open, just switch tab and load its data
+  await loadRepo(tabId);
+}
+
+export function closeRepoTab(path: string) {
+  const state = useAppStore.getState();
+  const updatedRepos = state.repos.filter(r => r.path !== path);
+  
+  let newTabId = state.activeTabId;
+  if (state.activeTabId === path) {
+    newTabId = updatedRepos.length > 0 ? updatedRepos[updatedRepos.length - 1].path : 'home';
+  }
+
+  useAppStore.setState({ repos: updatedRepos, activeTabId: newTabId });
+  
+  if (newTabId === 'home') {
+    useAppStore.setState({ activeRepoPath: null, repoInfo: null, selectedDiff: null });
+  } else if (newTabId !== state.activeTabId) {
+    loadRepo(newTabId);
+  }
+  
+  saveCurrentState();
+}
+
+export async function saveCurrentState() {
+  const { repos, activeTabId } = useAppStore.getState();
+  const state: AppStateData = {
+    tabs: repos.map(r => ({ path: r.path, name: r.name })),
+    active_tab: activeTabId === 'home' ? null : activeTabId
+  };
+  try {
+    await invoke('save_app_state', { state });
+  } catch (e) {
+    console.error('Failed to save app state:', e);
+  }
+}
+
+export async function restoreAppState() {
+    try {
+        const state = await invoke<AppStateData>('get_app_state');
+        if (state.tabs.length > 0) {
+            useAppStore.setState({ repos: state.tabs });
+        }
+        
+        if (state.active_tab) {
+            await loadRepo(state.active_tab);
+        } else {
+            useAppStore.setState({ activeTabId: 'home' });
+        }
+    } catch (e) {
+        console.error('Failed to restore app state:', e);
+    }
 }

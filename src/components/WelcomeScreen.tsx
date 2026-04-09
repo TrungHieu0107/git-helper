@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderOpen, GitBranch, X, Clock } from 'lucide-react';
-import { RecentRepo } from '../store';
-import { loadRepo } from '../lib/repo';
+import { FolderOpen, GitBranch, X, Clock, Monitor } from 'lucide-react';
+import { useAppStore, RecentRepo } from '../store';
+import { loadRepo, switchTab, closeRepoTab } from '../lib/repo';
 
 export function WelcomeScreen() {
   const [recent, setRecent] = useState<RecentRepo[]>([]);
+  const repos = useAppStore(state => state.repos);
 
   useEffect(() => {
     fetchRecent();
@@ -57,36 +58,68 @@ export function WelcomeScreen() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-[#282c34] h-full text-white">
-      <div className="w-[500px] bg-[#1e2227] rounded-lg shadow-xl shadow-black/40 border border-[#3e4451] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center gap-3 p-6 border-b border-[#3e4451]">
-           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
-             <GitBranch size={28} className="text-white transform -rotate-3" />
-           </div>
-           <div>
-             <h1 className="text-2xl font-bold tracking-tight text-gray-100">GitKit</h1>
-             <p className="text-sm text-gray-400">Desktop Git Client</p>
-           </div>
+    <div className="flex-1 flex flex-col items-center py-12 bg-[#282c34] h-full text-white overflow-y-auto custom-scrollbar">
+      <div className="w-[600px] flex flex-col gap-6">
+        
+        {/* Header Block */}
+        <div className="bg-[#1e2227] rounded-lg shadow-xl shadow-black/40 border border-[#3e4451] overflow-hidden flex flex-col">
+          <div className="flex items-center gap-3 p-6 border-b border-[#3e4451]">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
+              <GitBranch size={28} className="text-white transform -rotate-3" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-100">GitKit</h1>
+              <p className="text-sm text-gray-400">Desktop Git Client</p>
+            </div>
+          </div>
+
+          <div className="p-6 flex gap-3 bg-[#21262d]/50">
+             <button 
+                onClick={pickRepo}
+                className="flex items-center justify-center gap-2 flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 transition-colors rounded-md text-sm font-semibold shadow-sm"
+             >
+                <FolderOpen size={18} />
+                Open Repository
+             </button>
+             <button 
+                onClick={() => alert('Coming soon!')}
+                className="flex items-center justify-center gap-2 flex-1 py-3 bg-[#3e4451]/50 hover:bg-[#3e4451] transition-colors rounded-md text-sm font-medium text-gray-300 shadow-sm"
+             >
+                <GitBranch size={18} />
+                Clone Repository
+             </button>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="p-6 flex flex-col gap-3 border-b border-[#3e4451] bg-[#21262d]/50">
-           <button 
-              onClick={pickRepo}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 transition-colors rounded-md text-sm font-semibold shadow-sm"
-           >
-              <FolderOpen size={18} />
-              Open Repository
-           </button>
-           <button 
-              onClick={() => alert('Coming soon!')}
-              className="flex items-center justify-center gap-2 w-full py-3 bg-[#3e4451]/50 hover:bg-[#3e4451] transition-colors rounded-md text-sm font-medium text-gray-300 shadow-sm"
-           >
-              <GitBranch size={18} />
-              Clone Repository
-           </button>
-        </div>
+        {/* Currently Open Repositories */}
+        {repos.length > 0 && (
+          <div className="bg-[#1e2227] rounded-lg shadow-xl shadow-black/40 border border-[#3e4451] overflow-hidden flex flex-col p-6 animate-in slide-in-from-bottom-2 duration-300">
+            <h2 className="text-xs font-semibold text-sky-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Monitor size={14} />
+              Currently Open
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              {repos.map(repo => (
+                <div 
+                  key={repo.path}
+                  onClick={() => switchTab(repo.path)}
+                  className="group flex flex-col p-3 rounded-lg bg-[#2c313a]/50 hover:bg-[#2c313a] border border-[#3e4451]/50 hover:border-blue-500/50 cursor-pointer transition-all relative"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold text-gray-100 truncate">{repo.name}</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); closeRepoTab(repo.path); }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
+                    >
+                      <X size={12} className="text-gray-500" />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-gray-500 truncate">{repo.path}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Recent Repos */}
         <div className="p-6 flex-1 flex flex-col min-h-0">

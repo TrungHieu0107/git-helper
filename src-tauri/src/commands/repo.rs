@@ -40,6 +40,53 @@ pub struct RecentRepo {
     pub last_opened: i64,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OpenTabData {
+    pub path: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct AppStateData {
+    pub tabs: Vec<OpenTabData>,
+    pub active_tab: Option<String>,
+}
+
+fn get_app_state_file(app: &AppHandle) -> Result<PathBuf, String> {
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    fs::create_dir_all(&path).unwrap_or_default();
+    path.push("app_state.json");
+    Ok(path)
+}
+
+#[tauri::command]
+pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
+    let file_path = get_app_state_file(&app)?;
+    if !file_path.exists() {
+        return Ok(AppStateData {
+            tabs: Vec::new(),
+            active_tab: None,
+        });
+    }
+    let content = fs::read_to_string(file_path).map_err(|e| e.to_string())?;
+    let state: AppStateData = serde_json::from_str(&content).unwrap_or(AppStateData {
+        tabs: Vec::new(),
+        active_tab: None,
+    });
+    Ok(state)
+}
+
+#[tauri::command]
+pub fn save_app_state(app: tauri::AppHandle, state: AppStateData) -> Result<(), String> {
+    let file_path = get_app_state_file(&app)?;
+    let content = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
+    fs::write(file_path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn get_recent_repos_file(app: &AppHandle) -> Result<PathBuf, String> {
     let mut path = app
         .path()
