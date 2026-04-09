@@ -45,6 +45,12 @@ export interface AppStateData {
   active_tab: string | null;
 }
 
+export interface StashUnstagedOptions {
+  message?: string;
+  includeUntracked: boolean;
+  keepIndex: boolean;
+}
+
 /**
  * Performs a pre-checkout validation against the backend.
  * Returns a structured result telling the caller what to do next.
@@ -242,16 +248,45 @@ export async function pushRepo() {
   }
 }
 
-export async function createStash() {
+export async function createStash(message?: string) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   
   try {
-    await invoke('create_stash', { repoPath: path });
+    await invoke('create_stash', { repoPath: path, message: message || null });
     await loadRepo(path);
     toast.success("Stashed changes");
   } catch (e) {
     toast.error(`Stash failed: ${e}`);
+  }
+}
+
+export async function stashUnstaged(options: StashUnstagedOptions) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    // 1. Precondition Check
+    const state = await invoke<RepoState>('check_stash_preconditions', { repoPath: path });
+    if (state !== 'Clean') {
+      toast.error(`Cannot stash: repository is in ${state} state`);
+      return;
+    }
+
+    // 2. Perform Stash Advanced
+    await invoke('stash_save_advanced', {
+      repoPath: path,
+      message: options.message || null,
+      includeUntracked: options.includeUntracked,
+      keepIndex: options.keepIndex,
+    });
+
+    await loadRepo(path); // Refresh UI
+    toast.success(options.keepIndex ? "Stashed unstaged changes" : "Stashed all changes");
+    return true;
+  } catch (e) {
+    toast.error(`Stash failed: ${e}`);
+    return false;
   }
 }
 
@@ -583,10 +618,12 @@ export function closeRepoTab(path: string) {
 }
 
 export async function saveCurrentState() {
-  const { repos, activeTabId } = useAppStore.getState();
+  const { repos, activeTabId, lastStashMode, lastIncludeUntracked } = useAppStore.getState();
   const state: AppStateData = {
     tabs: repos.map(r => ({ path: r.path, name: r.name })),
-    active_tab: activeTabId === 'home' ? null : activeTabId
+    active_tab: activeTabId === 'home' ? null : activeTabId,
+    stash_mode: lastStashMode,
+    include_untracked: lastIncludeUntracked,
   };
   try {
     await invoke('save_app_state', { state });
@@ -606,6 +643,13 @@ export async function restoreAppState() {
             await loadRepo(state.active_tab);
         } else {
             useAppStore.setState({ activeTabId: 'home' });
+        }
+
+        if (state.stash_mode) {
+          useAppStore.setState({ lastStashMode: state.stash_mode as any });
+        }
+        if (state.include_untracked !== undefined) {
+          useAppStore.setState({ lastIncludeUntracked: state.include_untracked });
         }
     } catch (e) {
         console.error('Failed to restore app state:', e);

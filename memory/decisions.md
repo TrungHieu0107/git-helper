@@ -12,4 +12,12 @@
     - Better error handling and user feedback.
 - **Status**: Active
 
+### 2026-04-09 — Use Git CLI for Advanced Stash Push
+- **Decision**: Implemented `stash_save_advanced` by invoking the `git` CLI directly via `std::process::Command` instead of using `libgit2` bindings.
+- **Reason**: `libgit2` does not natively support the `--keep-index` workflow (which is essential for stashing only unstaged changes). Invoking the CLI is the most reliable way to achieve this standard Git behavior.
+- **Consequences**:
+    - Requires `git` to be available in the system's PATH.
+    - Enables features like selective stashing and including untracked files with custom messages.
+- **Status**: Active
+
 <!-- Antigravity -->

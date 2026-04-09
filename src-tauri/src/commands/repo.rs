@@ -50,6 +50,8 @@ pub struct OpenTabData {
 pub struct AppStateData {
     pub tabs: Vec<OpenTabData>,
     pub active_tab: Option<String>,
+    pub stash_mode: Option<String>,
+    pub include_untracked: Option<bool>,
 }
 
 fn get_app_state_file(app: &AppHandle) -> Result<PathBuf, String> {
@@ -69,12 +71,16 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
         return Ok(AppStateData {
             tabs: Vec::new(),
             active_tab: None,
+            stash_mode: Some("all".to_string()),
+            include_untracked: Some(false),
         });
     }
     let content = fs::read_to_string(file_path).map_err(|e| e.to_string())?;
     let state: AppStateData = serde_json::from_str(&content).unwrap_or(AppStateData {
         tabs: Vec::new(),
         active_tab: None,
+        stash_mode: Some("all".to_string()),
+        include_untracked: Some(false),
     });
     Ok(state)
 }

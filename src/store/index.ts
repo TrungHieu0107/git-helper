@@ -116,6 +116,7 @@ interface AppStore {
   activeRepoPath: string | null;
   activeBranch: string | null;
   activeCommitOid: string | null;
+  showCreateStash: boolean;
   
   selectedDiff: SelectedDiff | null;
   fileEncoding: string;
@@ -143,6 +144,10 @@ interface AppStore {
   selectedCommitDetail: CommitDetail | null;
   isLoadingCommitDetail: boolean;
   selectedRowIndex: number | null;
+
+  // Persistence
+  lastStashMode: 'all' | 'unstaged';
+  lastIncludeUntracked: boolean;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -151,6 +156,7 @@ export const useAppStore = create<AppStore>(() => ({
   activeRepoPath: null,
   activeBranch: null,
   activeCommitOid: null,
+  showCreateStash: false,
 
   selectedDiff: null,
   fileEncoding: 'utf-8',
@@ -177,6 +183,9 @@ export const useAppStore = create<AppStore>(() => ({
   selectedCommitDetail: null,
   isLoadingCommitDetail: false,
   selectedRowIndex: null,
+
+  lastStashMode: 'all',
+  lastIncludeUntracked: false,
 }));
 
 export const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {

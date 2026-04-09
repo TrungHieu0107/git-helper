@@ -5,9 +5,10 @@ import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Termina
 import { useAppStore, RecentRepo } from "../store";
 import { pullRepo, pushRepo, fetchAllRepo, createStash, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
+import { CreateStashDialog } from "./CreateStashDialog";
 
 export function TopToolbar() {
-  const { activeRepoPath, isLoadingRepo, repoStatus } = useAppStore();
+  const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash } = useAppStore();
   const [fetching, setFetching] = useState(false);
   const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
@@ -69,7 +70,11 @@ export function TopToolbar() {
             label="Branch" 
             onClick={() => setShowCreateBranch(true)} 
           />
-          <ToolbarButton icon={<Archive size={18} />} label="Stash" onClick={createStash} />
+          <ToolbarButton 
+            icon={<Archive size={18} />} 
+            label="Stash" 
+            onClick={() => useAppStore.setState({ showCreateStash: true })} 
+          />
           <ToolbarButton icon={<Navigation size={18} />} label="Pop" onClick={() => popStash(0)} />
         </div>
 
@@ -98,6 +103,9 @@ export function TopToolbar() {
 
       {showCreateBranch && (
         <CreateBranchDialog onClose={() => setShowCreateBranch(false)} />
+      )}
+      {showCreateStash && (
+        <CreateStashDialog onClose={() => useAppStore.setState({ showCreateStash: false })} />
       )}
 
     </div>

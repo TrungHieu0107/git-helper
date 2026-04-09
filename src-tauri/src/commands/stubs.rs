@@ -228,3 +228,43 @@ pub fn drop_stash(repo_path: String, index: usize) -> Result<(), String> {
     repo.stash_drop(index).map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn stash_save_advanced(
+    repo_path: String,
+    message: Option<String>,
+    include_untracked: bool,
+    keep_index: bool,
+) -> Result<String, String> {
+    let mut args = vec![
+        "stash".to_string(), 
+        "push".to_string(),
+    ];
+
+    if keep_index {
+        args.push("--keep-index".to_string());
+    }
+
+    if include_untracked {
+        args.push("--include-untracked".to_string());
+    }
+
+    if let Some(msg) = message {
+        if !msg.trim().is_empty() {
+            args.push("-m".to_string());
+            args.push(msg);
+        }
+    }
+
+    let output = std::process::Command::new("git")
+        .args(&args)
+        .current_dir(&repo_path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+    }
+}
