@@ -148,6 +148,8 @@ interface AppStore {
   // Persistence
   lastStashMode: 'all' | 'unstaged';
   lastIncludeUntracked: boolean;
+
+  refreshTimestamp: number;
 }
 
 export const useAppStore = create<AppStore>(() => ({
@@ -186,6 +188,7 @@ export const useAppStore = create<AppStore>(() => ({
 
   lastStashMode: 'all',
   lastIncludeUntracked: false,
+  refreshTimestamp: 0,
 }));
 
 export const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {

@@ -5,7 +5,7 @@ import { X, Columns, AlignLeft, Settings, ArrowUp, ArrowDown } from "lucide-reac
 import { useAppStore } from "../store";
 
 export function MainDiffView() {
-  const { selectedDiff, activeRepoPath, fileEncoding } = useAppStore();
+  const { selectedDiff, activeRepoPath, fileEncoding, refreshTimestamp } = useAppStore();
   const [oldContent, setOldContent] = useState<string | null>(null);
   const [newContent, setNewContent] = useState<string | null>(null);
   const [isBinary, setIsBinary] = useState<boolean>(false);
@@ -17,6 +17,8 @@ export function MainDiffView() {
   const [changes, setChanges] = useState<any[]>([]);
   const [currentChangeIndex, setCurrentChangeIndex] = useState<number>(-1);
   const diffEditorRef = useRef<any>(null);
+  const prevTimestampRef = useRef<number>(refreshTimestamp);
+  const lastSelectionRef = useRef<string | null>(null);
 
   const handleEditorMount = (editor: any) => {
     diffEditorRef.current = editor;
@@ -80,9 +82,19 @@ export function MainDiffView() {
     if (!selectedDiff || !activeRepoPath) return;
 
     let isMounted = true;
-    setIsLoading(true);
-    setError(null);
-    setIsBinary(false);
+    
+    // Check if this is a background refresh vs a new file selection
+    const isNewSelection = lastSelectionRef.current !== `${selectedDiff.path}-${selectedDiff.staged}-${selectedDiff.commitOid}`;
+    const isRefresh = !isNewSelection && prevTimestampRef.current !== refreshTimestamp;
+    
+    lastSelectionRef.current = `${selectedDiff.path}-${selectedDiff.staged}-${selectedDiff.commitOid}`;
+    prevTimestampRef.current = refreshTimestamp;
+
+    if (!isRefresh) {
+      setIsLoading(true);
+      setError(null);
+      setIsBinary(false);
+    }
 
     invoke<{ old_content: string | null, new_content: string | null, is_binary: boolean }>('get_file_contents', {
       repoPath: activeRepoPath,
@@ -93,8 +105,18 @@ export function MainDiffView() {
     })
       .then((res) => {
         if (!isMounted) return;
-        setOldContent(res.old_content || "");
-        setNewContent(res.new_content || "");
+        
+        const models = diffEditorRef.current?.getModel();
+        if (isRefresh && models && !res.is_binary) {
+          // Safe background update without disposing models
+          models.original.setValue(res.old_content || "");
+          models.modified.setValue(res.new_content || "");
+        } else {
+          // Standard full state update
+          setOldContent(res.old_content || "");
+          setNewContent(res.new_content || "");
+        }
+        
         setIsBinary(res.is_binary);
         setIsLoading(false);
       })
@@ -105,7 +127,7 @@ export function MainDiffView() {
       });
 
     return () => { isMounted = false; };
-  }, [selectedDiff, activeRepoPath, fileEncoding]);
+  }, [selectedDiff, activeRepoPath, fileEncoding, refreshTimestamp]);
 
   if (!selectedDiff) return null;
 

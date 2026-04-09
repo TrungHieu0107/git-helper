@@ -46,6 +46,13 @@ pub fn run() {
             commands::remote::list_remote_branches,
             commands::log::get_log,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Focused(focused) = event {
+                if *focused {
+                    let _ = tauri::Emitter::emit(window, "focus-changed", ());
+                }
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

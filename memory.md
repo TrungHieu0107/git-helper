@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 1.7.1
-## Last updated: 2026-04-10 – Performance Optimization & UI Polish
+## Version: 1.8.0
+## Last updated: 2026-04-10 – Comprehensive Documentation Suite
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -44,6 +44,11 @@
 - 2026-04-09: Sync Counts & Logic Fixes — implemented ahead/behind commit counts on the Pull/Push buttons. Fixed a missing import for `refreshActiveRepoStatus` and resolved a Monaco disposal error by adding a unique key to the Diff Editor.
 - 2026-04-09: Advanced Stash Management — replaced the stash ellipsis icon with a right-click context menu. Implemented a selective stash feature ("Unstaged Only") using `git stash push --keep-index` via the backend `stash_save_advanced` command. Created a high-fidelity `CreateStashDialog` with real-time file previews, custom messages, and untracked file support. Fixed `ReferenceError: MoreHorizontal is not defined` in the Sidebar.
 - 2026-04-09: Stash Preference Persistence — integrated stash settings (mode and include untracked) into the app-wide persistence layer. The app now remembers your last used stash configuration across restarts.
+- 2026-04-09: Deep Auto-Refresh on Focus — implemented a high-performance refresh system that re-synced staged/unstaged file status and diff content on window focus. Used Tauri-native window events, 300ms debouncing, and Monaco `setValue()` safe updates to ensure a flicker-free, robust experience.
+- 2026-04-10: Comprehensive Documentation Suite — performed a full codebase analysis and generated a set of professional technical documents in the `/docs` directory. This includes `architecture.md` (tech stack, data flow), `spec.md` (feature status), `user_flow.md` (Mermaid interaction maps), `docs.md` (developer reference), `bug_registry.md` (technical debt), and `changelog.md` (reconstructed history). Updated root `README.md` to serve as a high-fidelity documentation hub.
+
+# Project Status: Documentation Hub
+Completed a comprehensive project audit and generated a persistent context documentation suite including architecture diagrams, interaction maps, and developer reference guides.
 
 # Project Status Summary
-The Git Helper application features a high-fidelity, GitKraken-style commit graph with Manhattan routing, Advanced Branching, and Inline Stash visualization. Users can see stashes attached to their base commits via dashed L-shaped paths. The UI is dense and professional, with resizable columns, grouped branch labels, and a polished sidebar. Recent additions include real-time name validation, smart auto-stashing, and right-click context menus. Other features include a dynamic Repository Selector, infinite scrolling, and a Monaco-powered Diff Viewer.
+The Git Helper (GitKit) application is a production-ready Git client with a unified documentation system. It features a high-fidelity commit graph, advanced branching, and sophisticated session persistence. The project is fully documented with Mermaid-diagrammed user flows and technical specifications in the `/docs` directory, serving as a robust foundation for future AI and developer contributions.

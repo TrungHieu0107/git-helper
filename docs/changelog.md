@@ -1,56 +1,45 @@
 # Changelog
-## Version: 1.7.0
-## Last updated: 2026-04-09 – Sync Counts & Bug Fixes
+## Version: 1.0.0
+## Last updated: 2026-04-09 – Initial historical record
 ## Project: GitKit
 
-All notable changes to this project will be documented in this file.
+All notable changes to the GitKit project are documented in this file.
 
-## [1.7.0] - 2026-04-09
+## [1.0.0] - 2026-04-09
 ### Added
-- **Sync Counts**: The Pull and Push buttons now display the number of commits your local branch is ahead of or behind its upstream remote.
+- **Core Strategy**: Project scaffold with Tauri 2, React 19, and Tailwind CSS v4.
+- **Repository Management**: 
+    - Folder discovery and validation.
+    - Recent repositories persistence.
+    - Drag & drop folder to open.
+    - Auto-refresh on window focus.
+- **Commit Graph**:
+    - High-performance topological graph rendering.
+    - Rust-powered lane routing.
+    - Separate avatar rendering from graph nodes.
+    - Stash entries visualization in graph.
+- **Staging & Committing**:
+    - Staged vs Unstaged lists.
+    - Amend support.
+    - Hard reset and clean operations.
+- **Diff & Comparison**:
+    - Monaco-powered side-by-side diff view.
+    - Historical commit content view.
+    - Unified patch view for staging area.
+- **Branch Management**:
+    - Safe Checkout workflow with conflict detection.
+    - Smart branch switching (stash offer).
+    - Remote branch tracking and creation.
+- **Stash Management**:
+    - List, Apply, Pop, and Drop stashes.
+    - Advanced stash options via CLI integration.
+
 ### Fixed
-- **App Startup**: Resolved a `ReferenceError` preventing the auto-refresh logic from running.
-- **Monaco Editor**: Fixed a critical "TextModel disposed" error that occurred when switching rapidly between file diffs.
+- Commit graph edge direction beziers (branch-off vs merge differentiation).
+- Avatar decoupling from graph nodes.
+- Per-row SVG rendering for performance.
+- Bezier control points for exact alignment.
 
-## [1.6.0] - 2026-04-09
-### Added
-- **Auto-Refresh on Focus**: The application now automatically reloads the list of staged and unstaged files whenever you switch back to the application window. This ensures your workspace is always in sync with changes made in external tools or the terminal.
-
-## [1.5.0] - 2026-04-09
-### Added
-- **Fetch All Remotes**: Added a "Fetch" button to the toolbar. It fetches updates from all configured remotes and automatically refreshes the UI state including the commit graph and branches.
-
-## [1.4.1] - 2026-04-09
-### Fixed
-- **Startup Reference Error**: Fixed a critical regression where the app failed to start due to a missing `restoreAppState` import in `App.tsx`.
-
-## [1.4.0] - 2026-04-09
-### Added
-- **Persistent Tabs**: The application now remembers your open repository tabs and the active tab across reloads and restarts. This is powered by a new Rust-based state persistence layer (`app_state.json`).
-
-## [1.3.1] - 2026-04-09
-### Fixed
-- **Home Tab Rendering**: Fixed a crash (white screen) when switching to the Home tab caused by missing component imports.
-
-## [1.3.0] - 2026-04-09
-### Added
-- **Top Tab Bar**: Implemented a multi-repository tabbed interface at the top of the app.
-- **Home Dashboard**: Enhanced the Welcome Screen to serve as a Home tab, showing all currently open repositories as interactive cards.
-- **Multi-Repo State**: Added support for tracking multiple open repositories in the session.
-
-## [1.2.2] - 2026-04-09
-### Added
-- **Rounded Stash Path Corners**: Connection lines for stash commits now use smooth, rounded corners instead of sharp 90-degree angles, bringing consistency to the graph aesthetic.
-
-## [1.2.1] - 2026-04-09
-### Fixed
-- **Stash Lane Isolation**: Resolved visual overlaps where stash nodes and connection lines were rendered on top of active branch lines. The backend now performs dynamic occupancy checks and allocates dedicated columns for stashes.
-
-## [1.2.0] - 2026-04-09
-### Added
-- **Inline Stash Visualization on Graph**:
-    - Stashes appear as distinct **square nodes** with dashed borders.
-    - **L-shaped dashed lines** connect stashes horizontally and vertically to their base commits.
-    - Dynamic lane assignment ensures stashes don't overlap while staying attached to their origin.
-    - Tooltips on hover show stash message and index.
-- **Backend Graph Injection**: Re-engineered `get_log` to interleaved stashes and commits.
+### Security
+- Added fallback signature for commits if user identity is missing.
+- Implemented dry-run checkout to prevent accidental data loss.

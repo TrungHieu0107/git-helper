@@ -535,13 +535,33 @@ export async function undoLastCommit() {
 }
 
 export async function refreshActiveRepoStatus() {
-  const path = useAppStore.getState().activeRepoPath;
+  const { activeRepoPath: path, selectedDiff } = useAppStore.getState();
   if (!path) return;
   
   try {
     const status = await invoke<FileStatus[]>('get_status', { repoPath: path });
     const repoStatus = await invoke<RepoStatus>('get_repo_status', { path });
     
+    // Deep re-evaluation of selected diff
+    if (selectedDiff && !selectedDiff.commitOid) {
+       const fileStatus = status.find(f => f.path === selectedDiff.path);
+       
+       if (fileStatus) {
+          const isStagedNow = fileStatus.status === 'staged';
+          if (isStagedNow !== selectedDiff.staged) {
+             // File moved staged <-> unstaged externally
+             useAppStore.setState({ 
+               selectedDiff: { ...selectedDiff, staged: isStagedNow } 
+             });
+          }
+          // Always trigger refresh if file still exists in status
+          useAppStore.setState({ refreshTimestamp: Date.now() });
+       } else {
+          // File was committed or reset externally
+          useAppStore.setState({ selectedDiff: null });
+       }
+    }
+
     useAppStore.setState({ 
       unstagedFiles: status.filter(f => f.status === 'unstaged' || f.status === 'untracked' || f.status === 'conflicted'),
       stagedFiles: status.filter(f => f.status === 'staged'),

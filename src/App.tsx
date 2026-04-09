@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from "./store";
 import { loadRepo, restoreAppState, refreshActiveRepoStatus } from "./lib/repo";
@@ -18,25 +18,28 @@ function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
   const selectedDiff = useAppStore(state => state.selectedDiff);
+  const focusDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Restore tabs and active repo on startup
     restoreAppState();
 
-    const unlisten = listen('tauri://file-drop', async (event) => {
+    const unlistenDrop = listen('tauri://file-drop', async (event) => {
       const paths = event.payload as string[];
       if (paths.length > 0) await loadRepo(paths[0]);
     });
 
-    // Auto-refresh status when window is focused
-    const handleFocus = () => {
-      refreshActiveRepoStatus();
-    };
-    window.addEventListener('focus', handleFocus);
+    const unlistenFocus = listen('focus-changed', () => {
+      if (focusDebounceRef.current) clearTimeout(focusDebounceRef.current);
+      focusDebounceRef.current = setTimeout(() => {
+        refreshActiveRepoStatus();
+      }, 300);
+    });
 
     return () => {
-      unlisten.then(f => f());
-      window.removeEventListener('focus', handleFocus);
+      unlistenDrop.then(f => f());
+      unlistenFocus.then(f => f());
+      if (focusDebounceRef.current) clearTimeout(focusDebounceRef.current);
     };
   }, []);
 
