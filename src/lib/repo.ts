@@ -40,6 +40,15 @@ export interface SafeCheckoutResult {
   branch?: string;
 }
 
+export type ForceCheckoutResult =
+  | { type: 'Clean' }
+  | { type: 'NeedsStash' }
+  | { type: 'StashAndDone', data: { stash_restored: boolean } }
+  | { type: 'StashConflict', data: { files: string[] } }
+  | { type: 'NoRemoteRef' }
+  | { type: 'NotOnBranch' }
+  | { type: 'Generic', data: { message: string } };
+
 export interface AppStateData {
   tabs: { path: string, name: string }[];
   active_tab: string | null;
@@ -96,6 +105,85 @@ export async function safeSwitchBranch(branchName: string) {
     }
   } catch (err) {
     toast.error(`Pre-checkout check failed: ${err}`);
+  }
+}
+
+/**
+ * Triggers the force checkout flow.
+ */
+export async function forceCheckout(branchName: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    useAppStore.setState({ forceCheckoutTarget: branchName, forceCheckoutPhase: 'processing' });
+    const result = await invoke<ForceCheckoutResult>('force_checkout_from_origin', { repoPath: path, branchName });
+    
+    switch (result.type) {
+      case 'Clean':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.success(`Branch ${branchName} reset to origin.`);
+        await loadRepo(path);
+        break;
+      case 'NeedsStash':
+        useAppStore.setState({ forceCheckoutPhase: 'confirm_stash' });
+        break;
+      case 'NotOnBranch':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error("Cannot force checkout in detached HEAD state.");
+        break;
+      case 'NoRemoteRef':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Remote branch origin/${branchName} not found.`);
+        break;
+      case 'Generic':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Force checkout failed: ${result.data.message}`);
+        break;
+    }
+  } catch (e) {
+    useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+    toast.error(`System error: ${e}`);
+  }
+}
+
+/**
+ * Confirms force checkout by stashing changes first.
+ */
+export async function confirmForceCheckoutWithStash(branchName: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    useAppStore.setState({ forceCheckoutPhase: 'processing' });
+    const result = await invoke<ForceCheckoutResult>('force_checkout_confirm_with_stash', { repoPath: path, branchName });
+    
+    switch (result.type) {
+      case 'StashAndDone':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.success(`Branch ${branchName} reset to origin. Stash restored.`);
+        await loadRepo(path);
+        break;
+      case 'StashConflict':
+        // Keep target but set phase to stash_conflict to show the banner/alert
+        useAppStore.setState({ forceCheckoutPhase: 'stash_conflict' });
+        useAppStore.setState({ 
+           stashConflict: { files: (result as any).data.files, index: 0, isPop: true }
+        });
+        toast.warning("Reset complete but stash restore had conflicts.");
+        await loadRepo(path);
+        break;
+      case 'Generic':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Force checkout failed: ${result.data.message}`);
+        break;
+      default:
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Force checkout failed with unexpected result.`);
+    }
+  } catch (e) {
+    useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+    toast.error(`System error: ${e}`);
   }
 }
 
