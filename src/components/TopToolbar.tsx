@@ -57,8 +57,22 @@ export function TopToolbar() {
         {/* Fetch / Pull / Push */}
         <div className="flex items-center space-x-4 text-[#58a6ff]">
           <ToolbarButton icon={<Download size={18} />} label="Fetch" onClick={handleFetch} loading={fetching} />
-          <ToolbarButton icon={<ArrowDown size={18} />} label="Pull" onClick={handlePull} loading={pulling} count={repoStatus?.behind || 0} />
-          <ToolbarButton icon={<ArrowUp size={18} />} label="Push" onClick={handlePush} loading={pushing} count={repoStatus?.ahead || 0} />
+          <ToolbarButton 
+            icon={<ArrowDown size={18} />} 
+            label="Pull" 
+            onClick={handlePull} 
+            loading={pulling} 
+            count={repoStatus?.behind || 0} 
+            title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
+          />
+          <ToolbarButton 
+            icon={<ArrowUp size={18} />} 
+            label="Push" 
+            onClick={handlePush} 
+            loading={pushing} 
+            count={repoStatus?.ahead || 0} 
+            title={repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined}
+          />
         </div>
 
         <div className="w-px h-6 bg-[#30363d]" />
