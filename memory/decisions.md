@@ -28,4 +28,16 @@
     - Requires `cherryPickSlice` and `invokeCherryPick` recursion pattern on the frontend.
 - **Status**: Active
 
+### 2026-04-10 — Three-Pane Monaco Editor for Conflict Resolution
+- **Decision**: Implemented a 3-pane side-by-side Monaco `Editor` view instead of standard `DiffEditor` for conflict resolution, explicitly pushing raw disk files to the center pane (which holds conflict markers).
+- **Reason**: Standard Git conflict resolution relies heavily on developers manually cleaning or merging "Ours" and "Theirs". A 3-pane structured view gives raw visibility before saving the resolved state to the Git index directly.
+- **Alternatives considered**: Using generic `DiffEditor` modes. However, 3 separate `Editor` instances in a flex layout ensure better state stability without Monaco diff race conditions.
+- **Status**: Active
+
+### 2026-04-10 — Monaco Line-Boundary Alignment for Git Conflict Markers
+- **Decision**: Implemented an explicit whitespace-padding algorithm in `conflictParser.ts` for ours vs theirs content array maps rather than trimming to blocks.
+- **Reason**: Maintaining exactly parallel `line.length()` to the raw git file across all panels enables `monacoDecorations.ts` mapped delta-decorations to accurately hit target rows synchronously avoiding diff coordinate bugs, and synchronized 3-way vertical scrolling remains locked 1:1.
+- **Alternatives considered**: Filtering out `normal` code exclusively for the side panels and dropping empty spacing padding.
+- **Status**: Active
+
 <!-- Antigravity -->
