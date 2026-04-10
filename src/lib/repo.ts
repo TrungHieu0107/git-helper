@@ -142,6 +142,7 @@ export async function loadRepo(path: string) {
     });
 
     saveCurrentState();
+    refreshCherryPickState();
   } catch (e) {
     useAppStore.setState({ 
       repoError: typeof e === 'string' ? e : 'Failed to open repository',
@@ -569,6 +570,9 @@ export async function refreshActiveRepoStatus() {
       stagedFiles: status.filter(f => f.status === 'staged'),
       repoStatus 
     });
+    
+    // Also re-check cherry-pick state in case conflicts were resolved
+    refreshCherryPickState();
   } catch (e) {
     console.error('Failed to refresh status on focus:', e);
   }
@@ -673,7 +677,89 @@ export async function restoreAppState() {
         if (state.include_untracked !== undefined) {
           useAppStore.setState({ lastIncludeUntracked: state.include_untracked });
         }
-    } catch (e) {
+} catch (e) {
         console.error('Failed to restore app state:', e);
     }
+}
+
+// ── Cherry-Pick ──────────────────────────────────────────────────────────────
+
+export async function refreshCherryPickState() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    const cpState = await invoke<any>('get_cherry_pick_state', { repoPath: path });
+    const store = useAppStore.getState();
+    if (cpState.is_in_progress) {
+      store.setCherryPickConflict(cpState.conflicted_oid, cpState.conflicted_files, store.cherryPickRemainingOids);
+    } else if (store.cherryPickState === 'conflict') {
+      store.resetCherryPick();
+    }
+  } catch(e) {}
+}
+
+export async function abortCherryPick() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    useAppStore.getState().setCherryPickState('aborting');
+    await invoke('cherry_pick_abort', { repoPath: path });
+    useAppStore.getState().resetCherryPick();
+    await loadRepo(path);
+    toast.success('Cherry-pick aborted');
+  } catch (e) {
+    toast.error(`Abort failed: ${e}`);
+    useAppStore.getState().setCherryPickState('conflict');
+  }
+}
+
+export async function continueCherryPick() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    useAppStore.getState().setCherryPickState('continuing');
+    await invoke('cherry_pick_continue', { repoPath: path });
+    toast.success('Cherry-pick continued successfully');
+    
+    // Check remaining queue
+    const remaining = useAppStore.getState().cherryPickRemainingOids;
+    if (remaining.length > 0) {
+      await invokeCherryPick(remaining);
+    } else {
+      useAppStore.getState().resetCherryPick();
+      await loadRepo(path);
+    }
+  } catch (e) {
+    toast.error(`Continue failed: ${e}`);
+    useAppStore.getState().setCherryPickState('conflict');
+  }
+}
+
+export async function invokeCherryPick(oids: string[]) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path || oids.length === 0) return;
+  useAppStore.getState().setCherryPickState('applying');
+  
+  try {
+    const res = await invoke<any>('cherry_pick_commit', { repoPath: path, oids, mainline: 1 });
+    if (res.type === 'Conflict') {
+      useAppStore.getState().setCherryPickConflict(res.conflicted_oid, res.conflicted_files, res.remaining_oids);
+      toast.info('Cherry-pick conflict. Resolve it to continue.');
+    } else if (res.type === 'Empty') {
+       toast.info(`Commit ${res.skip_oid.substring(0, 7)} is empty and was skipped.`);
+       if (res.remaining_oids.length > 0) {
+           await invokeCherryPick(res.remaining_oids);
+       } else {
+           useAppStore.getState().resetCherryPick();
+           await loadRepo(path);
+       }
+    } else {
+      toast.success('Cherry-pick applied successfully');
+      useAppStore.getState().resetCherryPick();
+      await loadRepo(path);
+    }
+  } catch (e) {
+    toast.error(`Cherry-pick failed: ${e}`);
+    useAppStore.getState().resetCherryPick();
+  }
 }
