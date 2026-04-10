@@ -3,20 +3,23 @@ import { createRepoSlice, RepoSlice } from './slices/repoSlice';
 import { createLogSlice, LogSlice } from './slices/logSlice';
 import { createStashSlice, StashSlice } from './slices/stashSlice';
 import { createUISlice, UISlice } from './slices/uiSlice';
+import { createCherryPickSlice, CherryPickSlice } from './slices/cherryPickSlice';
 
 // Re-export types for backward compatibility across the app
 export * from './slices/repoSlice';
 export * from './slices/logSlice';
 export * from './slices/stashSlice';
 export * from './slices/uiSlice';
+export * from './slices/cherryPickSlice';
 
-export type AppStore = RepoSlice & LogSlice & StashSlice & UISlice;
+export type AppStore = RepoSlice & LogSlice & StashSlice & UISlice & CherryPickSlice;
 
 export const useAppStore = create<AppStore>()((...a) => ({
   ...createRepoSlice(...a),
   ...createLogSlice(...a),
   ...createStashSlice(...a),
   ...createUISlice(...a),
+  ...createCherryPickSlice(...a),
 }));
 
 // Convenience helper for components
