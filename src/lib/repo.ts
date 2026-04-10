@@ -698,6 +698,47 @@ export async function refreshCherryPickState() {
   } catch(e) {}
 }
 
+export async function loadConflictFile(repoPath: string, path: string) {
+  const store = useAppStore.getState();
+  store.setIsLoadingConflict(true);
+  try {
+    const versions = await invoke<any>('get_conflict_diff', { 
+        repoPath, 
+        path, 
+        encoding: useAppStore.getState().fileEncoding 
+    });
+    useAppStore.setState({
+       conflictVersions: versions,
+       selectedConflictFile: path,
+       isLoadingConflict: false
+    });
+  } catch (e) {
+    toast.error(`Failed to load conflict diff: ${e}`);
+    store.setIsLoadingConflict(false);
+  }
+}
+
+export async function resolveConflictFile(repoPath: string, path: string, resolvedContent: string) {
+  try {
+    await invoke('resolve_conflict_file', { repoPath, path, resolvedContent });
+    
+    // Remove from store's conflict files list natively for fast UI update
+    const state = useAppStore.getState();
+    const newFiles = state.cherryPickConflictFiles.filter(f => f !== path);
+    useAppStore.setState({ 
+      cherryPickConflictFiles: newFiles,
+      selectedConflictFile: null,
+      conflictVersions: null
+    });
+    
+    // Also trigger full refresh
+    await refreshActiveRepoStatus();
+    toast.success('File marked as resolved');
+  } catch (e) {
+    toast.error(`Failed to resolve conflict: ${e}`);
+  }
+}
+
 export async function abortCherryPick() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
