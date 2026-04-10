@@ -5,6 +5,25 @@
 }
 
 @layer base {
+
+/* Monaco Conflict Resolution Styles */
+.conflict-ours-highlight {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+.conflict-ours-marker {
+  background-color: rgba(59, 130, 246, 0.35);
+  font-weight: bold;
+}
+.conflict-theirs-highlight {
+  background-color: rgba(249, 115, 22, 0.15);
+}
+.conflict-theirs-marker {
+  background-color: rgba(249, 115, 22, 0.35);
+  font-weight: bold;
+}
+.conflict-result-empty {
+  background-color: rgba(255, 255, 255, 0.05);
+}
   :root {
     --sidebar-width: 220px;
     --right-width: 340px;
