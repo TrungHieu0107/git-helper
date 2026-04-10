@@ -14,6 +14,7 @@ import { CherryPickBanner } from "./components/CherryPickBanner";
 import { CheckoutAlert } from "./components/CheckoutAlert";
 import { DiscardAlert } from "./components/DiscardAlert";
 import { StashAlerts } from "./components/StashAlerts";
+import { ForceCheckoutAlert } from "./components/ForceCheckoutAlert";
 import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
@@ -77,6 +78,7 @@ function App() {
       <CheckoutAlert />
       <DiscardAlert />
       <StashAlerts />
+      <ForceCheckoutAlert />
       <ToastContainer />
     </div>
   );
