@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GitBranch, Copy, Eye, BookmarkPlus } from 'lucide-react';
+import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit } from 'lucide-react';
 import { CommitNode } from '../store';
 import { safeSwitchBranch, selectCommitDetail } from '../lib/repo';
 import { toast } from '../lib/toast';
 import { CreateBranchDialog } from './CreateBranchDialog';
+import { CherryPickDialog } from './CherryPickDialog';
 
 // ── Types ────────────────────────────────────────────────────────────
 export interface ContextMenuPosition {
@@ -22,6 +23,7 @@ export interface CommitContextMenuProps {
 export function CommitContextMenu({ commit, position, onClose }: CommitContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
+  const [showCherryPick, setShowCherryPick] = useState(false);
   const [menuPos, setMenuPos] = useState(position);
 
   // Adjust position to keep menu on-screen
@@ -83,7 +85,6 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     onClose();
   }, [commit.oid, onClose]);
 
-
   if (showCreateBranch) {
     return (
       <CreateBranchDialog
@@ -93,8 +94,25 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       />
     );
   }
+  
+  if (showCherryPick) {
+    return (
+      <CherryPickDialog
+        commits={[commit]} // For now, single commit
+        onClose={onClose}
+      />
+    );
+  }
 
   const menuItems = [
+    {
+      id: 'cherry-pick',
+      icon: <GitCommit size={14} />,
+      label: 'Cherry-pick This Commit...',
+      color: 'text-[#d29922]',
+      action: () => setShowCherryPick(true),
+    },
+    { id: 'sep-0', separator: true },
     {
       id: 'create-branch',
       icon: <GitBranch size={14} />,
