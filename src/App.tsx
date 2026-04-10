@@ -9,6 +9,7 @@ import { Sidebar } from "./components/Sidebar";
 import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
 import { MainDiffView } from "./components/MainDiffView";
+import { ConflictEditorView } from "./components/ConflictEditorView";
 import { CherryPickBanner } from "./components/CherryPickBanner";
 import { CheckoutAlert } from "./components/CheckoutAlert";
 import { DiscardAlert } from "./components/DiscardAlert";
@@ -19,6 +20,9 @@ function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
   const selectedDiff = useAppStore(state => state.selectedDiff);
+  const cherryPickState = useAppStore(state => state.cherryPickState);
+  const selectedConflictFile = useAppStore(state => state.selectedConflictFile);
+  const conflictVersions = useAppStore(state => state.conflictVersions);
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -56,7 +60,9 @@ function App() {
           <CherryPickBanner />
           <div className="flex-1 flex overflow-hidden w-full">
              <Sidebar />
-             {selectedDiff ? <MainDiffView /> : <CommitGraph />}
+             {cherryPickState === 'conflict' && selectedConflictFile && conflictVersions
+               ? <ConflictEditorView />
+               : selectedDiff ? <MainDiffView /> : <CommitGraph />}
              <RightPanel />
           </div>
         </>
