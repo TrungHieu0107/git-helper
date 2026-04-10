@@ -45,6 +45,10 @@ pub fn run() {
             commands::remote::push_branch_to_remote,
             commands::remote::list_remote_branches,
             commands::log::get_log,
+            commands::cherry_pick::get_cherry_pick_state,
+            commands::cherry_pick::cherry_pick_abort,
+            commands::cherry_pick::cherry_pick_commit,
+            commands::cherry_pick::cherry_pick_continue,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Focused(focused) = event {
