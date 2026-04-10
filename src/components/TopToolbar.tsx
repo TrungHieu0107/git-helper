@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
-import { useAppStore } from "../store";
+import { useAppStore, RecentRepo } from "../store";
 import { pullRepo, pushRepo, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";

@@ -18,7 +18,7 @@ function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
   const selectedDiff = useAppStore(state => state.selectedDiff);
-  const focusDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Restore tabs and active repo on startup

@@ -1,8 +1,7 @@
 import { useAppStore } from "../store";
 import { dropStash } from "../lib/repo";
-import { AlertCircle, AlertTriangle, Check, Trash2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "../lib/toast";
 
 export function StashAlerts() {
   const confirmDrop = useAppStore(state => state.confirmStashDrop);
