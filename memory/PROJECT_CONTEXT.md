@@ -15,6 +15,7 @@ The backend is organized into domain-scoped modules in `src-tauri/src/commands/`
 - **`log/`**: High-performance graph layout engine.
 - **`diff/`**: Multi-encoding diff generation.
 - **`remote/`**: Networking and synchronization.
+- **`cherry_pick.rs`**: Core cherry-picking state engine and operations.
 - **`status.rs`**: Fast status tracking with native rename detection.
 
 ### Frontend (React / Zustand)
@@ -23,6 +24,7 @@ State is managed using domain-specific slices in `src/store/slices/`:
 - **`logSlice`**: Commit history and detail caching.
 - **`stashSlice`**: Stash list and UI preferences.
 - **`uiSlice`**: Navigation tabs and global notifications.
+- **`cherryPickSlice`**: In-progress cherry-pick operation state routing.
 
 ## Key Design Patterns
 - **Lanes & Routing**: Topological commit graph with Manhattan routing and corner smoothing.

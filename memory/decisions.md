@@ -20,4 +20,12 @@
     - Enables features like selective stashing and including untracked files with custom messages.
 - **Status**: Active
 
+### 2026-04-10 — Orchestrated Multi-Commit Cherry Pick with Rust bindings
+- **Decision**: Developed the multi-commit sequence recursively in frontend calling pure `cherry_pick_commit` one OID at a time under Rust, instead of executing looping block natively.
+- **Reason**: Maintaining `CHERRY_PICK_HEAD` manually via `git2` while orchestrating array tracking provides UI visibility over "Remaining Tasks" seamlessly and leaves pausing strictly atomic without blocking execution threads or dropping sequence state if closed.
+- **Consequences**:
+    - Simplifies state restoration after restart/crash.
+    - Requires `cherryPickSlice` and `invokeCherryPick` recursion pattern on the frontend.
+- **Status**: Active
+
 <!-- Antigravity -->
