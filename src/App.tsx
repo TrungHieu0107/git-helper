@@ -9,6 +9,7 @@ import { Sidebar } from "./components/Sidebar";
 import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
 import { MainDiffView } from "./components/MainDiffView";
+import { CherryPickBanner } from "./components/CherryPickBanner";
 import { CheckoutAlert } from "./components/CheckoutAlert";
 import { DiscardAlert } from "./components/DiscardAlert";
 import { StashAlerts } from "./components/StashAlerts";
@@ -52,6 +53,7 @@ function App() {
       ) : (
         <>
           <TopToolbar />
+          <CherryPickBanner />
           <div className="flex-1 flex overflow-hidden w-full">
              <Sidebar />
              {selectedDiff ? <MainDiffView /> : <CommitGraph />}
