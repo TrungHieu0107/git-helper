@@ -223,19 +223,22 @@ function ToolbarButton({
   disabled = false, 
   loading = false, 
   onClick,
-  count = 0
+  count = 0,
+  title
 }: { 
   icon: React.ReactNode, 
   label: string, 
   disabled?: boolean, 
   loading?: boolean, 
   onClick?: () => void,
-  count?: number
+  count?: number,
+  title?: string
 }) {
   const isDisabled = disabled || loading;
   return (
     <div 
       onClick={() => !isDisabled && onClick?.()}
+      title={title}
       className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
        <div className={`text-slate-300 ${!isDisabled && 'group-hover:text-white transition-colors'}`}>
