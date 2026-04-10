@@ -59,7 +59,11 @@ pub fn checkout_branch(repo_path: String, branch_name: String, options: Checkout
         let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
         let local_name = if parts.len() > 1 { parts[1] } else { &branch_name };
         
-        let local_branch = repo.branch(local_name, &commit, false).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+        // Use existing local branch if it already exists
+        let local_branch = match repo.find_branch(local_name, git2::BranchType::Local) {
+            Ok(b) => b,
+            Err(_) => repo.branch(local_name, &commit, false).map_err(|e| CheckoutError::Generic { message: e.to_string() })?
+        };
         
         let checkout_result = {
             let mut checkout_builder = build_checkout(&options, &conflict_files);
