@@ -19,6 +19,8 @@ pub fn run() {
             commands::repo::check_working_tree,
             commands::repo::undo_last_commit,
             commands::repo::open_terminal,
+            commands::repo::force_checkout_from_origin,
+            commands::repo::force_checkout_confirm_with_stash,
             commands::status::get_status,
             commands::status::get_repo_status,
             commands::status::stage_file,

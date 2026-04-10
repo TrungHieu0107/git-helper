@@ -380,3 +380,115 @@ pub fn open_terminal(path: String) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type", content = "data")]
+pub enum ForceCheckoutResult {
+    Clean,
+    NeedsStash,
+    StashAndDone { stash_restored: bool },
+    StashConflict { files: Vec<String> },
+    NoRemoteRef,
+    NotOnBranch,
+    Generic { message: String },
+}
+
+#[tauri::command]
+pub fn force_checkout_from_origin(repo_path: String, branch_name: String) -> Result<ForceCheckoutResult, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Validate repo is not in detached HEAD state
+    if repo.head_detached().unwrap_or(false) {
+        return Ok(ForceCheckoutResult::NotOnBranch);
+    }
+
+    // 2. Resolve origin/{branch_name}
+    let remote_ref_name = format!("origin/{}", branch_name);
+    let remote_branch = match repo.find_branch(&remote_ref_name, git2::BranchType::Remote) {
+        Ok(b) => b,
+        Err(_) => return Ok(ForceCheckoutResult::NoRemoteRef),
+    };
+    let remote_oid = remote_branch.get().target().ok_or("Remote branch has no target")?;
+    let remote_obj = repo.find_object(remote_oid, None).map_err(|e| e.to_string())?;
+
+    // 3. Check working tree for local changes
+    let check = check_working_tree(repo_path.clone())?;
+    if check.has_staged || check.has_unstaged {
+        return Ok(ForceCheckoutResult::NeedsStash);
+    }
+
+    // 4. Determine if we are force-resetting the current branch
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let is_current = head.shorthand() == Some(&branch_name);
+
+    if is_current {
+        // Force reset current branch (updates ref + workdir)
+        repo.reset(&remote_obj, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
+    } else {
+        // Move a different branch ref to the remote's OID (force=true to avoid "already exists")
+        let remote_commit = remote_obj.as_commit()
+            .ok_or("Remote object is not a commit")?;
+        repo.branch(&branch_name, remote_commit, true).map_err(|e| e.to_string())?;
+    }
+    
+    Ok(ForceCheckoutResult::Clean)
+}
+
+#[tauri::command]
+pub fn force_checkout_confirm_with_stash(repo_path: String, branch_name: String) -> Result<ForceCheckoutResult, String> {
+    let mut repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Create stash
+    let sig = repo.signature().map_err(|e| e.to_string())?;
+    let stash_msg = format!("Auto-stash before force checkout {}", branch_name);
+    
+    let _stash_oid = repo.stash_save(&sig, &stash_msg, None).map_err(|e| e.to_string())?;
+    
+    // 2. Resolve origin/{branch_name} and reset
+    {
+        let remote_ref_name = format!("origin/{}", branch_name);
+        let remote_branch = match repo.find_branch(&remote_ref_name, git2::BranchType::Remote) {
+            Ok(b) => b,
+            Err(_) => return Ok(ForceCheckoutResult::NoRemoteRef),
+        };
+        let remote_oid = remote_branch.get().target().ok_or("Remote branch has no target")?;
+        let remote_obj = repo.find_object(remote_oid, None).map_err(|e| e.to_string())?;
+        
+        let head = repo.head().map_err(|e| e.to_string())?;
+        let is_current = head.shorthand() == Some(&branch_name);
+
+        if is_current {
+            repo.reset(&remote_obj, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
+        } else {
+            let remote_commit = remote_obj.as_commit()
+                .ok_or("Remote object is not a commit")?;
+            repo.branch(&branch_name, remote_commit, true).map_err(|e| e.to_string())?;
+        }
+    }
+    // remote_branch and remote_obj are dropped here, releasing the borrow on repo
+
+    // 3. Attempt pop stash
+    match repo.stash_apply(0, None) {
+        Ok(_) => {
+            // Check for conflicts after apply
+            let index = repo.index().map_err(|e| e.to_string())?;
+            if index.has_conflicts() {
+                let mut conflicted_files = Vec::new();
+                for entry in index.iter() {
+                    if (entry.flags & 0x3000) >> 12 != 0 {
+                        conflicted_files.push(String::from_utf8_lossy(&entry.path).to_string());
+                    }
+                }
+                conflicted_files.sort();
+                conflicted_files.dedup();
+                return Ok(ForceCheckoutResult::StashConflict { files: conflicted_files });
+            }
+            
+            // Clean apply, drop the stash
+            let _ = repo.stash_drop(0); 
+            Ok(ForceCheckoutResult::StashAndDone { stash_restored: true })
+        },
+        Err(e) => {
+            Err(format!("Failed to apply stash: {}", e))
+        }
+    }
+}
