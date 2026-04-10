@@ -1,95 +1,93 @@
 @echo off
 setlocal enabledelayedexpansion
-
-echo ============================================
-echo   Git Helper - Build Script (Windows x64)
-echo ============================================
+echo ========================================
+echo  Git Helper - One Click Build
+echo ========================================
 echo.
 
-:: ── Step 1: Check Prerequisites ──
-echo [1/4] Checking prerequisites...
-
-where node >nul 2>&1
+REM ── Check Rust ──────────────────────────
+echo [CHECK] Rust toolchain...
+rustc --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js not found. Install from https://nodejs.org
+    echo ERROR: Rust is not installed.
+    echo Install from: https://rustup.rs
+    echo Then re-run this script.
+    pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('node -v') do echo       Node.js: %%i
+rustc --version
+echo OK: Rust found.
 
-where npm >nul 2>&1
+REM ── Check Node.js ───────────────────────
+echo [CHECK] Node.js...
+node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] npm not found.
+    echo ERROR: Node.js is not installed.
+    echo Install from: https://nodejs.org
+    pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('npm -v') do echo       npm:     %%i
+node --version
+echo OK: Node.js found.
 
-where rustc >nul 2>&1
+REM ── Check npm ───────────────────────────
+npm --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Rust not found. Install from https://rustup.rs
+    echo ERROR: npm not found. Reinstall Node.js.
+    pause
     exit /b 1
 )
-for /f "tokens=*" %%i in ('rustc --version') do echo       Rust:    %%i
+echo OK: npm found.
 
-where cargo >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Cargo not found.
-    exit /b 1
-)
-
-echo       All prerequisites OK.
+echo.
+echo ========================================
+echo  Building...
+echo ========================================
 echo.
 
-:: ── Step 2: Install npm dependencies ──
-echo [2/4] Installing npm dependencies...
+REM ── Install dependencies ────────────────
+echo [1/3] Installing frontend dependencies...
 call npm install
 if %errorlevel% neq 0 (
-    echo [ERROR] npm install failed.
+    echo ERROR: npm install failed.
+    pause
     exit /b 1
 )
-echo       npm dependencies installed.
+echo OK: Dependencies installed.
 echo.
 
-:: ── Step 3: Build with Tauri ──
-echo [3/4] Building Tauri application (Release)...
-echo       This may take a few minutes on first build...
-echo.
-call npx tauri build
+REM ── Tauri Build ─────────────────────────
+echo [2/3] Building Tauri app (this may take a few minutes)...
+call npm run tauri build
 if %errorlevel% neq 0 (
     echo.
-    echo [ERROR] Tauri build failed. Check errors above.
+    echo ERROR: Tauri build failed.
+    echo.
+    echo Common causes:
+    echo   - MSVC Build Tools not installed
+    echo     Install from: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio
+    echo     Select workload: "Desktop development with C++"
+    echo.
+    echo   - WebView2 Runtime missing
+    echo     Install from: https://developer.microsoft.com/en-us/microsoft-edge/webview2/
+    echo.
+    echo   - Rust target missing: run 'rustup target add x86_64-pc-windows-msvc'
+    echo.
+    pause
     exit /b 1
 )
+
+REM ── Done ────────────────────────────────
+echo.
+echo [3/3] Build complete!
+echo.
+echo Output:
+echo   src-tauri\target\release\bundle\nsis\   (.exe installer)
+echo   src-tauri\target\release\bundle\msi\    (.msi installer)
+echo   src-tauri\target\release\               (.exe standalone)
 echo.
 
-:: ── Step 4: Show output ──
-echo [4/4] Build complete!
-echo.
-echo ============================================
-echo   Output files:
-echo ============================================
+REM Open output folder
+start "" "src-tauri\target\release\bundle\nsis\"
 
-set "BUNDLE_DIR=src-tauri\target\release\bundle"
-
-if exist "%BUNDLE_DIR%\nsis\*.exe" (
-    echo   [NSIS Installer]
-    for %%f in (%BUNDLE_DIR%\nsis\*.exe) do echo     %%f
-)
-
-if exist "%BUNDLE_DIR%\msi\*.msi" (
-    echo   [MSI Installer]
-    for %%f in (%BUNDLE_DIR%\msi\*.msi) do echo     %%f
-)
-
-if exist "src-tauri\target\release\*.exe" (
-    echo   [Standalone EXE]
-    for %%f in (src-tauri\target\release\tauri-app.exe) do (
-        if exist "%%f" echo     %%f
-    )
-)
-
-echo.
-echo ============================================
-echo   Build finished successfully!
-echo ============================================
-
-endlocal
+pause
