@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppStore, FileStatus } from "../store";
 import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X } from "lucide-react";
-import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff } from "../lib/repo";
+import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile } from "../lib/repo";
 import { CommitDetailPanel } from "./CommitDetailPanel";
 
 interface TreeNode {
@@ -38,7 +38,7 @@ function buildTree(files: FileStatus[]): TreeNode {
 }
 
 export function RightPanel() {
-  const { stagedFiles, unstagedFiles, activeBranch, selectedCommitDetail, isLoadingCommitDetail } = useAppStore();
+  const { stagedFiles, unstagedFiles, activeBranch, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath } = useAppStore();
   const [message, setMessage] = useState('');
   const charsLeft = 72 - message.length;
   const [description, setDescription] = useState('');
@@ -272,6 +272,31 @@ export function RightPanel() {
           {/* Scrollable File List */}
           <div ref={listContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden text-sm relative">
              
+             {/* Conflicts */}
+             {cherryPickState === 'conflict' && cherryPickConflictFiles.length > 0 && (
+               <div className="flex flex-col px-2 pt-2 shrink-0">
+                 <div className="flex items-center text-[11px] font-semibold uppercase text-[#f85149] mb-2 px-1 gap-1.5 shadow-sm">
+                   <AlertTriangle size={12} /> Conflicts ({cherryPickConflictFiles.length})
+                 </div>
+                 <div className="flex flex-col bg-[#161b22] rounded border border-[#f85149]/30 py-1 overflow-visible">
+                   {cherryPickConflictFiles.map((f, i) => (
+                     <div 
+                       key={i}
+                       onClick={() => activeRepoPath && loadConflictFile(activeRepoPath, f)}
+                       className={`flex items-center justify-between py-1.5 px-3 rounded cursor-pointer group whitespace-nowrap mx-1 ${selectedConflictFile === f ? 'bg-[#58a6ff]/20 text-[#58a6ff]' : 'hover:bg-[#2c313a] text-[#e6edf3]'}`}
+                     >
+                        <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                           <AlertTriangle size={12} className="text-[#f85149] shrink-0" />
+                           <div className="flex text-[12px] font-mono min-w-0 overflow-hidden" title={f}>
+                             <span className="truncate shrink-0">{f}</span>
+                           </div>
+                        </div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+
              {/* Unstaged Files */}
              <div className="flex flex-col p-2" style={{ flex: unstagedFlex, minHeight: 0 }}>
                  <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
