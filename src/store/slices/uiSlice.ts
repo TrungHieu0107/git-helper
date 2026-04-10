@@ -36,6 +36,8 @@ export interface UISlice {
   confirmDiscardAll: boolean;
   checkoutError: CheckoutError | null;
   refreshTimestamp: number;
+  forceCheckoutTarget: string | null;
+  forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
@@ -47,6 +49,7 @@ export interface UISlice {
   triggerRefresh: () => void;
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
+  setForceCheckout: (target: string | null, phase: UISlice['forceCheckoutPhase']) => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -59,6 +62,8 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   confirmDiscardAll: false,
   checkoutError: null,
   refreshTimestamp: 0,
+  forceCheckoutTarget: null,
+  forceCheckoutPhase: 'idle',
 
   setActiveTabId: (id) => set(() => ({ activeTabId: id })),
   setRepos: (repos) => set(() => ({ repos })),
@@ -68,6 +73,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setConfirmDiscardAll: (show) => set(() => ({ confirmDiscardAll: show })),
   setCheckoutError: (error) => set(() => ({ checkoutError: error })),
   triggerRefresh: () => set(() => ({ refreshTimestamp: Date.now() })),
+  setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   
   addToast: (message, type = 'info', duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);
