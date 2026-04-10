@@ -49,6 +49,8 @@ pub fn run() {
             commands::cherry_pick::cherry_pick_abort,
             commands::cherry_pick::cherry_pick_commit,
             commands::cherry_pick::cherry_pick_continue,
+            commands::cherry_pick::get_conflict_diff,
+            commands::cherry_pick::resolve_conflict_file,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Focused(focused) = event {

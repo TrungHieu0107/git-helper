@@ -24,6 +24,17 @@ pub struct CherryPickInProgress {
     pub conflicted_files: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ConflictVersions {
+    pub path: String,
+    pub ours: Option<String>,
+    pub base: Option<String>,
+    pub theirs: Option<String>,
+    pub raw: Option<String>,
+    pub encoding: String,
+}
+
+
 #[tauri::command]
 pub fn get_cherry_pick_state(repo_path: String) -> Result<CherryPickInProgress, String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
@@ -254,3 +265,67 @@ pub fn cherry_pick_continue(repo_path: String) -> Result<CherryPickResult, Strin
     repo.cleanup_state().map_err(|e| e.message().to_string())?;
     Ok(CherryPickResult::Success)
 }
+
+fn is_binary(bytes: &[u8]) -> bool {
+    bytes.contains(&0)
+}
+
+fn decode_bytes(bytes: &[u8], encoding_name: &str) -> Option<String> {
+    if is_binary(bytes) {
+        return None;
+    }
+    let enc = encoding_rs::Encoding::for_label(encoding_name.as_bytes())
+        .unwrap_or(encoding_rs::UTF_8);
+    let (decoded, _, _) = enc.decode(bytes);
+    Some(decoded.to_string())
+}
+
+#[tauri::command]
+pub fn get_conflict_diff(repo_path: String, path: String, encoding: String) -> Result<ConflictVersions, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
+    let index = repo.index().map_err(|e| e.message().to_string())?;
+    
+    let path_obj = Path::new(&path);
+    
+    let get_content = |stage: i32| -> Option<String> {
+        if let Some(entry) = index.get_path(path_obj, stage) {
+            if let Ok(blob) = repo.find_blob(entry.id) {
+                return decode_bytes(blob.content(), &encoding);
+            }
+        }
+        None
+    };
+
+    let full_path = std::path::Path::new(&repo_path).join(&path);
+    let raw_content = std::fs::read(&full_path).ok()
+        .and_then(|bytes| decode_bytes(&bytes, &encoding));
+
+    let base_content = get_content(1);
+    let ours_content = get_content(2);
+    let theirs_content = get_content(3);
+
+    Ok(ConflictVersions {
+        path,
+        base: base_content,
+        ours: ours_content,
+        theirs: theirs_content,
+        raw: raw_content,
+        encoding,
+    })
+}
+
+#[tauri::command]
+pub fn resolve_conflict_file(repo_path: String, path: String, resolved_content: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
+    
+    let full_path = Path::new(&repo_path).join(&path);
+    std::fs::write(&full_path, resolved_content)
+        .map_err(|e| format!("Failed to write resolved file: {}", e))?;
+        
+    let mut index = repo.index().map_err(|e| e.message().to_string())?;
+    index.add_path(Path::new(&path)).map_err(|e| e.message().to_string())?;
+    index.write().map_err(|e| e.message().to_string())?;
+    
+    Ok(())
+}
+
