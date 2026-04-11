@@ -1,9 +1,9 @@
 # GitKit Status Summary
-## Version: 2.4.3
-## Status: Stable - Balanced History Density
+## Version: 2.4.5
+## Status: Stable - Stash Lane Isolation
 
-The GitKit history view has been tuned for optimal legibility while maintaining a professional high-density layout.
+The GitKit commit graph now features isolated stash lanes to improve visual clarity and prevent overlap with active branch lines.
 
 **Recent Highlights**:
-- **Balanced Typography**: Commit messages and stash descriptions in the graph have been adjusted to **12px**. This provides a perfect middle ground between the dense 11px scale and the standard 13px base, ensuring both efficiency and legibility.
-- **Visual Alignment**: The WIP row and author-column metadata have also been synchronized to the 12px scale for a consistent reading experience across the entire history log.
+- **Stash Isolation**: Stash commits are now dynamically pushed to the right of all active branch lines, providing a clear "outside" representation as requested.
+- **Improved Layout Logic**: Updated the backend layout engine to calculate occupancy based on the entire branch area rather than just the base commit's immediate neighbors.

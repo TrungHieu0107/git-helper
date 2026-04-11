@@ -1,5 +1,5 @@
 # GitManager App Memory
-## Version: 2.4.4
+## Version: 2.4.5
 ## Last updated: 2026-04-11 – Completed GitKit visual overhaul Phase 1 (Sidebar, CommitGraph, RightPanel, Toolbar)
 
 ## Project: GitKit
@@ -119,5 +119,10 @@
 - 2026-04-11 (v2.4.4):
   - **Refinement**: Further reduced sidebar and section headers to **7px** to create an extremely sharp, high-density visual contrast between headers and content.
 
-# Project Status: Stable (v2.3.8)
-The GitKit application is stable and has completed the first phase of its comprehensive UI/UX redesign, featuring a modernized design system, standardized typography, and a compact, high-density layout.
+- 2026-04-11 (v2.4.5):
+  - **Feature**: Implemented Stash Lane Isolation (v2).
+  - **Reason**: Stash nodes were overlapping with branch lines.
+  - **Changes**: Moved stash commits to dedicated lanes starting from `active_lanes.len() + 1`, effectively pushing them "outside" the branch graph area. Updated both backend layout logic and frontend width calculation.
+
+# Project Status: Stable (v2.4.5)
+The GitKit application is stable. Stash commits are now isolated in dedicated lanes to the right of the main branch graph.

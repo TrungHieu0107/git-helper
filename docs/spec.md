@@ -21,7 +21,7 @@ This document outlines the implemented and planned features of GitKit, along wit
 - **Details**:
     - **Topological Sorting**: Uses `revwalk` with `TOPOLOGICAL` and `TIME` sorting.
     - **Lane Assignment**: Dynamic lane routing logic with parent-child linkage.
-    - **Stash Integration**: Stashes are injected into the graph with dedicated lanes and rounded connection lines.
+    - **Stash Integration**: Stashes are injected into the graph with dedicated lanes positioned outside the main branch graph to prevent visual overlap.
     - **SVG Rendering**: High-fidelity SVG segments supporting curved pathways and Manhattan routing.
 - **Key Files**: `src-tauri/src/commands/log/`, `src/components/CommitGraph.tsx`.
 
