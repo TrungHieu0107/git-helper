@@ -46,4 +46,10 @@
 - **Alternatives considered**: Heavy backend-side SVG tiling (too complex for state sync).
 - **Status**: Active
 
+### 2026-04-11 — Overflow Visible for Dialog Overlays
+- **Decision**: Changed `overflow: hidden` to `overflow: visible` for `.create-branch-dialog`.
+- **Reason**: The dialog contains absolute-positioned dropdowns (Source Branch selector) that extend beyond the dialog boundaries. `overflow: hidden` was clipping these menus, making them inaccessible.
+- **Alternatives considered**: Using React Portals for the dropdown. However, for a one-off UI fix, modifying the CSS to allow visibility is more efficient and maintains the current architecture.
+- **Status**: Active
+
 <!-- Antigravity -->

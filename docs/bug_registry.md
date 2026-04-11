@@ -11,6 +11,8 @@ This document tracks identified bugs, logic gaps, and planned improvements in th
 |---|---|---|---|---|
 | BUG-001 | Possible Stash Drop Failure | Open | - | In `commands/stash/mod.rs`, if `stash_apply` succeeds but `stash_drop` fails, the stash is duplicated. |
 | BUG-002 | Remote Checkout Fix | **Resolved** | v2.1.0 | Clicking remote branch tags in the commit graph now correctly resolves tracking branches and handles diverged commits safely. |
+| BUG-003 | CreateBranchDialog Clipping | **Resolved** | v2.3.2 | "Source Branch" dropdown was obscured by the dialog's `overflow: hidden` property. Fixed by changing to `overflow: visible`. |
+
 
 ## Medium Severity
 

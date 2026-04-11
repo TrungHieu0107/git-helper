@@ -96,3 +96,7 @@ Version 2.1.1 introduces a high-polish Amend workflow, featuring original author
   - Resolved TypeScript errors regarding `setBranchContextMenu` scoping.
   - Cleaned up unused variables and imports in `Sidebar`, `TopToolbar`, `CommitGraph`, and `ConflictEditorView`.
   - Verified clean production build with `npm run build`.
+- **2026-04-11 (v2.3.2)**: 
+  - Fixed UI bug in `CreateBranchDialog` where the "Source Branch" dropdown was obscured by the dialog container.
+  - Removed `overflow: hidden` from `.create-branch-dialog` class in `index.css` to allow absolute-positioned overlays to render outside the dialog boundaries.
+
