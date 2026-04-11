@@ -122,7 +122,11 @@
 - 2026-04-11 (v2.4.5):
   - **Feature**: Implemented Stash Lane Isolation (v2).
   - **Reason**: Stash nodes were overlapping with branch lines.
-  - **Changes**: Moved stash commits to dedicated lanes starting from `active_lanes.len() + 1`, effectively pushing them "outside" the branch graph area. Updated both backend layout logic and frontend width calculation.
+  - **Changes**: 
+    - Moved stash commits to dedicated lanes starting from `active_lanes.len() + 1`, effectively pushing them "outside" the branch graph area.
+    - Implemented active branch highlighting in the commit graph, ensuring the badge for the current checkout is visually distinct.
 
 # Project Status: Stable (v2.4.5)
-The GitKit application is stable. Stash commits are now isolated in dedicated lanes to the right of the main branch graph.
+The GitKit application is stable.
+- **Stash Isolation**: Stash commits are now dynamically pushed to the right of all active branch lines, providing a clear "outside" representation as requested.
+- **Active Branch Highlighting**: The commit graph now visually highlights the name of the currently active branch in its ref badges, making navigation and focus much easier.
