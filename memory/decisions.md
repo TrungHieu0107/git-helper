@@ -52,4 +52,15 @@
 - **Alternatives considered**: Using React Portals for the dropdown. However, for a one-off UI fix, modifying the CSS to allow visibility is more efficient and maintains the current architecture.
 - **Status**: Active
 
+### 2026-04-11 — Support Historical Diff Views
+- **Decision**: Refactored `MainDiffView` to prioritize explicit props (`path`, `commitOid`) over global store state.
+- **Reason**: To allow the `FileHistoryModal` to render historical diffs without corrupting or competing with the main application's working tree diff state.
+- **Alternatives considered**: Creating a separate `HistoryDiffView` component (rejected as it would lead to code duplication and inconsistent rendering logic).
+- **Status**: Active
+
+### 2026-04-11 — Initial Commit Diffing
+- **Decision**: Implemented `log::get_file_log` to compare initial commits against a transient empty tree.
+- **Reason**: `git2`'s `Diff::tree_to_tree` requires two trees. Root commits have no parent. Comparing against an empty tree ensures the initial introduction of a file is captured as a "change" (additions).
+- **Status**: Active
+
 <!-- Antigravity -->

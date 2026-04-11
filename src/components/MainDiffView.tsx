@@ -4,8 +4,24 @@ import { DiffEditor } from "@monaco-editor/react";
 import { X, Columns, AlignLeft, Settings, ArrowUp, ArrowDown } from "lucide-react";
 import { useAppStore } from "../store";
 
-export function MainDiffView() {
-  const { selectedDiff, activeRepoPath, fileEncoding, refreshTimestamp } = useAppStore();
+export interface MainDiffViewProps {
+  path?: string;
+  staged?: boolean;
+  commitOid?: string;
+  hideClose?: boolean;
+  onClose?: () => void;
+}
+
+export function MainDiffView(props: MainDiffViewProps) {
+  const store = useAppStore();
+  
+  // Prioritize props over store for portability (Bug 4 mitigation)
+  const path = props.path ?? store.selectedDiff?.path;
+  const staged = props.staged ?? store.selectedDiff?.staged ?? false;
+  const commitOid = props.commitOid ?? store.selectedDiff?.commitOid;
+  
+  const { activeRepoPath, fileEncoding, refreshTimestamp } = store;
+
   const [oldContent, setOldContent] = useState<string | null>(null);
   const [newContent, setNewContent] = useState<string | null>(null);
   const [isBinary, setIsBinary] = useState<boolean>(false);
@@ -79,15 +95,16 @@ export function MainDiffView() {
   };
 
   useEffect(() => {
-    if (!selectedDiff || !activeRepoPath) return;
+    if (!path || !activeRepoPath) return;
 
     let isMounted = true;
     
     // Check if this is a background refresh vs a new file selection
-    const isNewSelection = lastSelectionRef.current !== `${selectedDiff.path}-${selectedDiff.staged}-${selectedDiff.commitOid}`;
+    const selectionKey = `${path}-${staged}-${commitOid}`;
+    const isNewSelection = lastSelectionRef.current !== selectionKey;
     const isRefresh = !isNewSelection && prevTimestampRef.current !== refreshTimestamp;
     
-    lastSelectionRef.current = `${selectedDiff.path}-${selectedDiff.staged}-${selectedDiff.commitOid}`;
+    lastSelectionRef.current = selectionKey;
     prevTimestampRef.current = refreshTimestamp;
 
     if (!isRefresh) {
@@ -98,9 +115,9 @@ export function MainDiffView() {
 
     invoke<{ old_content: string | null, new_content: string | null, is_binary: boolean }>('get_file_contents', {
       repoPath: activeRepoPath,
-      path: selectedDiff.path,
-      commitOid: selectedDiff.commitOid || null,
-      staged: selectedDiff.staged,
+      path: path,
+      commitOid: commitOid || null,
+      staged: staged,
       encoding: fileEncoding
     })
       .then((res) => {
@@ -127,9 +144,8 @@ export function MainDiffView() {
       });
 
     return () => { isMounted = false; };
-  }, [selectedDiff, activeRepoPath, fileEncoding, refreshTimestamp]);
+  }, [path, staged, commitOid, activeRepoPath, fileEncoding, refreshTimestamp]);
 
-  // Bug Fix: Safely detach models before unmount to prevent Monaco disposal errors
   useEffect(() => {
     return () => {
       if (diffEditorRef.current) {
@@ -143,12 +159,17 @@ export function MainDiffView() {
     };
   }, []);
 
-  if (!selectedDiff) return null;
+  if (!path) return null;
 
-  const closeView = () => useAppStore.setState({ selectedDiff: null });
+  const closeView = () => {
+    if (props.onClose) {
+      props.onClose();
+    } else {
+      useAppStore.setState({ selectedDiff: null });
+    }
+  };
 
-  // Determine Monaco language heuristically from extension
-  const extension = selectedDiff.path.split('.').pop()?.toLowerCase();
+  const extension = path.split('.').pop()?.toLowerCase();
   const getLanguage = (ext: string | undefined) => {
       switch(ext) {
           case 'ts': case 'tsx': return 'typescript';
@@ -174,12 +195,12 @@ export function MainDiffView() {
       
       {/* Diff Toolbar */}
       <div className="h-[40px] px-4 shrink-0 flex items-center justify-between border-b border-[#30363d] bg-[#161b22]">
-        <div className="flex items-center gap-3 overflow-hidden">
+        <div className="flex items-center gap-3 overflow-hidden text-[#8b949e]">
           <span className="text-[13px] font-mono text-[#c9d1d9] truncate">
-            {selectedDiff.path}
+            {path}
           </span>
-          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#21262d] text-[#8b949e] border border-[#30363d] uppercase">
-            {selectedDiff.commitOid ? 'Historical' : selectedDiff.staged ? 'Staged' : 'Unstaged'}
+          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#21262d] border border-[#30363d] uppercase">
+            {commitOid ? `Commit ${commitOid.substring(0, 7)}` : staged ? 'Staged' : 'Unstaged'}
           </span>
         </div>
 
@@ -241,28 +262,30 @@ export function MainDiffView() {
             <Settings size={12} className="text-[#8b949e]" />
             <select 
               value={fileEncoding}
-              onChange={(e) => useAppStore.setState({ fileEncoding: e.target.value })}
+              onChange={(e) => store.setFileEncoding(e.target.value)}
               className="bg-transparent text-[11px] text-[#c9d1d9] outline-none cursor-pointer"
             >
               <option value="utf-8">UTF-8</option>
-              <option value="shift_jis">Shift-JIS (Japanese)</option>
-              <option value="windows-1258">Windows-1258 (Vietnamese)</option>
-              <option value="gbk">GBK (Chinese)</option>
+              <option value="shift_jis">Shift-JIS</option>
+              <option value="windows-1258">Windows-1258</option>
+              <option value="gbk">GBK</option>
             </select>
           </div>
 
-          <div className="w-px h-4 bg-[#30363d] mx-1"></div>
-
-          <button onClick={closeView} className="text-[#8b949e] hover:text-white transition-colors p-1 hover:bg-[#30363d] rounded">
-            <X size={16} />
-          </button>
+          {!props.hideClose && (
+            <>
+              <div className="w-px h-4 bg-[#30363d] mx-1"></div>
+              <button onClick={closeView} className="text-[#8b949e] hover:text-white transition-colors p-1 hover:bg-[#30363d] rounded">
+                <X size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Editor Content Area */}
       <div className="flex-1 relative overflow-hidden">
         
-        {/* Monaco Diff Editor - Always mounted to prevent disposal errors */}
         {!isBinary && (
           <DiffEditor
             original={oldContent || ""}
@@ -291,7 +314,6 @@ export function MainDiffView() {
           />
         )}
 
-        {/* Loading Overlay */}
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-[#8b949e] gap-3 bg-[#0d1117] z-[50]">
              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -299,14 +321,12 @@ export function MainDiffView() {
           </div>
         )}
 
-        {/* Error Overlay */}
         {error && (
            <div className="absolute inset-0 flex items-center justify-center text-red-400 p-6 text-center text-sm font-mono bg-[#0d1117] z-[60]">
               Error: {error}
            </div>
         )}
 
-        {/* Binary Overlay */}
         {isBinary && (
            <div className="absolute inset-0 flex items-center justify-center text-[#8b949e] italic text-sm bg-[#0d1117] z-[40]">
              Binary file cannot be displayed
