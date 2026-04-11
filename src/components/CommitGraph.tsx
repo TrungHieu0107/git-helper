@@ -17,14 +17,14 @@ const DEF_HASH_W = 72;
 const DEF_AUTHOR_W = 110;
 
 const COLORS = [
-  '#00d4ff', // cyan  — lane 0 (main/HEAD)
-  '#a855f7', // purple
-  '#ef4444', // red
-  '#f97316', // orange
-  '#ec4899', // pink
-  '#22c55e', // green
-  '#eab308', // yellow
-  '#6b7280', // gray
+  '#388bfd', // GitHub blue — lane 0
+  '#a371f7', // soft purple
+  '#fa7970', // soft red
+  '#faa356', // soft orange
+  '#ffadff', // pink
+  '#3fb950', // green
+  '#d29922', // yellow
+  '#8b949e', // gray
 ];
 
 const color = (i: number) => COLORS[i % COLORS.length];
@@ -315,6 +315,13 @@ export function CommitGraph() {
             width={gw} 
             height={virtualizer.getTotalSize()}
           >
+            <defs>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
             {/* Layer 1: Stash connection lines */}
             {(() => {
               const minVis = virtualItems[0]?.index ?? 0;
@@ -323,8 +330,8 @@ export function CommitGraph() {
                 .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
                 .map((e, i) => (
                   <path key={`se-${i}`} d={e.path} fill="none"
-                    stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.6}
-                    strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
+                    stroke={color(e.colorIdx)} strokeWidth={1.5} opacity={0.4}
+                    strokeDasharray="4 3" strokeLinecap="round" strokeLinejoin="round" />
                 ));
             })()}
 
@@ -334,11 +341,21 @@ export function CommitGraph() {
               const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
               return edges
                 .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
-                .map((e: Edge, i: number) => (
-                  <path key={`e-${i}`} d={e.path} fill="none"
-                    stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-                    strokeDasharray={e.dashed ? '6 4' : 'none'} />
-                ));
+                .map((e: Edge, i: number) => {
+                  const isActive = activeOids.has(e.childOid);
+                  return (
+                    <path key={`e-${i}`} d={e.path} fill="none"
+                      stroke={color(e.colorIdx)} 
+                      strokeWidth={isActive ? 2.5 : 1.8} 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      opacity={isActive ? 1 : 0.6}
+                      filter={isActive ? "url(#glow)" : "none"}
+                      strokeDasharray={e.dashed ? '6 4' : 'none'} 
+                      style={{ transition: 'all 0.2s ease' }}
+                    />
+                  );
+                });
             })()}
 
             {/* Layer 3: WIP node */}
@@ -365,11 +382,11 @@ export function CommitGraph() {
 
               if (n.node_type === 'stash') {
                 return (
-                  <g key={n.oid}>
-                    <rect x={cx - NODE_R} y={cy - NODE_R} width={NODE_R * 2} height={NODE_R * 2} rx={4}
-                      fill={`hsl(${h}, 30%, 20%)`} stroke={c} strokeWidth={2} strokeDasharray="3 2" />
+                  <g key={n.oid} className="transition-all duration-200">
+                    <rect x={cx - NODE_R + 1} y={cy - NODE_R + 1} width={NODE_R * 2 - 2} height={NODE_R * 2 - 2} rx={3}
+                      fill="#0d1117" stroke={c} strokeWidth={2} strokeDasharray="3 2" />
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                      fill="#fff" fontSize={9} fontWeight={700} style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                      fill={c} fontSize={9} fontWeight={900} style={{ userSelect: 'none', pointerEvents: 'none' }}>
                       S
                     </text>
                   </g>
@@ -381,10 +398,10 @@ export function CommitGraph() {
               }
 
               return (
-                <g key={n.oid}>
-                  <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={2} />
+                <g key={n.oid} className="transition-all duration-200">
+                  <circle cx={cx} cy={cy} r={r} fill="#0d1117" stroke={c} strokeWidth={2.5} />
                   <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                    fill="#fff" fontSize={10} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                    fill="#e6edf3" fontSize={10} fontWeight={800} style={{ userSelect: 'none', pointerEvents: 'none' }}>
                     {(n.author || '?')[0].toUpperCase()}
                   </text>
                 </g>
