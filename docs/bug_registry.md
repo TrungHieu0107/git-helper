@@ -13,6 +13,7 @@ This document tracks identified bugs, logic gaps, and planned improvements in th
 | BUG-002 | Remote Checkout Fix | **Resolved** | v2.1.0 | Clicking remote branch tags in the commit graph now correctly resolves tracking branches and handles diverged commits safely. |
 | BUG-003 | CreateBranchDialog Clipping | **Resolved** | v2.3.2 | "Source Branch" dropdown was obscured by the dialog's `overflow: hidden` property. Fixed by changing to `overflow: visible`. |
 | BUG-004 | Reveal in Explorer fail | **Resolved** | v2.5.2 | `explorer /select` failed on Windows due to redundant inner quotes and mixed slashes. Fixed in `reveal_file`. |
+| BUG-005 | Discard Changes IPC Error| **Resolved** | v2.5.3 | Missing `filePath` error in `discard_file_changes` due to snake_case vs camelCase mismatch in Tauri IPC. |
 
 
 ## Medium Severity
