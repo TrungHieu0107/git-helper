@@ -18,3 +18,7 @@
 | `push_branch_to_remote`| `repoPath, branchName, remote, setUpstream` | `Result<(), String>` | Implemented |
 | `list_remote_branches`| `repoPath: String` | `Result<Vec<RemoteBranchInfo>, String>` | Implemented |
 | `create_stash` | `repoPath: String, message: Option<String>` | `Result<(), String>` | Implemented |
+| `pull_remote` | `repoPath, remote, strategy: PullStrategy` | `Result<PullResult, String>` | Upgraded |
+| `save_app_state` | `state: AppStateData` | `Result<(), String>` | Implemented |
+| `get_app_state` | - | `Result<AppStateData, String>` | Implemented |
+
