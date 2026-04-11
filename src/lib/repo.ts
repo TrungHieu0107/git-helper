@@ -992,3 +992,55 @@ export async function invokeCherryPick(oids: string[]) {
     useAppStore.getState().resetCherryPick();
   }
 }
+
+export async function openInEditor(filePath: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  const fullPath = await join(path, filePath);
+  try {
+    await invoke('open_file', { path: fullPath });
+  } catch (e) {
+    toast.error(`Failed to open file: ${e}`);
+  }
+}
+
+export async function showInExplorer(filePath: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  const fullPath = await join(path, filePath);
+  try {
+    await invoke('reveal_file', { path: fullPath });
+  } catch (e) {
+    toast.error(`Failed to reveal file: ${e}`);
+  }
+}
+
+export async function discardFileChanges(filePath: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('discard_file_changes', { repoPath: path, file_path: filePath });
+    await refreshActiveRepoStatus();
+    toast.success(`Discarded changes in "${filePath}"`);
+  } catch (e) {
+    toast.error(`Failed to discard changes: ${e}`);
+  }
+}
+
+export async function getFileLog(filePath: string): Promise<FileCommit[]> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return [];
+  try {
+    return await invoke<FileCommit[]>('get_file_log', { repoPath: path, filePath });
+  } catch (e) {
+    toast.error(`Failed to load history: ${e}`);
+    return [];
+  }
+}
+
+async function join(base: string, part: string): Promise<string> {
+  // Simple check for windows/unix path separator
+  const sep = base.includes('\\') ? '\\' : '/';
+  if (base.endsWith(sep)) return base + part;
+  return base + sep + part;
+}

@@ -4,6 +4,7 @@ import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder,
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../lib/repo";
 import { toast } from "../lib/toast";
 import { CommitDetailPanel } from "./CommitDetailPanel";
+import { FileContextMenu } from "./FileContextMenu";
 
 interface TreeNode {
   name: string;
@@ -83,6 +84,7 @@ export function RightPanel() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [fileFilter, setFileFilter] = useState('');
+  const [contextMenu, setContextMenu] = useState<{ path: string, isStaged: boolean, position: { x: number, y: number } } | null>(null);
 
   // Vertical Resizing State
   const [unstagedFlex, setUnstagedFlex] = useState(1);
@@ -225,7 +227,17 @@ export function RightPanel() {
       });
   };
 
+  const handleFileContextMenu = (e: React.MouseEvent, path: string, isStaged: boolean) => {
+    e.preventDefault();
+    setContextMenu({
+      path,
+      isStaged,
+      position: { x: e.clientX, y: e.clientY }
+    });
+  };
+
   return (
+    <>
     <aside 
       className={`flex flex-col bg-[#161b22] border-l border-[#30363d] shrink-0 text-[#8b949e] select-none h-full relative transition-[width] duration-300 ${isCollapsed ? 'items-center bg-[#0d1117]' : 'w-[var(--right-width)]'}`}
       style={{ width: isCollapsed ? '48px' : undefined }}
@@ -346,15 +358,16 @@ export function RightPanel() {
                     {filteredUnstaged.length > 0 ? (
                      viewMode === 'path' ? (
                        filteredUnstaged.map((f, i) => (
-                           <FileRow 
-                             key={i} 
-                             name={f.path} 
-                             status={f.status} 
-                             onAction={() => stageFile(f.path)}
-                             actionLabel="Stage"
-                             onClick={() => selectFileDiff(f.path, false)}
-                             highlight={fileFilter}
-                           />
+                            <FileRow 
+                              key={i} 
+                              name={f.path} 
+                              status={f.status} 
+                              onAction={() => stageFile(f.path)}
+                              actionLabel="Stage"
+                              onClick={() => selectFileDiff(f.path, false)}
+                              onContextMenu={(e) => handleFileContextMenu(e, f.path, false)}
+                              highlight={fileFilter}
+                            />
                        ))
                      ) : (
                        renderTree(unstagedTree, stageFile, "Stage", (p) => selectFileDiff(p, false))
@@ -401,6 +414,7 @@ export function RightPanel() {
                             onAction={() => unstageFile(f.path)}
                             actionLabel="Unstage"
                             onClick={() => selectFileDiff(f.path, true)}
+                            onContextMenu={(e) => handleFileContextMenu(e, f.path, true)}
                             highlight={fileFilter}
                           />
                       ))
@@ -486,6 +500,15 @@ export function RightPanel() {
       )}
 
     </aside>
+    {contextMenu && (
+      <FileContextMenu 
+        path={contextMenu.path}
+        isStaged={contextMenu.isStaged}
+        position={contextMenu.position}
+        onClose={() => setContextMenu(null)}
+      />
+    )}
+    </>
   );
 }
 
@@ -521,13 +544,14 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   return <>{parts}</>;
 }
 
-function FileRow({ name, status, onAction, actionLabel, onClick, highlight = '' }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void, highlight?: string }) {
+function FileRow({ name, status, onAction, actionLabel, onClick, onContextMenu, highlight = '' }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void, onContextMenu?: (e: React.MouseEvent) => void, highlight?: string }) {
   const fileName = name.includes('/') ? name.substring(name.lastIndexOf('/') + 1) : name;
   const dirPath = name.includes('/') ? name.substring(0, name.lastIndexOf('/') + 1) : '';
 
   return (
     <div 
       onClick={onClick}
+      onContextMenu={onContextMenu}
       className={`flex items-center justify-between h-[22px] px-2 hover:bg-[#1f2937] rounded-md cursor-pointer group transition-all duration-150 mx-1`}
     >
         <div className="flex items-center gap-2 overflow-hidden min-w-0">
