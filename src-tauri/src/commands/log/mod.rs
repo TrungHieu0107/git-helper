@@ -31,7 +31,8 @@ pub fn get_log(
     state: tauri::State<crate::AppState>,
     repo_path: String, 
     limit: usize, 
-    offset: usize
+    offset: usize,
+    refresh: Option<bool>
 ) -> Result<Vec<CommitNode>, String> {
     let mut repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
@@ -62,25 +63,23 @@ pub fn get_log(
 
     // ── Optimized Ref Caching ──────────────────────────────────────────
     // Use the global state to cache the OID -> Labels mapping.
-    // In a large repo, parsing thousands of tags/branches is the main bottleneck.
     let refs_map = {
         let mut cache_lock = state.ref_cache.lock().unwrap();
+        let should_refresh = refresh.unwrap_or(false);
         
-        // Cache hit if repo matches
-        if let Some(cache) = cache_lock.as_ref() {
-            if cache.repo_path == repo_path {
-                cache.refs.clone()
-            } else {
-                // Path changed, rebuild
-                let new_map = rebuild_refs_map(&repo)?;
-                *cache_lock = Some(crate::RefCache {
-                    repo_path: repo_path.clone(),
-                    refs: new_map.clone(),
-                });
-                new_map
-            }
+        // Check if we can use the cache
+        let use_cache = if should_refresh {
+            false
+        } else if let Some(cache) = cache_lock.as_ref() {
+            cache.repo_path == repo_path
         } else {
-            // First run, populate
+            false
+        };
+
+        if use_cache {
+            cache_lock.as_ref().unwrap().refs.clone()
+        } else {
+            // Rebuild cache
             let new_map = rebuild_refs_map(&repo)?;
             *cache_lock = Some(crate::RefCache {
                 repo_path: repo_path.clone(),

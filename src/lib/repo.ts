@@ -223,7 +223,7 @@ export async function loadRepo(path: string) {
       invoke<RepoInfo>('open_repo', { path }),
       invoke<RepoStatus>('get_repo_status', { path }),
       invoke<BranchInfo[]>('list_branches', { repoPath: path }),
-      invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0 }),
+      invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0, refresh: true }),
       invoke<any[]>('list_stashes', { repoPath: path }),
       invoke<FileStatus[]>('get_status', { repoPath: path })
     ]);
@@ -287,7 +287,8 @@ export async function loadMoreCommits() {
     const log = await invoke<CommitNode[]>('get_log', { 
       repoPath: state.activeRepoPath, 
       limit: 200, 
-      offset: currentLen 
+      offset: currentLen,
+      refresh: false
     });
     
     useAppStore.setState({ 
