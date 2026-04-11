@@ -1028,7 +1028,7 @@ export async function discardFileChanges(filePath: string) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   try {
-    await invoke('discard_file_changes', { repoPath: path, file_path: filePath });
+    await invoke('discard_file_changes', { repoPath: path, filePath });
     await refreshActiveRepoStatus();
     toast.success(`Discarded changes in "${filePath}"`);
   } catch (e) {
