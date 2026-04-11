@@ -218,18 +218,20 @@ export async function loadRepo(path: string) {
   useAppStore.setState({ isLoadingRepo: true, repoError: null });
   
   try {
-    const info = await invoke<RepoInfo>('open_repo', { path });
-    const status = await invoke<RepoStatus>('get_repo_status', { path });
-    
-    // We fetch these even if they are stubs for now
-    const branches = await invoke<BranchInfo[]>('list_branches', { repoPath: path });
-    const log = await invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0 });
-    const backendStashes = await invoke<any[]>('list_stashes', { repoPath: path });
+    // Parallel fetch for all repo data to reduce latency
+    const [info, status, branches, log, backendStashes, fileStatuses] = await Promise.all([
+      invoke<RepoInfo>('open_repo', { path }),
+      invoke<RepoStatus>('get_repo_status', { path }),
+      invoke<BranchInfo[]>('list_branches', { repoPath: path }),
+      invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0 }),
+      invoke<any[]>('list_stashes', { repoPath: path }),
+      invoke<FileStatus[]>('get_status', { repoPath: path })
+    ]);
+
     const stashes = backendStashes.map(s => ({
       ...s,
       stackIndex: s.index
     }));
-    const fileStatuses = await invoke<FileStatus[]>('get_status', { repoPath: path });
 
     const stagedFiles = fileStatuses.filter(f => f.status === 'staged');
     const unstagedFiles = fileStatuses.filter(f => f.status === 'unstaged' || f.status === 'untracked' || f.status === 'conflicted');
@@ -253,6 +255,13 @@ export async function loadRepo(path: string) {
       unstagedFiles,
       repos: updatedRepos,
       hasMoreCommits: log.length === 200,
+      
+      // Reset selections on refresh/load to avoid stale views
+      selectedCommitDetail: null,
+      selectedDiff: null,
+      selectedRowIndex: null,
+      activeCommitOid: null,
+      isLoadingCommitDetail: false
     });
 
     saveCurrentState();
