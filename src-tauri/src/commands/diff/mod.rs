@@ -1,5 +1,6 @@
-use git2::{Repository, Signature};
 use serde::Serialize;
+use git2::{Repository, Signature};
+use crate::git::encoding::{detect_and_decode, DetectionResult};
 
 #[derive(Serialize)]
 pub struct CommitFileChange {
@@ -168,25 +169,16 @@ pub fn create_commit(repo_path: String, message: String, amend: bool) -> Result<
 }
 
 #[derive(Serialize)]
-pub struct FileContents {
+pub struct DecodedDiff {
     pub old_content: Option<String>,
     pub new_content: Option<String>,
+    pub encoding: String,
+    pub confidence: f32,
+    pub had_bom: bool,
     pub is_binary: bool,
 }
 
-fn is_binary(bytes: &[u8]) -> bool {
-    bytes.contains(&0)
-}
-
-fn decode_bytes(bytes: &[u8], encoding_name: &str) -> Option<String> {
-    if is_binary(bytes) {
-        return None;
-    }
-    let enc = encoding_rs::Encoding::for_label(encoding_name.as_bytes())
-        .unwrap_or(encoding_rs::UTF_8);
-    let (decoded, _, _) = enc.decode(bytes);
-    Some(decoded.to_string())
-}
+// Helpers removed in favor of crate::git::encoding
 
 fn get_blob_bytes<'a>(repo: &'a Repository, tree: &git2::Tree<'a>, path: &str) -> Option<Vec<u8>> {
     let entry = tree.get_path(std::path::Path::new(path)).ok()?;
@@ -201,54 +193,41 @@ pub fn get_file_contents(
     path: String,
     commit_oid: Option<String>,
     staged: bool,
-    encoding: String
-) -> Result<FileContents, String> {
+    force_encoding: Option<String>
+) -> Result<DecodedDiff, String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
 
     let mut old_bytes = None;
     let mut new_bytes = None;
 
     if let Some(oid_str) = commit_oid {
-        // Historical Commit View
         let obj = repo.revparse_single(&oid_str).map_err(|e| e.message().to_string())?;
         let commit = obj.peel_to_commit().map_err(|e| e.message().to_string())?;
         let tree = commit.tree().map_err(|e| e.message().to_string())?;
-        
-        // This commit's version
         new_bytes = get_blob_bytes(&repo, &tree, &path);
-        
-        // Parent's version
         if let Ok(parent) = commit.parent(0) {
             if let Ok(parent_tree) = parent.tree() {
                 old_bytes = get_blob_bytes(&repo, &parent_tree, &path);
             }
         }
     } else {
-        // Active Workspace View
-        let head_tree = repo.head().ok()
-            .and_then(|h| h.peel_to_tree().ok());
-            
+        let head_tree = repo.head().ok().and_then(|h| h.peel_to_tree().ok());
         let index = repo.index().map_err(|e| e.message().to_string())?;
-        
         if staged {
-            // Compare HEAD vs INDEX
             if let Some(tree) = head_tree {
                 old_bytes = get_blob_bytes(&repo, &tree, &path);
             }
-            // Index file
             if let Some(entry) = index.get_path(std::path::Path::new(&path), 0) {
                 if let Ok(blob) = repo.find_blob(entry.id) {
                     new_bytes = Some(blob.content().to_vec());
                 }
             }
         } else {
-            // Compare INDEX vs WORKDIR
             if let Some(entry) = index.get_path(std::path::Path::new(&path), 0) {
                 if let Ok(blob) = repo.find_blob(entry.id) {
                     old_bytes = Some(blob.content().to_vec());
                 }
             }
-            // Workdir file
             let full_file_path = std::path::Path::new(&repo_path).join(&path);
             if let Ok(bytes) = std::fs::read(&full_file_path) {
                 new_bytes = Some(bytes);
@@ -256,23 +235,38 @@ pub fn get_file_contents(
         }
     }
 
-    let is_bin_old = old_bytes.as_ref().is_some_and(|b| is_binary(b));
-    let is_bin_new = new_bytes.as_ref().is_some_and(|b| is_binary(b));
+    // Detect using the NEWest version (or old if new is missing)
+    let detection_bytes = new_bytes.as_ref().or(old_bytes.as_ref());
     
-    if is_bin_old || is_bin_new {
-        return Ok(FileContents {
-            old_content: None,
-            new_content: None,
-            is_binary: true,
-        });
-    }
+    let result = if let Some(bytes) = detection_bytes {
+        detect_and_decode(bytes, force_encoding.as_deref())
+    } else {
+        DetectionResult {
+            content: String::new(),
+            encoding: "UTF-8".to_string(),
+            confidence: 1.0,
+            had_bom: false,
+            is_binary: false,
+        }
+    };
 
-    let old_content = old_bytes.and_then(|b| decode_bytes(&b, &encoding));
-    let new_content = new_bytes.and_then(|b| decode_bytes(&b, &encoding));
+    // Use same encoding for other side
+    let final_encoding = result.encoding.clone();
+    
+    let old_content = if result.is_binary { None } else {
+        old_bytes.map(|b| detect_and_decode(&b, Some(&final_encoding)).content)
+    };
+    
+    let new_content = if result.is_binary { None } else {
+        new_bytes.map(|b| detect_and_decode(&b, Some(&final_encoding)).content)
+    };
 
-    Ok(FileContents {
+    Ok(DecodedDiff {
         old_content,
         new_content,
-        is_binary: false,
+        encoding: result.encoding,
+        confidence: result.confidence,
+        had_bom: result.had_bom,
+        is_binary: result.is_binary,
     })
 }
