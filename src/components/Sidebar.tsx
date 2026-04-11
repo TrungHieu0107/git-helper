@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw } from "lucide-react";
-import { useAppStore } from "../store";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw, Cloud, Layers, X } from "lucide-react";
+import { useAppStore, StashEntry } from "../store";
 import { safeSwitchBranch, applyStash, popStash } from "../lib/repo";
-import { StashEntry } from "../store";
+import { Highlight } from "./Sidebar/utils";
+import { StashEntryItem, StashContextMenu } from "./Sidebar/Stashes";
 
 // Hierarchical Branch Tree Types
 export interface BranchNode {
@@ -298,62 +299,25 @@ export function Sidebar() {
               <SidebarResizeHandle onMouseDown={startResizing('remote')} />
             )}
 
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 pt-3 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
                <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
                {stashOpen && (
-                 <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-2">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar-hidden bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1 px-1 gap-1.5">
                    {filteredStashes.length === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                    ) : (
-                      filteredStashes.map((s: StashEntry) => {
-                        const timeStr = new Date(s.timestamp * 1000).toLocaleString(undefined, {
-                          year: 'numeric', month: 'short', day: 'numeric',
-                          hour: '2-digit', minute: '2-digit'
-                        });
-                        return (
-                          <div 
-                            key={s.oid} 
-                            onClick={() => { /* maybe select later */ }}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setStashContextMenu({ x: e.clientX, y: e.clientY, stash: s });
-                            }}
-                            className="flex flex-col py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-default group text-[13px] text-slate-300 overflow-hidden relative"
-                            title={`stash@{${s.stackIndex}}: ${s.message}`}
-                          >
-                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 min-w-0 pr-12">
-                                  <span className="text-slate-500 shrink-0 select-none">≡</span>
-                                  <span className="truncate text-slate-300 font-medium">
-                                     <Highlight text={s.message || `stash@{${s.stackIndex}}`} query={filter} />
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1 invisible group-hover:visible absolute right-1 top-1 bg-[#2c313a]/90 pl-2 pr-1 py-0.5 rounded-l backdrop-blur-sm shadow-sm transition-all">
-                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); applyStash(s.stackIndex); }}
-                                      className="p-1 hover:bg-blue-500/20 text-blue-400 rounded transition-colors" 
-                                      title="Apply Stash (keeps entry)"
-                                   >
-                                      <CloudSync size={14} />
-                                   </button>
-                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); useAppStore.setState({ confirmStashDrop: s }); }}
-                                      className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors" 
-                                      title="Drop Stash (deletes entry)"
-                                   >
-                                      <Trash2 size={14} />
-                                   </button>
-                                </div>
-                             </div>
-                             <div className="flex items-center gap-2 pl-4">
-                               <span className="text-[10px] text-slate-500 whitespace-nowrap">{timeStr}</span>
-                               <span className="text-[10px] text-slate-600 font-mono">stash@{s.stackIndex}</span>
-                             </div>
-                          </div>
-                        )
-                      })
-                   )}
+                      filteredStashes.map((s: StashEntry) => (
+                        <StashEntryItem 
+                          key={s.oid} 
+                          stash={s} 
+                          filter={filter} 
+                          onContextMenu={(e, stash) => {
+                            e.preventDefault();
+                            setStashContextMenu({ x: e.clientX, y: e.clientY, stash });
+                          } } 
+                        />
+                      ))
+                    )}
                  </div>
                )}
             </div>
@@ -619,84 +583,6 @@ function SidebarResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEven
       className="h-1 cursor-row-resize hover:bg-blue-500/30 transition-colors my-1 shrink-0 z-10"
       title="Drag to resize"
     />
-  );
-}
-function StashContextMenu({ stash, position, onClose }: { stash: StashEntry, position: { x: number, y: number }, onClose: () => void }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState(position);
-
-  useEffect(() => {
-    if (!menuRef.current) return;
-    const rect = menuRef.current.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    let { x, y } = position;
-
-    if (x + rect.width > vw - 8) x = vw - rect.width - 8;
-    if (y + rect.height > vh - 8) y = vh - rect.height - 8;
-    if (x < 8) x = 8;
-    if (y < 8) y = 8;
-
-    setMenuPos({ x, y });
-  }, [position]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  return (
-    <div
-      ref={menuRef}
-      className="absolute bg-[#1c2128] border border-[#30363d] rounded shadow-2xl z-[9999] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-left min-w-[160px]"
-      style={{
-        position: 'fixed',
-        left: menuPos.x,
-        top: menuPos.y,
-      }}
-    >
-      <div className="px-3 py-1.5 border-b border-[#30363d] mb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-slate-500">stash@{stash.stackIndex}</span>
-        </div>
-      </div>
-      
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); applyStash(stash.stackIndex); }}
-        className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-blue-600/10 hover:text-blue-400 flex items-center gap-2 transition-colors"
-      >
-        <CloudSync size={14} />
-        Apply Stash
-      </button>
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); popStash(stash.stackIndex); }}
-        className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-emerald-600/10 hover:text-emerald-400 flex items-center gap-2 transition-colors"
-      >
-        <ChevronsDown size={14} />
-        Pop Stash
-      </button>
-      <div className="h-[1px] bg-[#30363d] my-1" />
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); useAppStore.setState({ confirmStashDrop: stash }); }}
-        className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
-      >
-        <Trash2 size={14} />
-        Drop Stash
-      </button>
-    </div>
   );
 }
 

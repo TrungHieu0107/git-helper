@@ -548,7 +548,7 @@ function FileRow({ name, status, onAction, actionLabel, onClick, highlight = '' 
             e.stopPropagation();
             onAction?.();
           }}
-          className="invisible group-hover:visible shrink-0 bg-[#21262d] border border-[#30363d] text-[#c9d1d9] hover:text-white px-2 py-0.5 rounded text-[10px] font-medium transition-colors"
+          className="invisible group-hover:visible shrink-0 bg-[#388bfd] text-white hover:bg-[#4799ff] px-2 py-0.5 rounded text-[10px] font-bold shadow-sm transition-all"
         >
           {actionLabel}
         </button>
