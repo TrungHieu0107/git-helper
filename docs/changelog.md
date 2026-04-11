@@ -4,6 +4,19 @@ All notable changes to GitKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.2] - 2026-04-11
+### Fixed
+- **UI Overflow**: Fixed a bug where the `Source Branch` dropdown in `CreateBranchDialog` was obscured by the dialog container.
+
+## [2.3.0] - 2026-04-11
+### Added
+- **Commit Graph Virtualization**: Support for 10k+ rows with 60fps scrolling using `@tanstack/react-virtual`.
+- **Force Checkout**: Workflow with safety stashing and UI alerts for destructive resets.
+
+## [2.1.1] - 2026-04-11
+### Added
+- **Amend Commit**: Full workflow for amending the previous commit with author preservation and safety guards.
+
 ## [2.1.0] - 2026-04-11
 ### Added
 - **Remote Branch Checkout**: Integrated automatic local tracking branch creation when checking out remote references from the graph.
