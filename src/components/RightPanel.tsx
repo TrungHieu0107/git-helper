@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useAppStore, FileStatus } from "../store";
-import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X } from "lucide-react";
+import { useAppStore, FileStatus, StashEntry } from "../store";
+import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X, Layers, CloudSync, Plus, GripVertical, Check, Copy } from "lucide-react";
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../lib/repo";
 import { toast } from "../lib/toast";
 import { CommitDetailPanel } from "./CommitDetailPanel";
@@ -56,9 +56,7 @@ export function RightPanel() {
   }, [selectedCommitDetail]);
 
   const handleAmendToggle = async (checked: boolean) => {
-    // Optimistically set amend state for better UI responsiveness
     setAmend(checked);
-    
     if (checked) {
       try {
         const info = await getHeadCommitInfo();
@@ -67,7 +65,6 @@ export function RightPanel() {
           setMessage(info.message.split('\n')[0]);
           setDescription(info.message.split('\n').slice(1).join('\n').trim());
         } else {
-          // If no info returned, revert
           setAmend(false);
           setHeadCommitInfo(null);
         }
@@ -75,7 +72,6 @@ export function RightPanel() {
         setAmend(false);
         setHeadCommitInfo(null);
         toast.error(`Could not fetch head info: ${err}`);
-        console.error("Failed to fetch head commit info:", err);
       }
     } else {
       setHeadCommitInfo(null);
@@ -93,7 +89,7 @@ export function RightPanel() {
   const [stagedFlex, setStagedFlex] = useState(1);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  const [width, setWidth] = useState(() => parseInt(localStorage.getItem('git_rightpanel_w') || '320', 10));
+  const [width, setWidth] = useState(() => parseInt(localStorage.getItem('git_rightpanel_w') || '340', 10));
 
   useEffect(() => {
     document.documentElement.style.setProperty('--right-width', `${width}px`);
@@ -194,22 +190,20 @@ export function RightPanel() {
         return (
           <div key={child.fullPath} className="flex flex-col">
             <div 
-              className="flex items-center justify-between py-1 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
+              className="flex items-center justify-between h-[26px] hover:bg-[#1f2937] rounded-md cursor-pointer group mx-1"
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
               onClick={() => child.isFolder ? toggleFolder(child.fullPath) : onClick(child.fullPath)}
             >
-              <div className="flex items-center gap-1.5 overflow-hidden">
+              <div className="flex items-center gap-2 overflow-hidden">
                 {child.isFolder ? (
                   <>
-                    {isExpanded ? <ChevronDown size={12} className="text-[#8b949e] shrink-0" /> : <ChevronRight size={12} className="text-[#8b949e] shrink-0" />}
-                    <Folder size={12} className="text-[#58a6ff] opacity-80 shrink-0" />
+                    <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
+                    <Folder size={14} className="text-[#388bfd] opacity-70 shrink-0" />
                   </>
                 ) : (
-                  <>
-                    <StatusIcon status={child.status!} size={12} />
-                  </>
+                  <StatusIcon status={child.status!} />
                 )}
-                <span className={`text-[12px] truncate font-mono ${child.isFolder ? 'text-[#8b949e]' : 'text-[#e6edf3]'}`}>
+                <span className={`text-[12px] truncate font-mono ${child.isFolder ? 'text-[#e6edf3]' : 'text-[#e6edf3]'}`}>
                   {child.name}
                 </span>
               </div>
@@ -219,7 +213,7 @@ export function RightPanel() {
                      e.stopPropagation();
                      onAction(child.fullPath);
                    }}
-                   className="invisible group-hover:visible shrink-0 bg-transparent text-[#5c6370] hover:text-[#e5e5e6] px-1 text-[11px]"
+                   className="invisible group-hover:visible shrink-0 bg-[#388bfd] text-white px-2 py-0.5 rounded text-[10px] font-bold"
                  >
                    {actionLabel}
                  </button>
@@ -233,21 +227,20 @@ export function RightPanel() {
 
   return (
     <aside 
-      className={`flex flex-col bg-[#21252b] border-l border-[#181a1f] shrink-0 text-[#a0a6b1] select-none h-full relative transition-[width] duration-300 ${isCollapsed ? 'items-center border-t border-[#181a1f]' : 'w-[var(--right-width)]'}`}
+      className={`flex flex-col bg-[#161b22] border-l border-[#30363d] shrink-0 text-[#8b949e] select-none h-full relative transition-[width] duration-300 ${isCollapsed ? 'items-center bg-[#0d1117]' : 'w-[var(--right-width)]'}`}
       style={{ width: isCollapsed ? '48px' : undefined }}
     >
       
-      {/* Resizer Handle */}
+      {/* Col Resizer Handle */}
       {!isCollapsed && (
         <div 
           onMouseDown={handleResize}
-          className="absolute top-0 left-[-2px] w-[5px] h-full cursor-col-resize hover:bg-[#58a6ff]/40 transition-colors z-[101]"
-          title="Drag to resize right panel"
+          className="absolute top-0 left-[-2px] w-[5px] h-full cursor-col-resize hover:bg-[#388bfd]/40 transition-colors z-[101]"
         />
       )}
 
       {isCollapsed ? (
-        <button onClick={() => setIsCollapsed(false)} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white mt-2 transition-colors" title="Expand Right Panel">
+        <button onClick={() => setIsCollapsed(false)} className="p-2 hover:bg-[#1c2128] rounded-md text-[#6e7681] hover:text-[#e6edf3] mt-3 transition-colors">
            <ChevronsLeft size={16} />
         </button>
       ) : isViewingCommit ? (
@@ -257,79 +250,74 @@ export function RightPanel() {
       ) : (
         <>
           {/* Header */}
-          <header className="h-[36px] border-b border-[#181a1f] flex items-center px-3 justify-between bg-[#21252b] z-10 shrink-0">
-             <div className="flex items-center gap-2">
-               <button onClick={() => setIsCollapsed(true)} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors" title="Collapse Right Panel">
+          <header className="h-10 border-b border-[#30363d] flex items-center px-4 justify-between bg-[#161b22] shrink-0">
+             <div className="flex items-center gap-3">
+               <button onClick={() => setIsCollapsed(true)} className="p-1.5 hover:bg-[#1c2128] rounded-md text-[#6e7681] hover:text-[#e6edf3] transition-colors">
                   <ChevronsRight size={16} />
                </button>
-               {(stagedFiles.length > 0 || unstagedFiles.length > 0) && (
+               <span className="section-header-text">Changes</span>
+             </div>
+             {(stagedFiles.length > 0 || unstagedFiles.length > 0) && (
                  <button 
                    onClick={handleDiscardAll} 
-                   className="p-1 text-[#f85149] hover:bg-[#da3633]/20 rounded transition-colors ml-1" 
-                   title="Discard All Changes (reset --hard & clean)"
+                   className="p-1.5 text-[#f85149] hover:bg-[#f85149]/10 rounded-md transition-colors" 
+                   title="Discard All"
                  >
                    <Trash size={14} />
                  </button>
-               )}
-               <span className="text-[11px] uppercase tracking-wider text-[#d7dae0] font-semibold ml-1">
-                  {stagedFiles.length + unstagedFiles.length} file changes on 
-                  <span className="bg-[#58a6ff]/10 text-[#58a6ff] px-1.5 py-0.5 rounded ml-2 border border-[#58a6ff]/20">{activeBranch || '...'}</span>
-               </span>
-             </div>
+             )}
           </header>
           
           {/* Tabs + Filter */}
-          <div className="flex items-center gap-3 px-3 pt-2 border-b border-[#30363d] bg-[#21252b] shrink-0">
+          <div className="flex items-center gap-4 px-4 pt-3 border-b border-[#30363d] shrink-0">
             <button 
               onClick={() => setViewMode('path')}
-              className={`text-[11px] font-semibold pb-1.5 transition-all shrink-0 ${viewMode === 'path' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff] drop-shadow-[0_0_4px_rgba(88,166,255,0.8)]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
+              className={`text-[11px] font-bold pb-2 transition-all shrink-0 uppercase tracking-widest ${viewMode === 'path' ? 'text-[#388bfd] border-b-2 border-[#388bfd]' : 'text-[#6e7681] hover:text-[#e6edf3]'}`}
             >
               Path
             </button>
             <button 
               onClick={() => setViewMode('tree')}
-              className={`text-[11px] font-semibold pb-1.5 transition-all shrink-0 ${viewMode === 'tree' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff] drop-shadow-[0_0_4px_rgba(88,166,255,0.8)]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
+              className={`text-[11px] font-bold pb-2 transition-all shrink-0 uppercase tracking-widest ${viewMode === 'tree' ? 'text-[#388bfd] border-b-2 border-[#388bfd]' : 'text-[#6e7681] hover:text-[#e6edf3]'}`}
             >
               Tree
             </button>
-            <div className="flex-1 flex items-center bg-[#0d1117] rounded border border-[#30363d] px-2 mb-1">
-              <Search size={12} className="text-[#5c6370] shrink-0" />
+            <div className="flex-1 flex items-center bg-[#0d1117] rounded-md border border-[#30363d] px-2 mb-2 shadow-inner">
+              <Search size={12} className="text-[#6e7681] shrink-0" />
               <input
                 type="text"
                 placeholder="Filter files..."
                 value={fileFilter}
                 onChange={e => setFileFilter(e.target.value)}
-                className="w-full bg-transparent border-none text-[11px] py-1 px-1.5 outline-none text-[#e6edf3] placeholder-[#5c6370] font-mono"
+                className="w-full bg-transparent border-none text-[11px] py-1.5 px-2 outline-none text-[#e6edf3] placeholder-[#6e7681] font-mono"
               />
               {fileFilter && (
-                <button onClick={() => setFileFilter('')} className="text-[#5c6370] hover:text-[#c9d1d9] shrink-0">
+                <button onClick={() => setFileFilter('')} className="text-[#6e7681] hover:text-[#e6edf3]">
                   <X size={12} />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Scrollable File List */}
-          <div ref={listContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden text-sm relative">
+          {/* List Area */}
+          <div ref={listContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
              
              {/* Conflicts */}
              {cherryPickState === 'conflict' && cherryPickConflictFiles.length > 0 && (
-               <div className="flex flex-col px-2 pt-2 shrink-0">
-                 <div className="flex items-center text-[11px] font-semibold uppercase text-[#f85149] mb-2 px-1 gap-1.5 shadow-sm">
+               <div className="flex flex-col p-2 shrink-0">
+                 <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[#f85149] mb-2 px-1 gap-2">
                    <AlertTriangle size={12} /> Conflicts ({cherryPickConflictFiles.length})
                  </div>
-                 <div className="flex flex-col bg-[#161b22] rounded border border-[#f85149]/30 py-1 overflow-visible">
+                 <div className="flex flex-col bg-[#1c2128] rounded-lg border border-[#f85149]/30 py-1 overflow-hidden">
                    {cherryPickConflictFiles.map((f, i) => (
                      <div 
-                       key={i}
-                       onClick={() => activeRepoPath && loadConflictFile(activeRepoPath, f)}
-                       className={`flex items-center justify-between py-1.5 px-3 rounded cursor-pointer group whitespace-nowrap mx-1 ${selectedConflictFile === f ? 'bg-[#58a6ff]/20 text-[#58a6ff]' : 'hover:bg-[#2c313a] text-[#e6edf3]'}`}
+                        key={i}
+                        onClick={() => activeRepoPath && loadConflictFile(activeRepoPath, f)}
+                        className={`flex items-center justify-between h-[26px] px-2 rounded-md cursor-pointer transition-all mx-1 ${selectedConflictFile === f ? 'bg-[#f85149]/20 text-[#f85149]' : 'hover:bg-[#1f2937] text-[#e6edf3]'}`}
                      >
                         <div className="flex items-center gap-2 overflow-hidden min-w-0">
                            <AlertTriangle size={12} className="text-[#f85149] shrink-0" />
-                           <div className="flex text-[12px] font-mono min-w-0 overflow-hidden" title={f}>
-                             <span className="truncate shrink-0">{f}</span>
-                           </div>
+                           <span className="text-[12px] font-mono truncate">{f}</span>
                         </div>
                      </div>
                    ))}
@@ -339,63 +327,70 @@ export function RightPanel() {
 
              {/* Unstaged Files */}
              <div className="flex flex-col p-2" style={{ flex: unstagedFlex, minHeight: 0 }}>
-                 <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
-                    <span>Unstaged Files ({filteredUnstaged.length}{fileFilter ? `/${unstagedFiles.length}` : ''})</span>
-                    {unstagedFiles.length > 0 && (
-                      <button 
-                        onClick={stageAll}
-                        className="bg-[#238636]/10 border border-[#238636]/30 text-[#3fb950] hover:bg-[#238636] hover:text-white transition-all px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide drop-shadow-[0_0_2px_rgba(63,185,80,0.4)]"
-                      >
-                        Stage All
-                      </button>
-                    )}
+                  <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[#6e7681] mb-2 px-1 shrink-0 justify-between">
+                     <div className="flex items-center gap-2">
+                        <span className="text-[#e3b341]">UNSTAGED</span>
+                        <span className="bg-[#0d1117] px-1.5 py-0.5 rounded-full border border-[#e3b341]/20 text-[#e3b341]/80">{filteredUnstaged.length}{fileFilter ? `/${unstagedFiles.length}` : ''}</span>
+                     </div>
+                     {unstagedFiles.length > 0 && (
+                       <button 
+                         onClick={stageAll}
+                         className="text-[#3fb950] hover:bg-[#3fb950]/10 px-2 py-0.5 rounded-md border border-[#3fb950]/20 transition-all font-bold uppercase tracking-wide text-[9px]"
+                       >
+                         Stage All
+                       </button>
+                     )}
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar-hidden flex flex-col bg-[#0d1117] rounded-lg border border-[#30363d] py-1">
+                    {filteredUnstaged.length > 0 ? (
+                     viewMode === 'path' ? (
+                       filteredUnstaged.map((f, i) => (
+                           <FileRow 
+                             key={i} 
+                             name={f.path} 
+                             status={f.status} 
+                             onAction={() => stageFile(f.path)}
+                             actionLabel="Stage"
+                             onClick={() => selectFileDiff(f.path, false)}
+                             highlight={fileFilter}
+                           />
+                       ))
+                     ) : (
+                       renderTree(unstagedTree, stageFile, "Stage", (p) => selectFileDiff(p, false))
+                     )
+                   ) : (
+                     <div className="text-[11px] italic px-6 py-4 opacity-40 text-center">No modified files</div>
+                   )}
                  </div>
-                 
-                 <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-[#0d1117] rounded border border-[#30363d] py-1">
-                   {filteredUnstaged.length > 0 ? (
-                    viewMode === 'path' ? (
-                      filteredUnstaged.map((f, i) => (
-                          <FileRow 
-                            key={i} 
-                            name={f.path} 
-                            status={f.status} 
-                            onAction={() => stageFile(f.path)}
-                            actionLabel="Stage"
-                            onClick={() => selectFileDiff(f.path, false)}
-                            highlight={fileFilter}
-                          />
-                      ))
-                    ) : (
-                      renderTree(unstagedTree, stageFile, "Stage", (p) => selectFileDiff(p, false))
-                    )
-                  ) : (
-                    <div className="text-xs italic px-6 py-1.5 opacity-50 text-[#8b949e]">(khu vực trống)</div>
-                  )}
-                </div>
              </div>
 
-             {/* Resizer Handle */}
-             <div 
-               onMouseDown={startVerticalResizing}
-               className="h-1 bg-[#181a1f] w-full cursor-row-resize hover:bg-[#58a6ff]/40 transition-colors shrink-0"
-               title="Drag to resize sections"
-             />
+              {/* Row Resizer Handle */}
+              <div 
+                onMouseDown={startVerticalResizing}
+                className="h-2 bg-[#0d1117] border-y border-[#30363d] w-full cursor-row-resize hover:bg-[#388bfd]/20 transition-all shrink-0 flex items-center justify-center group"
+              >
+                 <div className="w-8 h-1 bg-[#30363d] rounded-full group-hover:bg-[#388bfd] transition-colors" />
+              </div>
 
              {/* Staged Files */}
              <div className="flex flex-col p-2" style={{ flex: stagedFlex, minHeight: 0 }}>
-                <div className="flex items-center text-[11px] font-semibold uppercase text-[#8b949e] mb-2 px-1 shrink-0 justify-between">
-                   <span>Staged Files ({filteredStaged.length}{fileFilter ? `/${stagedFiles.length}` : ''})</span>
+                <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-[#6e7681] mb-2 px-1 shrink-0 justify-between">
+                   <div className="flex items-center gap-2">
+                      <span className="text-[#3fb950]">STAGED</span>
+                      <span className="bg-[#0d1117] px-1.5 py-0.5 rounded-full border border-[#3fb950]/20 text-[#3fb950]/80">{filteredStaged.length}{fileFilter ? `/${stagedFiles.length}` : ''}</span>
+                   </div>
                    {stagedFiles.length > 0 && (
                      <button 
                        onClick={unstageAll}
-                       className="bg-[#da3633]/10 border border-[#da3633]/30 text-[#f85149] hover:bg-[#da3633] hover:text-white transition-all px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+                       className="text-[#f85149] hover:bg-[#f85149]/10 px-2 py-0.5 rounded-md border border-[#f85149]/20 transition-all font-bold uppercase tracking-wide text-[9px]"
                      >
                        Unstage All
                      </button>
                    )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col bg-[#0d1117] rounded border border-[#30363d] py-1">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar-hidden flex flex-col bg-[#0d1117] rounded-lg border border-[#30363d] py-1">
                   {filteredStaged.length > 0 ? (
                     viewMode === 'path' ? (
                       filteredStaged.map((f, i) => (
@@ -413,85 +408,78 @@ export function RightPanel() {
                       renderTree(stagedTree, unstageFile, "Unstage", (p) => selectFileDiff(p, true))
                     )
                   ) : (
-                    <div className="text-[12px] italic px-6 py-1.5 opacity-50 text-[#8b949e]">(khu vực trống – chưa có file nào sẵn sàng commit)</div>
+                    <div className="text-[11px] italic px-6 py-4 opacity-40 text-center">No files staged</div>
                   )}
                 </div>
              </div>
-
           </div>
 
-          {/* Commit Area (Bottom - Vibe Ready To Ship) */}
-          <div className="border-t border-[#30363d] bg-[#161b22] flex flex-col shrink-0 p-3 pb-4 xl:p-4 gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] z-10 relative">
-             <div className="flex items-center justify-between text-[#8b949e] mb-1 px-1">
-                 <span className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-[#e6edf3]">
-                   <GitCommit size={14} className="text-[#3fb950]" /> Commit
-                 </span>
-                 <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-[#8b949e] hover:text-[#c9d1d9] transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={amend}
-                      onChange={e => handleAmendToggle(e.target.checked)}
-                      className="accent-[#3fb950] w-3 h-3 rounded-sm bg-[#0d1117] border-[#30363d] cursor-pointer" 
-                    />
-                    Amend previous commit
-                 </label>
+          {/* Commit Area */}
+          <div className="border-t border-[#30363d] bg-[#161b22] flex flex-col shrink-0 p-4 gap-4 shadow-2xl z-10 relative">
+             <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-6 bg-[#3fb950] rounded-sm" />
+                    <span className="section-header-text">NEW COMMIT</span>
+                 </div>
+                 <div 
+                   onClick={() => handleAmendToggle(!amend)}
+                   className="flex items-center gap-2 cursor-pointer group"
+                 >
+                    <span className="text-[10px] font-bold text-[#6e7681] group-hover:text-[#e6edf3] transition-colors uppercase">Amend</span>
+                    <div className={`w-8 h-4 rounded-full relative transition-colors ${amend ? 'bg-[#3fb950]' : 'bg-[#30363d]'}`}>
+                       <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${amend ? 'right-0.5' : 'left-0.5'}`} />
+                    </div>
+                 </div>
              </div>
              
              {amend && headCommitInfo && (
-               <div className="flex flex-col gap-1.5 mb-1 px-1">
+               <div className="flex flex-col gap-2 p-2 bg-[#d29922]/10 border border-[#d29922]/20 rounded-md">
                  {headCommitInfo.is_pushed && (
-                   <div className="flex items-center gap-1.5 text-[10px] text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/20 px-2 py-1 rounded">
-                     <AlertTriangle size={10} />
-                     <span>This commit is already on remote. Rewriting will require a force push.</span>
+                   <div className="flex items-center gap-2 text-[10px] text-[#e3b341] font-bold">
+                     <AlertTriangle size={12} />
+                     <span>Already pushed (requires force)</span>
                    </div>
                  )}
-                 <div className="text-[10px] text-[#8b949e] font-mono flex items-center gap-2">
-                   <span className="shrink-0 bg-[#30363d] text-[#c9d1d9] px-1 rounded">{headCommitInfo.oid.substring(0, 7)}</span>
-                   <span className="truncate">By {headCommitInfo.author_name} ({new Date(headCommitInfo.author_timestamp * 1000).toLocaleString()})</span>
+                 <div className="text-[11px] text-[#6e7681] font-mono truncate">
+                   amend: {headCommitInfo.oid.substring(0, 7)} - {headCommitInfo.author_name}
                  </div>
                </div>
              )}
              
              <div className="flex flex-col gap-2">
-               <div className="relative">
-                  <input 
-                    type="text" 
-                    placeholder="Commit summary" 
-                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 outline-none text-[#e6edf3] focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff] text-[13px] pr-10 shadow-inner" 
-                    value={message} 
-                    onChange={e => setMessage(e.target.value)} 
-                  />
-                  <span className={`absolute right-3 top-2.5 text-[10px] font-mono font-bold ${charsLeft < 0 ? 'text-[#f85149]' : charsLeft < 20 ? 'text-[#d29922]' : 'text-[#8b949e]'}`}>{charsLeft}</span>
-               </div>
-               
-               <textarea 
-                  placeholder="Description" 
-                  rows={3} 
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 outline-none text-[#e6edf3] focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff] text-[12px] resize-none shadow-inner"
-                ></textarea>
+                <div className="relative group/input">
+                   <input 
+                     type="text" 
+                     placeholder="Summary (required)" 
+                     className="w-full bg-[#0d1117] border border-[#30363d] focus:border-[#388bfd] rounded-md px-3 py-2 outline-none text-[#e6edf3] text-[13px] transition-all shadow-inner" 
+                     value={message} 
+                     onChange={e => setMessage(e.target.value)} 
+                   />
+                   <div className={`absolute right-2.5 top-2.5 text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-md border border-white/5 shadow-sm
+                     ${charsLeft < 0 ? 'bg-[#f85149]/20 text-[#f85149]' : charsLeft < 22 ? 'bg-[#e3b341]/20 text-[#e3b341]' : 'bg-white/5 text-[#6e7681]'}`}>
+                     {charsLeft}
+                   </div>
+                </div>
+                
+                <textarea 
+                   placeholder="Description (optional)" 
+                   rows={3} 
+                   value={description}
+                   onChange={e => setDescription(e.target.value)}
+                   className="w-full bg-[#0d1117] border border-[#30363d] focus:border-[#388bfd] rounded-md px-3 py-2 outline-none text-[#e6edf3] text-[13px] resize-none transition-all shadow-inner min-h-[60px]"
+                />
              </div>
 
-             <div className="flex items-center justify-between mt-1">
-               <button className="flex items-center gap-1 text-[11px] text-[#8b949e] hover:text-[#c9d1d9] font-medium transition-colors">
-                 <ChevronRightIcon size={12} /> Commit options
-               </button>
-               <button className="text-[#58a6ff] hover:bg-[#58a6ff]/10 p-1.5 rounded transition-colors" title="Compose commits with AI">
-                  <Sparkles size={14} />
-               </button>
-             </div>
-             
              <button 
               onClick={handleCommit}
               disabled={(!amend && stagedFiles.length === 0) || message.trim() === ''}
-              className={`w-full py-2.5 rounded-md font-bold text-[12px] uppercase tracking-wide flex items-center justify-center gap-2 transition-all 
+              className={`w-full py-3 rounded-md font-bold text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all 
                 ${((!amend && stagedFiles.length === 0) || message.trim() === '') 
-                  ? 'bg-[#238636]/30 text-[#e6edf3]/40 cursor-not-allowed border border-[#238636]/20' 
-                  : 'bg-[#238636] text-white hover:bg-[#2ea043] border border-[#2ea043]/50 drop-shadow-[0_0_8px_rgba(35,134,54,0.6)]'}`}
+                  ? 'bg-[#1c2128] text-[#6e7681] border border-[#30363d] cursor-not-allowed' 
+                  : 'bg-[#238636] text-white hover:bg-[#2ea043] shadow-[0_0_15px_rgba(35,134,54,0.4)] hover:shadow-[0_0_20px_rgba(46,160,67,0.5)]'}`}
              >
                 <GitCommit size={14} /> 
-                {amend ? 'Amend Commit' : stagedFiles.length > 0 ? 'Stage Changes to Commit' : 'Commit Changes'}
+                {amend ? 'Amend last commit' : 'Commit changes'}
              </button>
           </div>
         </>
@@ -501,12 +489,15 @@ export function RightPanel() {
   );
 }
 
-function StatusIcon({ status, size = 12 }: { status: string, size?: number }) {
-  if (status === 'untracked') return <span className="font-mono text-[#3fb950] font-bold text-[11px] leading-none shrink-0" style={{ fontSize: size }}>+</span>;
-  if (status === 'deleted') return <span className="font-mono text-[#f85149] font-bold text-[11px] leading-none shrink-0" style={{ fontSize: size }}>-</span>;
-  if (status === 'renamed') return <ArrowRight size={size} className="text-[#58a6ff] shrink-0" />;
-  if (status === 'conflicted') return <AlertTriangle size={size} className="text-[#f85149] shrink-0" />;
-  return <span className="font-mono text-[#d29922] font-bold text-[11px] leading-none shrink-0">~</span>; // Instead of pencil, we can use ~ or Edit2
+function StatusIcon({ status, size = 10 }: { status: string, size?: number }) {
+  const base = "w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 border";
+  if (status === 'untracked') return <div className={`${base} bg-[#1f2937] text-[#388bfd] border-[#388bfd]/30`}>U</div>;
+  if (status === 'modified') return <div className={`${base} bg-[#251e0b] text-[#e3b341] border-[#e3b341]/30`}>M</div>;
+  if (status === 'deleted') return <div className={`${base} bg-[#2a1b1b] text-[#f85149] border-[#f85149]/30`}>D</div>;
+  if (status === 'added') return <div className={`${base} bg-[#1a231f] text-[#3fb950] border-[#3fb950]/30`}>A</div>;
+  if (status === 'renamed') return <div className={`${base} bg-[#142331] text-[#388bfd] border-[#388bfd]/30`}>R</div>;
+  if (status === 'conflicted') return <div className={`${base} bg-[#2a1b1b] text-[#f85149] border-[#f85149]/30`}><AlertTriangle size={9} /></div>;
+  return <div className={`${base} bg-[#251e0b] text-[#e3b341] border-[#e3b341]/30`}>M</div>;
 }
 
 function HighlightText({ text, query }: { text: string; query: string }) {
@@ -531,28 +522,25 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 }
 
 function FileRow({ name, status, onAction, actionLabel, onClick, highlight = '' }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void, highlight?: string }) {
+  const fileName = name.includes('/') ? name.substring(name.lastIndexOf('/') + 1) : name;
+  const dirPath = name.includes('/') ? name.substring(0, name.lastIndexOf('/') + 1) : '';
+
   return (
     <div 
       onClick={onClick}
-      className="flex items-center justify-between py-1.5 px-3 hover:bg-[#2c313a] rounded cursor-pointer group whitespace-nowrap"
+      className={`flex items-center justify-between h-[26px] px-2 hover:bg-[#1f2937] rounded-md cursor-pointer group transition-all duration-150 mx-1`}
     >
         <div className="flex items-center gap-2 overflow-hidden min-w-0">
            <StatusIcon status={status} />
-           <div className="flex text-[12px] text-[#e6edf3] font-mono min-w-0 overflow-hidden" title={name}>
-             {name.includes('/') ? (
-                 <>
-                   <span className="truncate shrink text-[#8b949e]">
-                     <HighlightText text={name.substring(0, name.lastIndexOf('/') + 1)} query={highlight} />
-                   </span>
-                   <span className="shrink-0">
-                     <HighlightText text={name.substring(name.lastIndexOf('/') + 1)} query={highlight} />
-                   </span>
-                 </>
-             ) : (
-                 <span className="truncate shrink-0">
-                   <HighlightText text={name} query={highlight} />
-                 </span>
-             )}
+           <div className="flex items-baseline text-[12px] font-mono min-w-0 overflow-hidden" title={name}>
+              <span className="text-[#e6edf3] font-medium shrink-0">
+                <HighlightText text={fileName} query={highlight} />
+              </span>
+              {dirPath && (
+                <span className="text-[#6e7681] truncate ml-1.5 text-[11px] opacity-70 group-hover:opacity-100 transition-opacity">
+                  <HighlightText text={dirPath} query={highlight} />
+                </span>
+              )}
            </div>
         </div>
         <button 
