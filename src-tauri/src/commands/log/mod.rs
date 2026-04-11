@@ -1,6 +1,7 @@
 use git2::{Repository, Sort, Oid};
 use serde::Serialize;
 use std::collections::HashMap;
+use rayon::prelude::*;
 
 #[derive(Serialize)]
 pub struct EdgeInfo {
@@ -26,7 +27,12 @@ pub struct CommitNode {
 }
 
 #[tauri::command]
-pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<CommitNode>, String> {
+pub fn get_log(
+    state: tauri::State<crate::AppState>,
+    repo_path: String, 
+    limit: usize, 
+    offset: usize
+) -> Result<Vec<CommitNode>, String> {
     let mut repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
 
@@ -51,65 +57,79 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
     let mut revwalk = repo.revwalk()
         .map_err(|e| format!("Failed to create revwalk: {}", e))?;
 
-    // Sort topologically and sequentially
     revwalk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)
         .map_err(|e| format!("Failed to set sorting: {}", e))?;
 
-    // Map all references
-    let mut refs_map: HashMap<Oid, Vec<String>> = HashMap::new();
-    
-    if let Ok(branches) = repo.branches(None) {
-        for (branch, _) in branches.flatten() {
-            if let (Ok(Some(name)), Some(oid)) = (branch.name(), branch.get().target()) {
-                refs_map.entry(oid).or_default().push(name.to_string());
+    // ── Optimized Ref Caching ──────────────────────────────────────────
+    // Use the global state to cache the OID -> Labels mapping.
+    // In a large repo, parsing thousands of tags/branches is the main bottleneck.
+    let refs_map = {
+        let mut cache_lock = state.ref_cache.lock().unwrap();
+        
+        // Cache hit if repo matches
+        if let Some(cache) = cache_lock.as_ref() {
+            if cache.repo_path == repo_path {
+                cache.refs.clone()
+            } else {
+                // Path changed, rebuild
+                let new_map = rebuild_refs_map(&repo)?;
+                *cache_lock = Some(crate::RefCache {
+                    repo_path: repo_path.clone(),
+                    refs: new_map.clone(),
+                });
+                new_map
             }
+        } else {
+            // First run, populate
+            let new_map = rebuild_refs_map(&repo)?;
+            *cache_lock = Some(crate::RefCache {
+                repo_path: repo_path.clone(),
+                refs: new_map.clone(),
+            });
+            new_map
         }
-    }
-    
-    if let Ok(tags) = repo.tag_names(None) {
-        for tag_name in tags.iter().flatten() {
-            if let Ok(obj) = repo.revparse_single(tag_name) {
-                let id = if let Some(tag) = obj.as_tag() {
-                    tag.target_id()
-                } else {
-                    obj.id()
-                };
-                refs_map.entry(id).or_default().push(tag_name.to_string());
-            }
-        }
-    }
-    
-    if let Ok(head) = repo.head() {
-        if let Some(oid) = head.target() {
-            let refs = refs_map.entry(oid).or_default();
-            if !refs.contains(&"HEAD".to_string()) {
-                refs.insert(0, "HEAD".to_string());
-            }
-        }
-    }
+    };
 
+    // Push starting points
     for oid in refs_map.keys() {
         let _ = revwalk.push(*oid);
     }
     let _ = revwalk.push_head();
+
+    // ── Optimized Batch Detail Extraction ─────────────────────────────
+    // Collect OIDs first so we can process them in parallel
+    let oids: Vec<Oid> = revwalk.skip(offset).take(limit).filter_map(|r| r.ok()).collect();
+
+    // Map OIDs to metadata in parallel
+    let commit_metadata: HashMap<Oid, (Vec<Oid>, String, String, i64, String, String)> = oids.par_iter().map(|&oid| {
+        let repo_thread = Repository::open(&repo_path).ok();
+        if let Some(r) = repo_thread {
+            if let Ok(c) = r.find_commit(oid) {
+                let parents: Vec<Oid> = c.parent_ids().collect();
+                let author = c.author();
+                let author_name = author.name().unwrap_or("Unknown").to_string();
+                let author_email = author.email().unwrap_or("").to_string();
+                let timestamp = c.time().seconds();
+                let message = c.summary().unwrap_or("").to_string();
+                let short_oid = c.as_object().short_id()
+                    .map(|b| String::from_utf8_lossy(&b).into_owned())
+                    .unwrap_or_else(|_| oid.to_string()[0..7].to_string());
+                
+                return Some((oid, (parents, author_name, author_email, timestamp, message, short_oid)));
+            }
+        }
+        None
+    }).flatten().collect();
 
     let mut result_nodes = Vec::new();
     let mut active_lanes: Vec<Option<Oid>> = Vec::new();
     let mut color_assignments: HashMap<usize, usize> = HashMap::new();
     let mut next_color_idx = 0;
 
-    // Cache for author info to use for stashes if needed, or just use Generic
-    // But stashes are commits, so they HAVE authors.
-
-    for oid_result in revwalk.skip(offset).take(limit) {
-        let oid = match oid_result {
-            Ok(id) => id,
-            Err(_) => continue,
-        };
-
-        let commit = match repo.find_commit(oid) {
-            Ok(c) => c,
-            Err(_) => continue,
+    for oid in oids {
+        let (parents_oids, author_name, author_email, timestamp, message, short_oid) = match commit_metadata.get(&oid) {
+            Some(m) => m,
+            None => continue,
         };
 
         // Find lane for this commit
@@ -162,14 +182,12 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
                 }
                 row_occupied.insert(s_lane); // Claim it for this stash row
 
-                let s_author = commit.author();
-                
                 result_nodes.push(CommitNode {
                     oid: s_oid.to_string(),
                     short_oid: format!("stash@{{{}}}", s_idx),
                     parents: vec![oid.to_string()],
-                    author: s_author.name().unwrap_or("Stash").to_string(),
-                    email: s_author.email().unwrap_or("").to_string(),
+                    author: author_name.clone(),
+                    email: author_email.clone(),
                     timestamp: s_time,
                     message: s_msg,
                     refs: vec![],
@@ -185,9 +203,9 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
         let mut parents = Vec::new();
         let mut edges = Vec::new();
 
-        let parent_count = commit.parent_count();
+        let parent_count = parents_oids.len();
         if parent_count > 0 {
-            let p0 = commit.parent_id(0).unwrap();
+            let p0 = parents_oids[0];
             let mut existing_p0_lane = None;
             for (i, active_oid) in active_lanes.iter().enumerate() {
                 if let Some(id) = active_oid {
@@ -217,7 +235,7 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
             edges.push(EdgeInfo { to_lane: final_to_lane, color_idx });
 
             for i in 1..parent_count {
-                let p = commit.parent_id(i).unwrap();
+                let p = parents_oids[i];
                 parents.push(p.to_string());
                 let mut parent_lane = None;
                 for (li, a_oid) in active_lanes.iter().enumerate() {
@@ -247,19 +265,14 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
             }
         }
 
-        let author = commit.author();
-        let short_oid = commit.as_object().short_id()
-             .map(|b| String::from_utf8_lossy(&b).into_owned())
-             .unwrap_or_else(|_| oid.to_string()[0..7].to_string());
-
         result_nodes.push(CommitNode {
             oid: oid.to_string(),
-            short_oid,
+            short_oid: short_oid.clone(),
             parents,
-            author: author.name().unwrap_or("Unknown").to_string(),
-            email: author.email().unwrap_or("").to_string(),
-            timestamp: commit.time().seconds(),
-            message: commit.summary().unwrap_or("").to_string(),
+            author: author_name.clone(),
+            email: author_email.clone(),
+            timestamp: *timestamp,
+            message: message.clone(),
             refs: refs_map.get(&oid).cloned().unwrap_or_default(),
             lane: lane_idx,
             color_idx,
@@ -270,4 +283,40 @@ pub fn get_log(repo_path: String, limit: usize, offset: usize) -> Result<Vec<Com
     }
 
     Ok(result_nodes)
+}
+
+fn rebuild_refs_map(repo: &Repository) -> Result<HashMap<Oid, Vec<String>>, String> {
+    let mut refs_map: HashMap<Oid, Vec<String>> = HashMap::new();
+    
+    if let Ok(branches) = repo.branches(None) {
+        for (branch, _) in branches.flatten() {
+            if let (Ok(Some(name)), Some(oid)) = (branch.name(), branch.get().target()) {
+                refs_map.entry(oid).or_default().push(name.to_string());
+            }
+        }
+    }
+    
+    if let Ok(tags) = repo.tag_names(None) {
+        for tag_name in tags.iter().flatten() {
+            if let Ok(obj) = repo.revparse_single(tag_name) {
+                let id = if let Some(tag) = obj.as_tag() {
+                    tag.target_id()
+                } else {
+                    obj.id()
+                };
+                refs_map.entry(id).or_default().push(tag_name.to_string());
+            }
+        }
+    }
+    
+    if let Ok(head) = repo.head() {
+        if let Some(oid) = head.target() {
+            let refs = refs_map.entry(oid).or_default();
+            if !refs.contains(&"HEAD".to_string()) {
+                refs.insert(0, "HEAD".to_string());
+            }
+        }
+    }
+    
+    Ok(refs_map)
 }
