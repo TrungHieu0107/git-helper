@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.1.0
-## Last updated: 2026-04-11 – Implement Remote Branch Checkout
+## Version: 2.3.2
+## Last updated: 2026-04-11 – Fix CreateBranchDialog UI obscuring dropdown
 
 
 ## Project: GitKit

@@ -1,6 +1,6 @@
 # Bug Registry & Known Issues
-## Version: 1.1.0
-## Last updated: 2026-04-11 – v2.1.0 Registry Sync
+## Version: 1.2.0
+## Last updated: 2026-04-11 – UI Bug Fix Sync
 ## Project: GitKit
 
 This document tracks identified bugs, logic gaps, and planned improvements in the codebase.

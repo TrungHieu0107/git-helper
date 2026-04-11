@@ -1,6 +1,6 @@
 # Technical Decisions
-## Version: 1.0.0
-## Last updated: 2026-04-09
+## Version: 1.1.0
+## Last updated: 2026-04-11
 ## Project: GitKit
 
 ### 2026-04-09 — Centralized Advanced Branching System
