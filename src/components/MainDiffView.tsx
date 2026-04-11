@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { invoke } from '@tauri-apps/api/core';
 import { DiffEditor } from "@monaco-editor/react";
-import { X, Columns, AlignLeft, Settings, ArrowUp, ArrowDown, Globe, Check, ChevronDown } from "lucide-react";
+import { X, Columns, AlignLeft, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
+import { EncodingBadge } from "./EncodingBadge";
 import { useAppStore } from "../store";
 
 export interface MainDiffViewProps {
@@ -27,7 +28,7 @@ export function MainDiffView(props: MainDiffViewProps) {
   const staged = props.staged ?? store.selectedDiff?.staged ?? false;
   const commitOid = props.commitOid ?? store.selectedDiff?.commitOid;
   
-  const { activeRepoPath, fileEncoding, refreshTimestamp } = store;
+  const { activeRepoPath, refreshTimestamp } = store;
 
   const [oldContent, setOldContent] = useState<string | null>(null);
   const [newContent, setNewContent] = useState<string | null>(null);
@@ -37,10 +38,16 @@ export function MainDiffView(props: MainDiffViewProps) {
   const [isSplitMode, setIsSplitMode] = useState<boolean>(true);
   const [isFullFile, setIsFullFile] = useState<boolean>(false);
   
+  // Encoding metadata
+  const [detection, setDetection] = useState<{ encoding: string, confidence: number, hadBom: boolean }>({
+    encoding: 'utf-8',
+    confidence: 1.0,
+    hadBom: false
+  });
+  const [forceEncoding, setForceEncoding] = useState<string | null>(null);
+  
   const [changes, setChanges] = useState<any[]>([]);
   const [currentChangeIndex, setCurrentChangeIndex] = useState<number>(-1);
-  const [isEncodingMenuOpen, setIsEncodingMenuOpen] = useState(false);
-  const encodingMenuRef = useRef<HTMLDivElement>(null);
   const diffEditorRef = useRef<any>(null);
   const prevTimestampRef = useRef<number>(refreshTimestamp);
   const lastSelectionRef = useRef<string | null>(null);
@@ -53,6 +60,14 @@ export function MainDiffView(props: MainDiffViewProps) {
       setChanges(lineChanges);
       if (lineChanges.length > 0) {
         setCurrentChangeIndex(0);
+        // Auto-reveal first hunk on load
+        if (lastSelectionRef.current !== null) {
+          const change = lineChanges[0];
+          const modEditor = editor.getModifiedEditor();
+          const targetLine = Math.max(1, change.modifiedStartLineNumber);
+          modEditor.revealLineInCenter(targetLine);
+          modEditor.setPosition({ lineNumber: targetLine, column: 1 });
+        }
       } else {
         setCurrentChangeIndex(-1);
       }
@@ -74,6 +89,20 @@ export function MainDiffView(props: MainDiffViewProps) {
       }
     });
   };
+
+  // Force update editor options when toggle changes to ensure collapse works
+  useEffect(() => {
+    if (diffEditorRef.current) {
+      diffEditorRef.current.updateOptions({
+        hideUnchangedRegions: {
+          enabled: !isFullFile,
+          revealLineCount: 5,
+          minimumLineCount: 2,
+          contextLineCount: 3,
+        }
+      });
+    }
+  }, [isFullFile]);
 
   const nextChange = () => {
     if (!diffEditorRef.current || changes.length === 0) return;
@@ -108,7 +137,6 @@ export function MainDiffView(props: MainDiffViewProps) {
 
     let isMounted = true;
     
-    // Check if this is a background refresh vs a new file selection
     const selectionKey = `${path}-${staged}-${commitOid}`;
     const isNewSelection = lastSelectionRef.current !== selectionKey;
     const isRefresh = !isNewSelection && prevTimestampRef.current !== refreshTimestamp;
@@ -116,33 +144,41 @@ export function MainDiffView(props: MainDiffViewProps) {
     lastSelectionRef.current = selectionKey;
     prevTimestampRef.current = refreshTimestamp;
 
+    // Reset force encoding on new file selection (Bug 4 mitigation)
+    if (isNewSelection) {
+      setForceEncoding(null);
+    }
+
     if (!isRefresh) {
       setIsLoading(true);
       setError(null);
       setIsBinary(false);
     }
 
-    invoke<{ old_content: string | null, new_content: string | null, is_binary: boolean }>('get_file_contents', {
+    invoke<any>('get_file_contents', {
       repoPath: activeRepoPath,
       path: path,
       commitOid: commitOid || null,
       staged: staged,
-      encoding: fileEncoding
+      forceEncoding: forceEncoding === 'auto' ? null : forceEncoding
     })
       .then((res) => {
         if (!isMounted) return;
         
         const models = diffEditorRef.current?.getModel();
         if (isRefresh && models && !res.is_binary) {
-          // Safe background update without disposing models
           models.original.setValue(res.old_content || "");
           models.modified.setValue(res.new_content || "");
         } else {
-          // Standard full state update
           setOldContent(res.old_content || "");
           setNewContent(res.new_content || "");
         }
         
+        setDetection({
+          encoding: res.encoding,
+          confidence: res.confidence,
+          hadBom: res.had_bom
+        });
         setIsBinary(res.is_binary);
         setIsLoading(false);
       })
@@ -153,19 +189,14 @@ export function MainDiffView(props: MainDiffViewProps) {
       });
 
     return () => { isMounted = false; };
-  }, [path, staged, commitOid, activeRepoPath, fileEncoding, refreshTimestamp]);
+  }, [path, staged, commitOid, activeRepoPath, forceEncoding, refreshTimestamp]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (encodingMenuRef.current && !encodingMenuRef.current.contains(event.target as Node)) {
-        setIsEncodingMenuOpen(false);
-      }
-    };
-    if (isEncodingMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isEncodingMenuOpen]);
+  // Handle local override from EncodingBadge
+  const handleEncodingOverride = (enc: string) => {
+    setForceEncoding(enc === 'auto' ? null : enc);
+  };
+
+  // Cleanup effect
 
   useEffect(() => {
     return () => {
@@ -279,42 +310,12 @@ export function MainDiffView(props: MainDiffViewProps) {
             </button>
           </div>
 
-          <div className="relative" ref={encodingMenuRef}>
-            <button
-              onClick={() => setIsEncodingMenuOpen(!isEncodingMenuOpen)}
-              className="flex items-center gap-2 bg-[#21262d] px-2.5 py-1 rounded-md border border-[#30363d] hover:border-[#8b949e] transition-all group"
-            >
-              <Globe size={12} className="text-[#8b949e] group-hover:text-[#c9d1d9]" />
-              <span className="text-[11px] text-[#c9d1d9] font-medium min-w-[60px] text-left">
-                {ENCODINGS.find(e => e.value === fileEncoding)?.label || fileEncoding.toUpperCase()}
-              </span>
-              <ChevronDown size={10} className={`text-[#8b949e] transition-transform duration-200 ${isEncodingMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {isEncodingMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-[#161b22]/95 backdrop-blur-xl border border-[#30363d] rounded-lg shadow-2xl z-[100] py-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-3 py-2 text-[10px] font-bold text-[#6e7681] uppercase tracking-wider border-b border-[#30363d] mb-1">
-                  Text Encoding
-                </div>
-                {ENCODINGS.map((enc) => (
-                  <button
-                    key={enc.value}
-                    onClick={() => {
-                      store.setFileEncoding(enc.value);
-                      setIsEncodingMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors group ${fileEncoding === enc.value ? 'bg-[#388bfd]/10 text-[#388bfd]' : 'text-[#c9d1d9] hover:bg-[#21262d]'}`}
-                  >
-                    <div className="flex flex-col items-start">
-                      <span className="font-semibold">{enc.label}</span>
-                      <span className="text-[10px] opacity-60 uppercase">{enc.value}</span>
-                    </div>
-                    {fileEncoding === enc.value && <Check size={14} className="text-[#388bfd]" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <EncodingBadge 
+            encoding={detection.encoding}
+            confidence={detection.confidence}
+            hadBom={detection.hadBom}
+            onOverride={handleEncodingOverride}
+          />
 
           {!props.hideClose && (
             <>
@@ -351,8 +352,23 @@ export function MainDiffView(props: MainDiffViewProps) {
               hideUnchangedRegions: {
                 enabled: !isFullFile,
                 revealLineCount: 5,
-                minimumLineCount: 3,
+                minimumLineCount: 2,
                 contextLineCount: 3,
+              },
+              folding: true,
+              lineNumbersMinChars: 3,
+              glyphMargin: true,
+              // Add some extra stability options
+              renderIndicators: true,
+              originalEditable: false,
+              scrollbar: {
+                vertical: 'visible',
+                horizontal: 'visible',
+                useShadows: false,
+                verticalHasArrows: false,
+                horizontalHasArrows: false,
+                verticalScrollbarSize: 10,
+                horizontalScrollbarSize: 10
               }
             }}
           />
