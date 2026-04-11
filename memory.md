@@ -85,3 +85,14 @@ The GitKit application is stable and fully supports the "Amend Previous Commit" 
 # Project Status Summary
 Version 2.1.1 introduces a high-polish Amend workflow, featuring original author preservation, safety guards for remote history protection, and intelligent UI synchronization across the commit graph.
 
+- **2026-04-11 (v2.3.0)**: 
+  - Implemented **Commit Graph Virtualization** using `@tanstack/react-virtual` v3.
+  - Refactored `CommitGraph.tsx` to handle 10k+ rows with 60fps scrolling.
+  - Optimized SVG rendering by filtering non-visible edges and nodes.
+  - Completed **Force Checkout** workflow with safety stashing and UI alerts.
+  - Added "Force Reset to Origin" to Sidebar and Branch Selector context menus.
+- **2026-04-11 (v2.3.1)**: 
+  - Fixed JSX syntax error in `ForceCheckoutAlert.tsx`.
+  - Resolved TypeScript errors regarding `setBranchContextMenu` scoping.
+  - Cleaned up unused variables and imports in `Sidebar`, `TopToolbar`, `CommitGraph`, and `ConflictEditorView`.
+  - Verified clean production build with `npm run build`.

@@ -1,6 +1,6 @@
 # Summary
-## Version: 2.2.0
-## Last updated: 2026-04-11 – Implemented Robust Push Workflow.
+## Version: 2.3.1
+## Last updated: 2026-04-11 – Fixes & Build Verification.
 ## Project: GitKit
 
-GitKit now supports a robust Push workflow (v2.2.0). Features include Safe Force Push (with lease), automated upstream publishing via the new SetUpstreamDialog, and an intelligent Split-Button UI in the toolbar that highlights amendment states.
+GitKit now features high-performance Commit Graph Virtualization (v2.3.0+) and a complete Force Checkout workflow. Version 2.3.1 resolved syntax issues and TypeScript errors identified during build verification, ensuring a clean and stable production distribution.
