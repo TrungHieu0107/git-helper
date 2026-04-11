@@ -130,3 +130,28 @@
 The GitKit application is stable.
 - **Stash Isolation**: Stash commits are now dynamically pushed to the right of all active branch lines, providing a clear "outside" representation as requested.
 - **Active Branch Highlighting**: The commit graph now visually highlights the name of the currently active branch in its ref badges, making navigation and focus much easier.
+
+---
+
+### 2026-04-11 – File Context Menu & History Modal
+**Reason**: Enhance file-level productivity and transparency by allowing users to manage files directly and explore their deep history without leaving the app.
+
+**Changes**:
+- **Backend Commands**:
+    - `open_file`: Launches the default system editor for a given path.
+    - `reveal_file`: Opens the file explorer and selects the target file.
+    - `discard_file_changes`: Intelligent deletion (untracked) or checkout (tracked) to revert file state.
+    - `get_file_log`: Uses `revwalk` and `pathspec` to retrieve specific file history, optimized for large repos.
+- **Frontend Components**:
+    - `FileContextMenu`: A Portal-based floating menu for the Right Panel.
+    - `FileHistoryModal`: A large-scale modal for commit-by-commit history exploration.
+- **Refactors**:
+    - `MainDiffView`: Parameterized to support both `staged/unstaged` and `commitOid` overrides, enabling historical diffs.
+- **State Management**:
+    - `uiSlice`: Added modal controls and path persistence.
+
+**Old vs New**:
+- *Old*: Viewing file history was not possible; discarding required "Discard All"; opening files required manual navigation.
+- *New*: Right-click any file for deep operations; full-screen history modal with integrated diffing.
+
+**Status**: Version 2.5.0 ✓
