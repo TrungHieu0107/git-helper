@@ -24,6 +24,7 @@ pub struct CommitNode {
     pub edges: Vec<EdgeInfo>,
     pub node_type: String, // "commit" or "stash"
     pub base_oid: Option<String>, // only for stashes
+    pub stash_index: Option<usize>, // only for stashes
 }
 
 #[derive(Serialize)]
@@ -267,6 +268,7 @@ pub fn get_log(
                     edges: vec![], 
                     node_type: "stash".to_string(),
                     base_oid: Some(oid.to_string()),
+                    stash_index: Some(s_idx),
                 });
             }
         }
@@ -350,6 +352,7 @@ pub fn get_log(
             edges,
             node_type: "commit".to_string(),
             base_oid: None,
+            stash_index: None,
         });
     }
 

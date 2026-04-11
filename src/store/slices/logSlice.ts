@@ -20,6 +20,7 @@ export interface CommitNode {
   edges: EdgeInfo[];
   node_type: 'commit' | 'stash';
   base_oid?: string;
+  stash_index?: number;
 }
 
 export interface CommitFileChange {
