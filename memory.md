@@ -47,123 +47,32 @@
 - 2026-04-09: Stash Preference Persistence — integrated stash settings (mode and include untracked) into the app-wide persistence layer. The app now remembers your last used stash configuration across restarts.
 - 2026-04-09: Deep Auto-Refresh on Focus — implemented a high-performance refresh system that re-synced staged/unstaged file status and diff content on window focus. Used Tauri-native window events, 300ms debouncing, and Monaco `setValue()` safe updates to ensure a flicker-free, robust experience.
 - 2026-04-10: **Backend & Frontend Architectural Refactor** – Successfully transitioned the monolithic codebase into a domain-scoped modular architecture to improve maintainability and performance.
-    - **Backend**: Decomposed the monolithic `commands.rs` (and associated repo logic) into `commands/repo/` (`meta.rs`, `ops.rs`), `commands/branch/`, and `commands/stash/`. Updated `lib.rs` to register commands from new modules.
-    - **Status Logic**: Re-implemented status reporting in `status.rs` with native `git2` rename tracking and improved staging detection.
-    - **Frontend State**: Sliced the monolithic `AppStore` into domain-specific slices (`repoSlice`, `logSlice`, `stashSlice`, `uiSlice`) using Zustand's `StateCreator` pattern.
-    - **Types & Integration**: Re-exported all core types from `store/index.ts` to maintain functional parity; verified type safety with `tsc` and backend integrity with `cargo check`.
-    - **Logic Consistency**: Synchronized `AppStateData` and `RepoState` schemas between Rust and TypeScript to ensure persistent state stability.
-
 - 2026-04-10: Comprehensive Documentation Suite — performed a full codebase analysis and generated a set of professional technical documents in the `/docs` directory. This includes `architecture.md` (tech stack, data flow), `spec.md` (feature status), `user_flow.md` (Mermaid interaction maps), `docs.md` (developer reference), `bug_registry.md` (technical debt), and `changelog.md` (reconstructed history). Updated root `README.md` to serve as a high-fidelity documentation hub.
-
 - 2026-04-11: Pull Strategy Support — Implemented a comprehensive pull system supporting `Fast-Forward Only`, `Merge`, and `Rebase` strategies. 
-    - **Backend**: Updated `pull_remote` command with internal fetching, a robust pre-flight check for unstaged changes (blocking modified tracking files while allowing staged/untracked), and multi-strategy execution logic. Rebase is handled via CLI delegation for production stability.
-    - **Persistence**: Updated `AppStateData` to include `pull_strategy` preference with default fallback, ensuring settings survive application restarts.
-    - **Frontend**: Sliced and updated `uiSlice` with new states. Refactored `pullRepo` logic to coordinate loading states and result toast notifications.
-    - **UI/UX**: Implemented a modern Split-Button in the `TopToolbar` for Pull, featuring a strategy selection dropdown with behavioral polish (Escape/outside click close) and animated loading indicators. Resolved TODO-002.
 - 2026-04-11: Fixed `Uncaught ReferenceError: className is not defined` in `TopToolbar.tsx` by correctly destructuring the `className` prop in `ToolbarButton`.
 - 2026-04-11: Implement Remote Branch Checkout — Added seamless support for checking out remote branches from the commit graph and sidebar.
-    - **Backend**: Implemented `resolve_checkout_target` to automatically handle remote-to-local ref resolution. Updated `checkout_branch` to switch to existing local tracking branches or create new ones with `set_upstream`. Refactored `safe_checkout` to dry-run against the effective local tip, ensuring accurate conflict detection even when clicking remote tags.
-    - **Frontend**: Updated `Sidebar.tsx` tree view to propagate remote prefixes, ensuring full ref names are passed to the backend. Verified `CommitGraph.tsx` badge click logic.
-- 2026-04-11: Fix `ops.rs` Compilation Error — Resolved an "unexpected closing delimiter" syntax error in `src-tauri/src/commands/repo/ops.rs`. Restored missing `build_checkout` and `extract_conflicts` helper functions that were accidentally deleted, ensuring branch checkout and conflict detection logic is fully functional. Verified fix with `cargo check`.
+- 2026-04-11: Fix `ops.rs` Compilation Error — Resolved an "unexpected closing delimiter" syntax error in `src-tauri/src/commands/repo/ops.rs`.
 - 2026-04-11: Implemented **Amend Previous Commit** workflow (v2.1.1).
-    - **Backend**: Update `create_commit` to preserve author info using `commit.amend`. Added `get_head_commit_info` for pre-population and safety checking. Implemented guards for detached HEAD and empty repositories.
-    - **Frontend**: Integrated amend metadata display, pushed-to-remote warnings, and automatic state resets on navigation. Allowed message-only amends.
-    - **Quality**: Resolved compilation errors related to `Signature` lifetimes and Tauri IPC serialization for `CommitResult`.
 - 2026-04-11: Fixed "Amend previous commit" checkbox responsiveness and backend connection.
-    - **Logic**: Implemented optimistic updates in `handleAmendToggle` for instant visual feedback.
-    - **Bug Fix**: Resolved a casing mismatch in the `get_head_commit_info` invoke call (`repo_path` -> `repoPath`) that caused silent failures.
-    - **Feedback**: Added toast error reporting to `RightPanel.tsx` for better debugging visibility.
 - 2026-04-11: Implemented robust Push Workflow (v2.2.0).
-    - **Backend**: Added `push_current_branch` and `list_remotes`. Implemented `PushMode` and `PushResult` enums. Added CLI delegation for `--force-with-lease` safety.
-    - **Frontend**: Transformed Push button into a Split-Button in `TopToolbar.tsx`. Added `SetUpstreamDialog.tsx` for untracked branches.
-    - **Alerting**: Implemented amber warning indicator and "Amend Push" state triggered by local amendments.
+- 2026-04-11 (v2.3.0): Virtualized Commit Graph.
+- 2026-04-11 (v2.4.5): Stash Lane Isolation.
+- 2026-04-11 (v2.5.0): File Context Menu & History Modal.
+- 2026-04-11 (v2.5.1): Split Copy Path.
+- 2026-04-11 (v2.5.2): Fixed Reveal in Explorer.
 
-- 2026-04-11 (v2.3.0): 
-  - Implemented **Commit Graph Virtualization** using `@tanstack/react-virtual` v3.
-  - Refactored `CommitGraph.tsx` to handle 10k+ rows with 60fps scrolling.
-  - Optimized SVG rendering by filtering non-visible edges and nodes.
-  - Completed **Force Checkout** workflow with safety stashing and UI alerts.
-  - Added "Force Reset to Origin" to Sidebar and Branch Selector context menus.
-- 2026-04-11 (v2.3.1): 
-  - Fixed JSX syntax error in `ForceCheckoutAlert.tsx`.
-  - Resolved TypeScript errors regarding `setBranchContextMenu` scoping.
-  - Cleaned up unused variables and imports in `Sidebar`, `TopToolbar`, `CommitGraph`, and `ConflictEditorView`.
-  - Verified clean production build with `npm run build`.
-- 2026-04-11 (v2.3.2): 
-  - Fixed UI bug in `CreateBranchDialog` where the "Source Branch" dropdown was obscured by the dialog container.
-  - Removed `overflow: hidden` from `.create-branch-dialog` class in `index.css` to allow absolute-positioned overlays to render outside the dialog boundaries.
-- 2026-04-11 (v2.3.3): 
-  - Initiated comprehensive UI/UX redesign. Created implementation plan for 5-stage overhaul affecting Design System, Sidebar, Commit Graph, Right Panel, and Top Toolbar.
-- 2026-04-11 (v2.3.4):
-  - **Request**: Complete redesign of GitKit UI for premium look and feel.
-  - **Reason**: Standardize visual hierarchy, improve readability, and achieve "GitHub-dark" level depth.
-  - **Changes**:
-    - `index.css`: Defined design tokens (--bg-main, --bg-panel, etc.) and global typography classes.
-    - `Sidebar.tsx`: Redesigned SectionHeaders, BranchTreeItems (28px height, active pill state), Search bar, and Stash cards.
-    - `CommitGraph.tsx`: Redesigned Ref badges (premium pills), sticky headers, author avatars, and hash copy functionality. 36px row height.
-    - `RightPanel.tsx`: Redesigned FileRows (26px height), StatusIcon pills, and Commit area with Amend toggle.
-    - `TopToolbar.tsx`: Grouped actions with vertical separators and refined icon buttons. Added Active Branch indicator to RepoSelector.
-  - **Status**: Completed Phase 1 UI/UX redesign.
-
-- 2026-04-11 (v2.3.5): 
-  - **Feature**: Modularized Sidebar stashes into src/components/Sidebar/Stashes.tsx.
-  - **Fix**: Resolved JSX syntax error in Sidebar.tsx and cleaned up legacy code.
-  - **Refinement**: Applied premium redesign styling to modular components.
-
-- 2026-04-11 (v2.3.6): 
-  - **Fix**: Resolved ReferenceError in TopToolbar.tsx by properly destructuring activeBranch in the RepoSelector component.
-  - **Rules of Hooks Violation**: Resolved a critical runtime error in `CommitGraph.tsx` where `useState` was being called inside a `map` loop.
-  - **CommitGraph Modularization**: Extracted row rendering logic into dedicated `CommitRow` and `WipRow` components in `src/components/CommitGraph/`.
-  - **Logic Isolation**: Isolated the "Copy Hash" state for each commit row, ensuring stable and independent state handling.
-
-- 2026-04-11 (v2.4.4):
-  - **Refinement**: Further reduced sidebar and section headers to **7px** to create an extremely sharp, high-density visual contrast between headers and content.
-
-- 2026-04-11 (v2.4.5):
-  - **Feature**: Implemented Stash Lane Isolation (v2).
-  - **Reason**: Stash nodes were overlapping with branch lines.
-  - **Changes**: 
-    - Moved stash commits to dedicated lanes starting from `active_lanes.len() + 1`, effectively pushing them "outside" the branch graph area.
-    - Implemented active branch highlighting in the commit graph, ensuring the badge for the current checkout is visually distinct.
-
-# Project Status: Stable (v2.4.5)
+# Project Status: Stable (v2.5.2)
 The GitKit application is stable.
-- **Stash Isolation**: Stash commits are now dynamically pushed to the right of all active branch lines, providing a clear "outside" representation as requested.
-- **Active Branch Highlighting**: The commit graph now visually highlights the name of the currently active branch in its ref badges, making navigation and focus much easier.
 
 ---
 
-### 2026-04-11 – File Context Menu & History Modal
-**Reason**: Enhance file-level productivity and transparency by allowing users to manage files directly and explore their deep history without leaving the app.
+### 2026-04-11 – Fix: Discard Changes IPC Mismatch
+**Reason**: User reported `Failed to discard changes: invalid args filePath for command discard_file_changes`.
 
 **Changes**:
-- **Backend Commands**:
-    - `open_file`: Launches the default system editor for a given path.
-    - `reveal_file`: Opens the file explorer and selects the target file.
-    - `discard_file_changes`: Intelligent deletion (untracked) or checkout (tracked) to revert file state.
-    - `get_file_log`: Uses `revwalk` and `pathspec` to retrieve specific file history, optimized for large repos.
-- **Frontend Components**:
-    - `FileContextMenu`: A Portal-based floating menu for the Right Panel.
-    - `FileHistoryModal`: A large-scale modal for commit-by-commit history exploration.
-- **Refactors**:
-    - `MainDiffView`: Parameterized to support both `staged/unstaged` and `commitOid` overrides, enabling historical diffs.
-- **State Management**:
-    - `uiSlice`: Added modal controls and path persistence.
+- **Frontend (`src/lib/repo.ts`)**:
+    - Corrected the `invoke` call for `discard_file_changes`.
+    - Changed the parameter key from `file_path` to `filePath`.
+    - Rationale: Tauri automatically converts Rust-side `snake_case` parameters to `camelCase` for the frontend IPC. Passing `file_path` resulted in a "missing required key filePath" error.
 
-**Old vs New**:
-- *Old*: Viewing file history was not possible; discarding required "Discard All"; opening files required manual navigation.
-- *New*: Right-click any file for deep operations; full-screen history modal with integrated diffing.
-
-**Status**: Version 2.5.0 ✓
-
----
-
-### 2026-04-11 – Split Copy Path Feature
-**Reason**: Improved developer workflow by providing both relative (repo) and absolute (full) paths in the context menu.
-
-**Changes**:
-- **FileContextMenu**:
-    - Replaced generic "Copy Path" with "Copy Repo Path" and "Copy Full Path".
-    - "Copy Full Path" automatically concatenates `activeRepoPath` and normalizes separators to backslashes (Windows-style) for consistency with system paths.
-
-**Status**: Version 2.5.1 ✓
+**Status**: Version 2.5.3 ✓
