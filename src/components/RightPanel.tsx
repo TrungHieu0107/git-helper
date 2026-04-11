@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppStore, FileStatus, StashEntry } from "../store";
-import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X, Layers, CloudSync, Plus, GripVertical, Check, Copy } from "lucide-react";
+import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X, Layers, CloudSync, Plus, GripVertical, Check, Copy, Pencil, Minus } from "lucide-react";
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../lib/repo";
 import { toast } from "../lib/toast";
 import { CommitDetailPanel } from "./CommitDetailPanel";
@@ -367,6 +367,7 @@ export function RightPanel() {
                               onClick={() => selectFileDiff(f.path, false)}
                               onContextMenu={(e) => handleFileContextMenu(e, f.path, false)}
                               highlight={fileFilter}
+                              isCompact={width < 450}
                             />
                        ))
                      ) : (
@@ -416,6 +417,7 @@ export function RightPanel() {
                             onClick={() => selectFileDiff(f.path, true)}
                             onContextMenu={(e) => handleFileContextMenu(e, f.path, true)}
                             highlight={fileFilter}
+                            isCompact={width < 450}
                           />
                       ))
                     ) : (
@@ -512,15 +514,14 @@ export function RightPanel() {
   );
 }
 
-function StatusIcon({ status, size = 10 }: { status: string, size?: number }) {
-  const base = "w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 border";
-  if (status === 'untracked') return <div className={`${base} bg-[#1f2937] text-[#388bfd] border-[#388bfd]/30`}>U</div>;
-  if (status === 'modified') return <div className={`${base} bg-[#251e0b] text-[#e3b341] border-[#e3b341]/30`}>M</div>;
-  if (status === 'deleted') return <div className={`${base} bg-[#2a1b1b] text-[#f85149] border-[#f85149]/30`}>D</div>;
-  if (status === 'added') return <div className={`${base} bg-[#1a231f] text-[#3fb950] border-[#3fb950]/30`}>A</div>;
-  if (status === 'renamed') return <div className={`${base} bg-[#142331] text-[#388bfd] border-[#388bfd]/30`}>R</div>;
-  if (status === 'conflicted') return <div className={`${base} bg-[#2a1b1b] text-[#f85149] border-[#f85149]/30`}><AlertTriangle size={9} /></div>;
-  return <div className={`${base} bg-[#251e0b] text-[#e3b341] border-[#e3b341]/30`}>M</div>;
+function StatusIcon({ status }: { status: string }) {
+  if (status === 'untracked') return <Plus size={14} className="text-[#3fb950] shrink-0" />;
+  if (status === 'modified') return <Pencil size={12} className="text-[#e3b341] shrink-0" />;
+  if (status === 'deleted') return <Minus size={14} className="text-[#f85149] shrink-0" />;
+  if (status === 'added') return <Plus size={14} className="text-[#3fb950] shrink-0" />;
+  if (status === 'renamed') return <ArrowRight size={12} className="text-[#388bfd] shrink-0" />;
+  if (status === 'conflicted') return <AlertTriangle size={12} className="text-[#f85149] shrink-0" />;
+  return <Pencil size={12} className="text-[#e3b341] shrink-0" />;
 }
 
 function HighlightText({ text, query }: { text: string; query: string }) {
@@ -544,9 +545,17 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   return <>{parts}</>;
 }
 
-function FileRow({ name, status, onAction, actionLabel, onClick, onContextMenu, highlight = '' }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void, onContextMenu?: (e: React.MouseEvent) => void, highlight?: string }) {
+function FileRow({ name, status, onAction, actionLabel, onClick, onContextMenu, highlight = '', isCompact = false }: { name: string, status: string, onAction?: () => void, actionLabel?: string, onClick?: () => void, onContextMenu?: (e: React.MouseEvent) => void, highlight?: string, isCompact?: boolean }) {
   const fileName = name.includes('/') ? name.substring(name.lastIndexOf('/') + 1) : name;
   const dirPath = name.includes('/') ? name.substring(0, name.lastIndexOf('/') + 1) : '';
+
+  const displayDirPath = useMemo(() => {
+    if (!dirPath) return '';
+    if (!isCompact) return dirPath;
+    const parts = dirPath.split('/').filter(Boolean);
+    if (parts.length <= 1) return dirPath;
+    return `${parts[0]}/.../`;
+  }, [dirPath, isCompact]);
 
   return (
     <div 
@@ -556,15 +565,15 @@ function FileRow({ name, status, onAction, actionLabel, onClick, onContextMenu, 
     >
         <div className="flex items-center gap-2 overflow-hidden min-w-0">
            <StatusIcon status={status} />
-           <div className="flex items-baseline text-[13px] font-mono min-w-0 overflow-hidden" title={name}>
-              <span className="text-[#e6edf3] font-medium shrink-0">
-                <HighlightText text={fileName} query={highlight} />
-              </span>
-              {dirPath && (
-                <span className="text-[#6e7681] truncate ml-1.5 text-[11px] opacity-70 group-hover:opacity-100 transition-opacity">
-                  <HighlightText text={dirPath} query={highlight} />
+           <div className="flex items-center text-[11.5px] font-mono min-w-0 overflow-hidden" title={name}>
+              {displayDirPath && (
+                <span className="text-[#8b949e] shrink-0 opacity-60">
+                  <HighlightText text={displayDirPath} query={highlight} />
                 </span>
               )}
+              <span className="text-[#e6edf3] font-semibold truncate">
+                <HighlightText text={fileName} query={highlight} />
+              </span>
            </div>
         </div>
         <button 
