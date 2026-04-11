@@ -56,11 +56,6 @@
 
 - 2026-04-10: Comprehensive Documentation Suite — performed a full codebase analysis and generated a set of professional technical documents in the `/docs` directory. This includes `architecture.md` (tech stack, data flow), `spec.md` (feature status), `user_flow.md` (Mermaid interaction maps), `docs.md` (developer reference), `bug_registry.md` (technical debt), and `changelog.md` (reconstructed history). Updated root `README.md` to serve as a high-fidelity documentation hub.
 
-# Project Status: Documentation Hub
-Completed a comprehensive project audit and generated a persistent context documentation suite including architecture diagrams, interaction maps, and developer reference guides.
-
-# Project Status Summary
-The Git Helper (GitKit) application is a production-ready Git client with a unified documentation system. It features a high-fidelity commit graph, advanced branching, and sophisticated session persistence. The project is fully documented with Mermaid-diagrammed user flows and technical specifications in the `/docs` directory, serving as a robust foundation for future AI and developer contributions.
 - 2026-04-11: Pull Strategy Support — Implemented a comprehensive pull system supporting `Fast-Forward Only`, `Merge`, and `Rebase` strategies. 
     - **Backend**: Updated `pull_remote` command with internal fetching, a robust pre-flight check for unstaged changes (blocking modified tracking files while allowing staged/untracked), and multi-strategy execution logic. Rebase is handled via CLI delegation for production stability.
     - **Persistence**: Updated `AppStateData` to include `pull_strategy` preference with default fallback, ensuring settings survive application restarts.
@@ -70,4 +65,11 @@ The Git Helper (GitKit) application is a production-ready Git client with a unif
 - 2026-04-11: Implement Remote Branch Checkout — Added seamless support for checking out remote branches from the commit graph and sidebar.
     - **Backend**: Implemented `resolve_checkout_target` to automatically handle remote-to-local ref resolution. Updated `checkout_branch` to switch to existing local tracking branches or create new ones with `set_upstream`. Refactored `safe_checkout` to dry-run against the effective local tip, ensuring accurate conflict detection even when clicking remote tags.
     - **Frontend**: Updated `Sidebar.tsx` tree view to propagate remote prefixes, ensuring full ref names are passed to the backend. Verified `CommitGraph.tsx` badge click logic.
+- 2026-04-11: Fix `ops.rs` Compilation Error — Resolved an "unexpected closing delimiter" syntax error in `src-tauri/src/commands/repo/ops.rs`. Restored missing `build_checkout` and `extract_conflicts` helper functions that were accidentally deleted, ensuring branch checkout and conflict detection logic is fully functional. Verified fix with `cargo check`.
+
+# Project Status: Bug Fixed
+Resolved backend compilation error in the checkout logic. Codebase is now stable and building correctly.
+
+# Project Status Summary
+The Git Helper (GitKit) application is stable following a critical fix to the backend checkout logic. All documentation (Architecture, Spec, etc.) accurately reflects the v2.1.0 state. Core features including Remote Branch Checkout and Pull Strategies are verified and building successfully.
 

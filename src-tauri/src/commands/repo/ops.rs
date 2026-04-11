@@ -97,7 +97,32 @@ pub fn checkout_branch(repo_path: String, branch_name: String, options: Checkout
     }
 }
 
+fn build_checkout<'a>(options: &CheckoutOptions, conflict_files: &Arc<Mutex<Vec<String>>>) -> CheckoutBuilder<'a> {
+    let mut checkout_builder = CheckoutBuilder::new();
+    if options.force {
+        checkout_builder.force();
+    } else {
+        checkout_builder.safe();
+    }
+    
+    let cf = Arc::clone(conflict_files);
+    checkout_builder.notify_on(git2::CheckoutNotificationType::CONFLICT);
+    checkout_builder.notify(move |_notif, path, _baseline, _target, _workdir| {
+        if let Some(p) = path {
+            if let Ok(mut files) = cf.lock() {
+                files.push(p.to_string_lossy().to_string());
+            }
+        }
+        true
+    });
     checkout_builder
+}
+
+fn extract_conflicts(conflict_files: &Arc<Mutex<Vec<String>>>) -> Vec<String> {
+    let mut files = conflict_files.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    files.sort();
+    files.dedup();
+    files
 }
 
 /// Resolves a branch name to its effective checkout target.

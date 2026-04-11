@@ -1,5 +1,1 @@
-# Project Status: Feature Complete & Refined
-## Last Updated: 2026-04-11
-## Backend: Implemented robust Remote Branch Checkout with automatic tracking creation and local ref resolution.
-## Frontend: Unified checkout flow for graph tags and sidebar remotes, ensuring correct ref passing.
-## Status: V2.1.0 Stable. Pull strategies and Remote Checkout fully implemented. Seamless branch switching across all UI components.
+The Git Helper (GitKit) application is stable following a critical fix to the backend checkout logic in `ops.rs`. All documentation (Architecture, Spec, etc.) has been updated to reflect the v2.1.0 state. Core features including Remote Branch Checkout and multi-strategy Pull are verified and functional.
