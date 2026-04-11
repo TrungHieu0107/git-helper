@@ -4,6 +4,14 @@ All notable changes to GitKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-04-11
+### Added
+- **File History Modal**: A full-screen overlay for exploring the historical versions of any file with integrated Monaco-based diff views.
+- **File Context Menu**: Right-click actions on file rows in the Right Panel (Open in Editor, Show in Explorer, File History, Copy Path).
+- **Safe Discard**: Intelligent per-file discard logic that differentiates between tracked and untracked files.
+### Changed
+- **MainDiffView Refactor**: Extracted core rendering logic to support multiple instances (main view vs modal view) with independent state.
+
 ## [2.4.5] - 2026-04-11
 ### Added
 - Isolated Stash Lanes: Stash commits are now rendered in dedicated lanes to the right of the main branch graph, preventing overlaps and improving visual clarity.
