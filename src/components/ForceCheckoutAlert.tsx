@@ -47,9 +47,9 @@ export function ForceCheckoutAlert() {
         "bg-[#1c2128]/95 border-blue-500/30"
       } h-auto min-h-[56px] py-2`}
     >
-      <div className="absolute inset-0 backdrop-blur-md" />
+      <div className="absolute inset-0 backdrop-blur-xl bg-gradient-to-r from-transparent via-red-500/5 to-transparent" />
       
-      <div className="relative h-full w-full flex flex-col px-4 justify-center select-none gap-2 max-w-5xl mx-auto">
+      <div className="relative h-full w-full flex flex-col px-4 justify-center select-none gap-2 max-w-6xl mx-auto">
         <div className="flex items-center justify-between w-full gap-4">
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className={`

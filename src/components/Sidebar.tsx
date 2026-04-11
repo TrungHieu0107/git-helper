@@ -234,7 +234,7 @@ export function Sidebar() {
         <>
           <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
             <div className="flex justify-between items-center gap-2">
-               <BranchSelector />
+               <BranchSelector setBranchContextMenu={setBranchContextMenu} />
                <button 
                  onClick={(e) => { e.stopPropagation(); setIsCollapsed(true); }} 
                  className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors shrink-0" 
@@ -389,7 +389,7 @@ export function Sidebar() {
   );
 }
 
-function BranchSelector() {
+function BranchSelector({ setBranchContextMenu }: { setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void }) {
   const { activeBranch, branches } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -490,6 +490,10 @@ function BranchSelector() {
                   <div 
                     key={branch.name}
                     onClick={() => handleSelect(branch)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: branch.name });
+                    }}
                     className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-all group ${isSelected ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-[#30363d] text-gray-300 hover:text-white'}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
