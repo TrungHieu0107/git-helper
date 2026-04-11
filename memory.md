@@ -1,6 +1,8 @@
 # GitManager App Memory
-## Version: 1.9.0
-## Last updated: 2026-04-10 – Backend & Frontend Architectural Refactor
+## Version: 2.1.0
+## Last updated: 2026-04-11 – Implement Remote Branch Checkout
+
+
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -54,8 +56,43 @@
 
 - 2026-04-10: Comprehensive Documentation Suite — performed a full codebase analysis and generated a set of professional technical documents in the `/docs` directory. This includes `architecture.md` (tech stack, data flow), `spec.md` (feature status), `user_flow.md` (Mermaid interaction maps), `docs.md` (developer reference), `bug_registry.md` (technical debt), and `changelog.md` (reconstructed history). Updated root `README.md` to serve as a high-fidelity documentation hub.
 
-# Project Status: Documentation Hub
-Completed a comprehensive project audit and generated a persistent context documentation suite including architecture diagrams, interaction maps, and developer reference guides.
+- 2026-04-11: Pull Strategy Support — Implemented a comprehensive pull system supporting `Fast-Forward Only`, `Merge`, and `Rebase` strategies. 
+    - **Backend**: Updated `pull_remote` command with internal fetching, a robust pre-flight check for unstaged changes (blocking modified tracking files while allowing staged/untracked), and multi-strategy execution logic. Rebase is handled via CLI delegation for production stability.
+    - **Persistence**: Updated `AppStateData` to include `pull_strategy` preference with default fallback, ensuring settings survive application restarts.
+    - **Frontend**: Sliced and updated `uiSlice` with new states. Refactored `pullRepo` logic to coordinate loading states and result toast notifications.
+    - **UI/UX**: Implemented a modern Split-Button in the `TopToolbar` for Pull, featuring a strategy selection dropdown with behavioral polish (Escape/outside click close) and animated loading indicators. Resolved TODO-002.
+- 2026-04-11: Fixed `Uncaught ReferenceError: className is not defined` in `TopToolbar.tsx` by correctly destructuring the `className` prop in `ToolbarButton`.
+- 2026-04-11: Implement Remote Branch Checkout — Added seamless support for checking out remote branches from the commit graph and sidebar.
+    - **Backend**: Implemented `resolve_checkout_target` to automatically handle remote-to-local ref resolution. Updated `checkout_branch` to switch to existing local tracking branches or create new ones with `set_upstream`. Refactored `safe_checkout` to dry-run against the effective local tip, ensuring accurate conflict detection even when clicking remote tags.
+    - **Frontend**: Updated `Sidebar.tsx` tree view to propagate remote prefixes, ensuring full ref names are passed to the backend. Verified `CommitGraph.tsx` badge click logic.
+- 2026-04-11: Fix `ops.rs` Compilation Error — Resolved an "unexpected closing delimiter" syntax error in `src-tauri/src/commands/repo/ops.rs`. Restored missing `build_checkout` and `extract_conflicts` helper functions that were accidentally deleted, ensuring branch checkout and conflict detection logic is fully functional. Verified fix with `cargo check`.
+- 2026-04-11: Implemented **Amend Previous Commit** workflow (v2.1.1).
+    - **Backend**: Update `create_commit` to preserve author info using `commit.amend`. Added `get_head_commit_info` for pre-population and safety checking. Implemented guards for detached HEAD and empty repositories.
+    - **Frontend**: Integrated amend metadata display, pushed-to-remote warnings, and automatic state resets on navigation. Allowed message-only amends.
+    - **Quality**: Resolved compilation errors related to `Signature` lifetimes and Tauri IPC serialization for `CommitResult`.
+- 2026-04-11: Fixed "Amend previous commit" checkbox responsiveness and backend connection.
+    - **Logic**: Implemented optimistic updates in `handleAmendToggle` for instant visual feedback.
+    - **Bug Fix**: Resolved a casing mismatch in the `get_head_commit_info` invoke call (`repo_path` -> `repoPath`) that caused silent failures.
+    - **Feedback**: Added toast error reporting to `RightPanel.tsx` for better debugging visibility.
+- 2026-04-11: Implemented robust Push Workflow (v2.2.0).
+    - **Backend**: Added `push_current_branch` and `list_remotes`. Implemented `PushMode` and `PushResult` enums. Added CLI delegation for `--force-with-lease` safety.
+    - **Frontend**: Transformed Push button into a Split-Button in `TopToolbar.tsx`. Added `SetUpstreamDialog.tsx` for untracked branches.
+    - **Alerting**: Implemented amber warning indicator and "Amend Push" state triggered by local amendments.
+
+# Project Status: Stable (v2.1.1)
+The GitKit application is stable and fully supports the "Amend Previous Commit" feature.
 
 # Project Status Summary
-The Git Helper (GitKit) application is a production-ready Git client with a unified documentation system. It features a high-fidelity commit graph, advanced branching, and sophisticated session persistence. The project is fully documented with Mermaid-diagrammed user flows and technical specifications in the `/docs` directory, serving as a robust foundation for future AI and developer contributions.
+Version 2.1.1 introduces a high-polish Amend workflow, featuring original author preservation, safety guards for remote history protection, and intelligent UI synchronization across the commit graph.
+
+- **2026-04-11 (v2.3.0)**: 
+  - Implemented **Commit Graph Virtualization** using `@tanstack/react-virtual` v3.
+  - Refactored `CommitGraph.tsx` to handle 10k+ rows with 60fps scrolling.
+  - Optimized SVG rendering by filtering non-visible edges and nodes.
+  - Completed **Force Checkout** workflow with safety stashing and UI alerts.
+  - Added "Force Reset to Origin" to Sidebar and Branch Selector context menus.
+- **2026-04-11 (v2.3.1)**: 
+  - Fixed JSX syntax error in `ForceCheckoutAlert.tsx`.
+  - Resolved TypeScript errors regarding `setBranchContextMenu` scoping.
+  - Cleaned up unused variables and imports in `Sidebar`, `TopToolbar`, `CommitGraph`, and `ConflictEditorView`.
+  - Verified clean production build with `npm run build`.

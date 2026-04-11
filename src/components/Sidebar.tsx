@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw } from "lucide-react";
 import { useAppStore } from "../store";
 import { safeSwitchBranch, applyStash, popStash } from "../lib/repo";
 import { StashEntry } from "../store";
@@ -100,6 +100,7 @@ export function Sidebar() {
   const [stashFlex, setStashFlex] = useState(1);
 
   const [stashContextMenu, setStashContextMenu] = useState<{ x: number, y: number, stash: StashEntry } | null>(null);
+  const [branchContextMenu, setBranchContextMenu] = useState<{ x: number, y: number, branch: string } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth');
     return saved ? parseInt(saved, 10) : 260;
@@ -233,7 +234,7 @@ export function Sidebar() {
         <>
           <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
             <div className="flex justify-between items-center gap-2">
-               <BranchSelector />
+               <BranchSelector setBranchContextMenu={setBranchContextMenu} />
                <button 
                  onClick={(e) => { e.stopPropagation(); setIsCollapsed(true); }} 
                  className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors shrink-0" 
@@ -262,13 +263,13 @@ export function Sidebar() {
                <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
                {localOpen && (
                  <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
-                   {filteredLocalTree.length === 0 ? (
-                     <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
-                   ) : (
+                    {filteredLocalTree.length === 0 ? (
+                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
+                    ) : (
                      filteredLocalTree.map(node => (
-                       <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} />
-                     ))
-                   )}
+                        <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
+                      ))
+                    )}
                  </div>
                )}
             </div>
@@ -277,7 +278,7 @@ export function Sidebar() {
               <SidebarResizeHandle onMouseDown={startResizing('local')} />
             )}
 
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
                <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                {remoteOpen && (
                  <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
@@ -292,11 +293,11 @@ export function Sidebar() {
                               <Highlight text={remote} query={filter} />
                             </span>
                          </div>
-                         <div className="pl-4">
-                            {tree.map(node => (
-                              <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} filter={filter} />
-                            ))}
-                         </div>
+                          <div className="pl-4">
+                             {tree.map(node => (
+                               <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remote} />
+                             ))}
+                          </div>
                        </div>
                      ))
                    )}
@@ -377,11 +378,18 @@ export function Sidebar() {
           onClose={() => setStashContextMenu(null)} 
         />
       )}
+      {branchContextMenu && (
+        <BranchContextMenu 
+          branch={branchContextMenu.branch} 
+          position={{ x: branchContextMenu.x, y: branchContextMenu.y }} 
+          onClose={() => setBranchContextMenu(null)} 
+        />
+      )}
     </aside>
   );
 }
 
-function BranchSelector() {
+function BranchSelector({ setBranchContextMenu }: { setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void }) {
   const { activeBranch, branches } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -482,6 +490,10 @@ function BranchSelector() {
                   <div 
                     key={branch.name}
                     onClick={() => handleSelect(branch)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: branch.name });
+                    }}
                     className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-all group ${isSelected ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-[#30363d] text-gray-300 hover:text-white'}`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -513,7 +525,7 @@ function BranchSelector() {
   );
 }
 
-function BranchTreeItem({ node, activeBranch, level, filter = "" }: { node: BranchNode; activeBranch: string | null; level: number, filter?: string }) {
+function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchContextMenu, remotePrefix }: { node: BranchNode; activeBranch: string | null; level: number, filter?: string, setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void, remotePrefix?: string }) {
     const [expanded, setExpanded] = useState(true);
     const isHead = activeBranch === node.fullPath;
     const hasChildren = node.children.size > 0;
@@ -530,9 +542,17 @@ function BranchTreeItem({ node, activeBranch, level, filter = "" }: { node: Bran
         <div className="flex flex-col">
             <div 
                 onClick={() => { if (hasChildren) setExpanded(!expanded); }}
+                onContextMenu={(e) => {
+                    if (node.isBranch) {
+                        e.preventDefault();
+                        const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+                        setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
+                    }
+                }}
                 onDoubleClick={async () => {
                     if (node.isBranch && !isHead) {
-                        await safeSwitchBranch(node.fullPath);
+                        const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+                        await safeSwitchBranch(fullRef);
                     }
                 }}
                 className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors
@@ -560,14 +580,21 @@ function BranchTreeItem({ node, activeBranch, level, filter = "" }: { node: Bran
                 </div>
                 
                 {node.isBranch && (
-                    <MoreHorizontal size={14} className="text-slate-400 invisible group-hover:visible shrink-0 ml-2" />
+                    <MoreHorizontal 
+                      size={14} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+                        setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
+                      }}
+                    />
                 )}
             </div>
 
             {hasChildren && expanded && (
                 <div className="flex flex-col">
                     {children.map(child => (
-                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} filter={filter} />
+                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remotePrefix} />
                     ))}
                 </div>
             )}
@@ -676,3 +703,81 @@ function StashContextMenu({ stash, position, onClose }: { stash: StashEntry, pos
     </div>
   );
 }
+
+function BranchContextMenu({ branch, position, onClose }: { branch: string; position: { x: number; y: number }; onClose: () => void }) {
+  const { branches, cherryPickState } = useAppStore();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState(position);
+
+  const hasOrigin = branches.some(b => b.branch_type === 'remote' && b.name === `origin/${branch}`);
+  const isProcessing = cherryPickState !== 'idle';
+
+  useEffect(() => {
+    if (!menuRef.current) return;
+    const rect = menuRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let { x, y } = position;
+
+    if (x + rect.width > vw - 8) x = vw - rect.width - 8;
+    if (y + rect.height > vh - 8) y = vh - rect.height - 8;
+    if (x < 8) x = 8;
+    if (y < 8) y = 8;
+
+    setMenuPos({ x, y });
+  }, [position]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleForceCheckout = () => {
+    onClose();
+    useAppStore.setState({ forceCheckoutTarget: branch, forceCheckoutPhase: 'confirm_reset' });
+  };
+
+  return (
+    <div 
+      ref={menuRef}
+      className="fixed bg-[#1c2128] border border-[#30363d] rounded shadow-2xl py-1 z-[9999] min-w-[180px] animate-in fade-in zoom-in-95 duration-100"
+      style={{ top: menuPos.y, left: menuPos.x }}
+    >
+      <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#30363d] mb-1 truncate">
+        Branch: {branch}
+      </div>
+      
+      <button 
+        disabled={!hasOrigin || isProcessing}
+        onClick={handleForceCheckout}
+        className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+          !hasOrigin || isProcessing 
+            ? 'text-slate-600 cursor-not-allowed' 
+            : 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
+        }`}
+        title={!hasOrigin ? "No remote tracking branch found" : isProcessing ? "Complete current operation first" : ""}
+      >
+        <RotateCcw size={14} />
+        Force checkout from origin
+      </button>
+
+      {!hasOrigin && (
+        <div className="px-3 py-1 text-[10px] text-slate-500 italic">
+          No tracking branch on origin
+        </div>
+      )}
+    </div>
+  );
+}
+

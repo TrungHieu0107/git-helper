@@ -161,8 +161,7 @@ export function ConflictEditorView() {
     wordWrap: "off" as const,
   };
 
-  // Determine initial content for the result pane (raw disk content)
-  const rawContent = conflictVersions.raw || "";
+
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative z-10 border-r border-[#30363d] overflow-hidden animate-in fade-in zoom-in-95 duration-300">

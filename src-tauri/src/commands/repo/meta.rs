@@ -34,7 +34,14 @@ pub struct AppStateData {
     pub active_tab: Option<String>,
     pub stash_mode: Option<String>,
     pub include_untracked: Option<bool>,
+    #[serde(default = "default_pull_strategy")]
+    pub pull_strategy: String,
 }
+
+fn default_pull_strategy() -> String {
+    "fast_forward_only".to_string()
+}
+
 
 fn get_app_state_file(app: &AppHandle) -> Result<PathBuf, String> {
     let mut path = app
@@ -55,7 +62,9 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
             active_tab: None,
             stash_mode: Some("all".to_string()),
             include_untracked: Some(false),
+            pull_strategy: default_pull_strategy(),
         });
+
     }
     let content = fs::read_to_string(file_path).map_err(|e| e.to_string())?;
     let state: AppStateData = serde_json::from_str(&content).unwrap_or(AppStateData {
@@ -63,7 +72,9 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
         active_tab: None,
         stash_mode: Some("all".to_string()),
         include_untracked: Some(false),
+        pull_strategy: default_pull_strategy(),
     });
+
     Ok(state)
 }
 
@@ -190,4 +201,75 @@ pub fn open_repo(app: tauri::AppHandle, path: String) -> Result<RepoInfo, String
     let _ = add_recent_repo(&app, &workdir, &name);
     
     Ok(info)
+}
+#[derive(Serialize)]
+pub struct HeadCommitInfo {
+    pub oid: String,
+    pub message: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub author_timestamp: i64,
+    pub is_pushed: bool,
+}
+
+#[tauri::command]
+pub async fn get_head_commit_info(repo_path: String) -> Result<HeadCommitInfo, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // Guard for empty repository
+    if repo.is_empty().map_err(|e| e.to_string())? {
+        return Err("Cannot amend: no previous commit exists.".to_string());
+    }
+
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
+    
+    let is_pushed = is_head_pushed(&repo, &head);
+    let author = commit.author();
+
+    Ok(HeadCommitInfo {
+        oid: commit.id().to_string(),
+        message: commit.message().unwrap_or("").to_string(),
+        author_name: author.name().unwrap_or("").to_string(),
+        author_email: author.email().unwrap_or("").to_string(),
+        author_timestamp: author.when().seconds(),
+        is_pushed,
+    })
+}
+
+fn is_head_pushed(repo: &Repository, head: &git2::Reference) -> bool {
+    if !head.is_branch() {
+        return false;
+    }
+
+    let branch_name = match head.shorthand() {
+        Some(name) => name,
+        None => return false,
+    };
+
+    let branch = match repo.find_branch(branch_name, git2::BranchType::Local) {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+
+    let upstream = match branch.upstream() {
+        Ok(u) => u,
+        Err(_) => return false,
+    };
+
+    let local_oid = match head.target() {
+        Some(oid) => oid,
+        None => return false,
+    };
+
+    let upstream_oid = match upstream.get().target() {
+        Some(oid) => oid,
+        None => return false,
+    };
+
+    if let Ok((ahead, _)) = repo.graph_ahead_behind(local_oid, upstream_oid) {
+        return ahead == 0;
+    }
+
+    false
 }

@@ -3,31 +3,74 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushRepo, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { pullRepo, pushCurrentBranch, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";
 
 export function TopToolbar() {
-  const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash } = useAppStore();
+  const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, isLoadingPull, pullStrategy, setPullStrategy } = useAppStore();
   const [fetching, setFetching] = useState(false);
-  const [pulling, setPulling] = useState(false);
-  const [pushing, setPushing] = useState(false);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
+  const [showPullDropdown, setShowPullDropdown] = useState(false);
+  const [showPushDropdown, setShowPushDropdown] = useState(false);
+  const pullDropdownRef = useRef<HTMLDivElement>(null);
+  const pushDropdownRef = useRef<HTMLDivElement>(null);
+  const { isLoadingPush, lastCommitWasAmend } = useAppStore();
+
 
   const handleFetch = async () => {
     setFetching(true);
     try { await fetchAllRepo(); } finally { setFetching(false); }
   };
 
-  const handlePull = async () => {
-    setPulling(true);
-    try { await pullRepo(); } finally { setPulling(false); }
+  const handlePull = async (strategy?: any) => {
+    if (strategy) {
+      setPullStrategy(strategy);
+      setShowPullDropdown(false);
+    }
+    await pullRepo(strategy);
   };
 
-  const handlePush = async () => {
-    setPushing(true);
-    try { await pushRepo(); } finally { setPushing(false); }
-  };
+  useEffect(() => {
+    if (showPullDropdown) {
+      const handleClickOutside = (e: MouseEvent) => {
+        if (pullDropdownRef.current && !pullDropdownRef.current.contains(e.target as Node)) {
+          setShowPullDropdown(false);
+        }
+      };
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowPullDropdown(false);
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEsc);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [showPullDropdown]);
+
+  useEffect(() => {
+    if (showPushDropdown) {
+      const handleClickOutside = (e: MouseEvent) => {
+        if (pushDropdownRef.current && !pushDropdownRef.current.contains(e.target as Node)) {
+          setShowPushDropdown(false);
+        }
+      };
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowPushDropdown(false);
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEsc);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [showPushDropdown]);
+
+
+
 
   const handleRefresh = async () => {
     if (activeRepoPath) {
@@ -56,23 +99,105 @@ export function TopToolbar() {
         
         {/* Fetch / Pull / Push */}
         <div className="flex items-center space-x-4 text-[#58a6ff]">
-          <ToolbarButton icon={<Download size={18} />} label="Fetch" onClick={handleFetch} loading={fetching} />
-          <ToolbarButton 
-            icon={<ArrowDown size={18} />} 
-            label="Pull" 
-            onClick={handlePull} 
-            loading={pulling} 
-            count={repoStatus?.behind || 0} 
-            title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
-          />
-          <ToolbarButton 
-            icon={<ArrowUp size={18} />} 
-            label="Push" 
-            onClick={handlePush} 
-            loading={pushing} 
-            count={repoStatus?.ahead || 0} 
-            title={repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined}
-          />
+          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={18} />} label="Fetch" />
+          
+          {/* Split Pull Button */}
+          <div className="relative flex items-center group/pull" ref={pullDropdownRef}>
+            <ToolbarButton 
+              icon={<ArrowDown size={18} />} 
+              label="Pull" 
+              onClick={() => handlePull()} 
+              loading={isLoadingPull} 
+              count={repoStatus?.behind || 0} 
+              title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
+              className="pr-1"
+            />
+            <div 
+              onClick={() => !isLoadingPull && setShowPullDropdown(!showPullDropdown)}
+              className={`h-full flex items-center px-1 py-1 rounded-sm hover:bg-white/10 cursor-pointer ${isLoadingPull ? 'opacity-20 pointer-events-none' : ''}`}
+            >
+              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showPullDropdown ? 'rotate-180' : ''}`} />
+            </div>
+
+            {showPullDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c2128] border border-[#30363d] rounded-md shadow-xl z-[250] p-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-[#768390] uppercase border-b border-[#30363d] mb-1">
+                  Pull Strategy
+                </div>
+                {(['fast_forward_only', 'fast_forward_or_merge', 'rebase'] as const).map(s => (
+                  <div 
+                    key={s}
+                    onClick={() => handlePull(s)}
+                    className={`px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer ${pullStrategy === s ? 'bg-blue-500/10' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                       <span className={`text-[12px] font-medium ${pullStrategy === s ? 'text-blue-400' : 'text-[#adbac7]'}`}>
+                         {s === 'fast_forward_only' ? 'Fast-Forward Only' : s === 'fast_forward_or_merge' ? 'Merge (FF or Merge)' : 'Rebase ⚠️'}
+                       </span>
+                       {pullStrategy === s && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />}
+                    </div>
+                    <span className="text-[10px] text-[#768390]">
+                      {s === 'fast_forward_only' ? 'Fails if branches have diverged' : s === 'fast_forward_or_merge' ? 'Merges if FF is not possible' : 'Rebases local commits on remote'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Split Push Button */}
+          <div className="relative flex items-center group/push" ref={pushDropdownRef}>
+            <ToolbarButton 
+              icon={<ArrowUp size={18} className={lastCommitWasAmend ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]" : ""} />} 
+              label={lastCommitWasAmend ? "Amend Push" : "Push"} 
+              onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
+              loading={isLoadingPush} 
+              count={repoStatus?.ahead || 0} 
+              title={lastCommitWasAmend ? "Changes were amended. Force push may be required." : (repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined)}
+              className={`pr-1 ${lastCommitWasAmend ? "border-amber-500/20" : ""}`}
+            />
+            <div 
+              onClick={() => !isLoadingPush && setShowPushDropdown(!showPushDropdown)}
+              className={`h-full flex items-center px-1 py-1 rounded-sm hover:bg-white/10 cursor-pointer ${isLoadingPush ? 'opacity-20 pointer-events-none' : ''}`}
+            >
+              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showPushDropdown ? 'rotate-180' : ''}`} />
+            </div>
+
+            {showPushDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c2128] border border-[#30363d] rounded-md shadow-xl z-[250] p-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-[#768390] uppercase border-b border-[#30363d] mb-1">
+                  Push Mode
+                </div>
+                
+                <div 
+                  onClick={() => { pushCurrentBranch(activeRepoPath!, 'normal'); setShowPushDropdown(false); }}
+                  className="px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                     <span className="text-[12px] font-medium text-[#adbac7]">Normal Push</span>
+                  </div>
+                  <span className="text-[10px] text-[#768390]">Fast-forward to remote</span>
+                </div>
+
+                <div 
+                  onClick={() => { pushCurrentBranch(activeRepoPath!, 'force_with_lease'); setShowPushDropdown(false); }}
+                  className={`px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer ${lastCommitWasAmend ? 'bg-amber-500/5' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                     <span className={`text-[12px] font-medium ${lastCommitWasAmend ? 'text-amber-400' : 'text-[#adbac7]'}`}>
+                       Force Push (with lease) ⚠️
+                     </span>
+                  </div>
+                  <span className="text-[10px] text-[#768390]">Rewrites history, only if remote matches your local tracking</span>
+                </div>
+              </div>
+            )}
+            
+            {lastCommitWasAmend && (
+              <div className="absolute -top-1 right-8 w-2 h-2 bg-amber-500 rounded-full animate-pulse border border-[#1c2128]" />
+            )}
+          </div>
+
         </div>
 
         <div className="w-px h-6 bg-[#30363d]" />
@@ -238,7 +363,8 @@ function ToolbarButton({
   loading = false, 
   onClick,
   count = 0,
-  title
+  title,
+  className
 }: { 
   icon: React.ReactNode, 
   label: string, 
@@ -246,15 +372,17 @@ function ToolbarButton({
   loading?: boolean, 
   onClick?: () => void,
   count?: number,
-  title?: string
+  title?: string,
+  className?: string
 }) {
   const isDisabled = disabled || loading;
   return (
     <div 
       onClick={() => !isDisabled && onClick?.()}
       title={title}
-      className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''} ${className || ''}`}
     >
+
        <div className={`text-slate-300 ${!isDisabled && 'group-hover:text-white transition-colors'}`}>
          {loading ? <Loader2 size={18} className="animate-spin" /> : icon}
        </div>
@@ -269,3 +397,6 @@ function ToolbarButton({
     </div>
   );
 }
+
+const DownloadButton = ToolbarButton;
+

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult, PullStrategy } from '../store';
 import { toast } from './toast';
 
 // ── Branch Validation Types ──────────────────────────────────────────────────
@@ -40,12 +40,47 @@ export interface SafeCheckoutResult {
   branch?: string;
 }
 
+export type ForceCheckoutResult =
+  | { type: 'Clean' }
+  | { type: 'NeedsStash' }
+  | { type: 'StashAndDone', data: { stash_restored: boolean } }
+  | { type: 'StashConflict', data: { files: string[] } }
+  | { type: 'NoRemoteRef' }
+  | { type: 'NotOnBranch' }
+  | { type: 'Generic', data: { message: string } };
+
 export interface AppStateData {
   tabs: { path: string, name: string }[];
   active_tab: string | null;
   stash_mode: 'all' | 'unstaged';
   include_untracked: boolean;
+  pull_strategy: 'fast_forward_only' | 'fast_forward_or_merge' | 'rebase';
 }
+
+export type PullResult = 
+  | { type: 'UpToDate' }
+  | { type: 'FastForwarded', data: { commits_added: number } }
+  | { type: 'Merged', data: { merge_commit_oid: string } }
+  | { type: 'Rebased', data: { commits_rebased: number } };
+
+export type PushResult = 
+  | { type: 'Success', data: { commits_pushed: number } }
+  | { type: 'UpToDate' };
+
+export interface HeadCommitInfo {
+  oid: string;
+  message: string;
+  author_name: string;
+  author_email: string;
+  author_timestamp: number;
+  is_pushed: boolean;
+}
+
+export interface CommitResult {
+  oid: string;
+  amended: boolean;
+}
+
 
 export interface StashUnstagedOptions {
   message?: string;
@@ -96,6 +131,85 @@ export async function safeSwitchBranch(branchName: string) {
     }
   } catch (err) {
     toast.error(`Pre-checkout check failed: ${err}`);
+  }
+}
+
+/**
+ * Triggers the force checkout flow.
+ */
+export async function forceCheckout(branchName: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    useAppStore.setState({ forceCheckoutTarget: branchName, forceCheckoutPhase: 'processing' });
+    const result = await invoke<ForceCheckoutResult>('force_checkout_from_origin', { repoPath: path, branchName });
+    
+    switch (result.type) {
+      case 'Clean':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.success(`Branch ${branchName} reset to origin.`);
+        await loadRepo(path);
+        break;
+      case 'NeedsStash':
+        useAppStore.setState({ forceCheckoutPhase: 'confirm_stash' });
+        break;
+      case 'NotOnBranch':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error("Cannot force checkout in detached HEAD state.");
+        break;
+      case 'NoRemoteRef':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Remote branch origin/${branchName} not found.`);
+        break;
+      case 'Generic':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Force checkout failed: ${result.data.message}`);
+        break;
+    }
+  } catch (e) {
+    useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+    toast.error(`System error: ${e}`);
+  }
+}
+
+/**
+ * Confirms force checkout by stashing changes first.
+ */
+export async function confirmForceCheckoutWithStash(branchName: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  try {
+    useAppStore.setState({ forceCheckoutPhase: 'processing' });
+    const result = await invoke<ForceCheckoutResult>('force_checkout_confirm_with_stash', { repoPath: path, branchName });
+    
+    switch (result.type) {
+      case 'StashAndDone':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.success(`Branch ${branchName} reset to origin. Stash restored.`);
+        await loadRepo(path);
+        break;
+      case 'StashConflict':
+        // Keep target but set phase to stash_conflict to show the banner/alert
+        useAppStore.setState({ forceCheckoutPhase: 'stash_conflict' });
+        useAppStore.setState({ 
+           stashConflict: { files: (result as any).data.files, index: 0, isPop: true }
+        });
+        toast.warning("Reset complete but stash restore had conflicts.");
+        await loadRepo(path);
+        break;
+      case 'Generic':
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Force checkout failed: ${result.data.message}`);
+        break;
+      default:
+        useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+        toast.error(`Force checkout failed with unexpected result.`);
+    }
+  } catch (e) {
+    useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
+    toast.error(`System error: ${e}`);
   }
 }
 
@@ -223,31 +337,83 @@ export async function fetchAllRepo() {
   }
 }
 
-export async function pullRepo() {
-  const path = useAppStore.getState().activeRepoPath;
+export async function pullRepo(strategy?: PullStrategy) {
+  const state = useAppStore.getState();
+  const path = state.activeRepoPath;
   if (!path) return;
   
+  const pullStrategy = strategy || state.pullStrategy;
+  
   try {
+    state.setIsLoadingPull(true);
     toast.info("Pulling changes...");
-    await invoke('pull_remote', { repoPath: path, remote: 'origin' });
+    
+    const result = await invoke<PullResult>('pull_remote', { 
+      repoPath: path, 
+      remote: 'origin',
+      strategy: pullStrategy 
+    });
+
     await loadRepo(path);
-    toast.success("Pulled successfully");
-  } catch (e) {
+    
+    switch (result.type) {
+      case 'UpToDate':
+        toast.info("Already up to date.");
+        break;
+      case 'FastForwarded':
+        toast.success(`Fast-forwarded ${result.data.commits_added} commit(s).`);
+        break;
+      case 'Merged':
+        toast.success(`Merged — new commit ${result.data.merge_commit_oid.substring(0, 7)}.`);
+        break;
+      case 'Rebased':
+        toast.success(`Rebased successfully.`);
+        break;
+    }
+  } catch (e: any) {
     toast.error(`Pull failed: ${e}`);
+  } finally {
+    state.setIsLoadingPull(false);
   }
 }
 
+
 export async function pushRepo() {
-  const path = useAppStore.getState().activeRepoPath;
-  if (!path) return;
-  
+  const state = useAppStore.getState();
+  if (!state.activeRepoPath) return;
+  return pushCurrentBranch(state.activeRepoPath, 'normal');
+}
+
+export async function pushCurrentBranch(
+  repoPath: string,
+  mode: 'normal' | 'force_with_lease',
+) {
+  const store = useAppStore.getState();
+  store.setIsLoadingPush(true);
   try {
-    toast.info("Pushing changes...");
-    await invoke('push_remote', { repoPath: path, remote: 'origin' });
-    await loadRepo(path);
-    toast.success("Pushed successfully");
+    const result = await invoke<PushResult>('push_current_branch', {
+      repoPath,
+      mode,
+    });
+    
+    if (result.type === 'Success') {
+      toast.success(`Pushed ${result.data.commits_pushed} commit(s) to remote.`);
+      store.setLastCommitWasAmend(false);
+    } else if (result.type === 'UpToDate') {
+      toast.info('Already up to date.');
+    }
+    
+    await loadRepo(repoPath);
   } catch (e) {
-    toast.error(`Push failed: ${e}`);
+    const msg = String(e);
+    if (msg === 'NO_UPSTREAM') {
+      store.setShowSetUpstreamDialog(true);
+    } else {
+      toast.error(msg);
+      console.error('Push failed:', e);
+    }
+  } finally {
+    store.setIsLoadingPush(false);
   }
 }
 
@@ -447,14 +613,21 @@ export async function commitRepo(message: string, amend: boolean = false) {
   
   try {
     toast.info(amend ? "Amending commit..." : "Creating commit...");
-    await invoke('create_commit', { repoPath: path, message, amend });
+    const result = await invoke<CommitResult>('create_commit', { repoPath: path, message, amend });
+    useAppStore.getState().setLastCommitWasAmend(result.amended);
     await loadRepo(path);
-    toast.success(amend ? "Amended successfully" : "Committed successfully");
+    toast.success(result.amended ? "Amended successfully" : "Committed successfully");
     return true;
   } catch (e) {
     toast.error(`Commit failed: ${e}`);
     return false;
   }
+}
+
+export async function getHeadCommitInfo(): Promise<HeadCommitInfo | null> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return null;
+  return await invoke<HeadCommitInfo>('get_head_commit_info', { repoPath: path });
 }
 
 export async function stageFile(filePath: string) {
@@ -644,13 +817,15 @@ export function closeRepoTab(path: string) {
 }
 
 export async function saveCurrentState() {
-  const { repos, activeTabId, lastStashMode, lastIncludeUntracked } = useAppStore.getState();
+  const { repos, activeTabId, lastStashMode, lastIncludeUntracked, pullStrategy } = useAppStore.getState();
   const state: AppStateData = {
     tabs: repos.map(r => ({ path: r.path, name: r.name })),
     active_tab: activeTabId === 'home' ? null : activeTabId,
     stash_mode: lastStashMode,
     include_untracked: lastIncludeUntracked,
+    pull_strategy: pullStrategy,
   };
+
   try {
     await invoke('save_app_state', { state });
   } catch (e) {
@@ -677,8 +852,11 @@ export async function restoreAppState() {
         if (state.include_untracked !== undefined) {
           useAppStore.setState({ lastIncludeUntracked: state.include_untracked });
         }
-} catch (e) {
-        console.error('Failed to restore app state:', e);
+        if (state.pull_strategy) {
+          useAppStore.setState({ pullStrategy: state.pull_strategy });
+        }
+    } catch (e) {
+      console.error('Failed to restore app state:', e);
     }
 }
 

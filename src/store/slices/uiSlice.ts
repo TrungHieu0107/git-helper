@@ -26,6 +26,9 @@ export type CheckoutError =
   | { type: 'DetachedHead', data: { oid: string } }
   | { type: 'Generic', data: { message: string } };
 
+export type PullStrategy = 'fast_forward_only' | 'fast_forward_or_merge' | 'rebase';
+
+
 export interface UISlice {
   repos: RepoMeta[];
   activeTabId: string;
@@ -36,6 +39,14 @@ export interface UISlice {
   confirmDiscardAll: boolean;
   checkoutError: CheckoutError | null;
   refreshTimestamp: number;
+  pullStrategy: PullStrategy;
+  isLoadingPull: boolean;
+  isLoadingPush: boolean;
+  showSetUpstreamDialog: boolean;
+  lastCommitWasAmend: boolean;
+
+  forceCheckoutTarget: string | null;
+  forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
@@ -45,8 +56,15 @@ export interface UISlice {
   setConfirmDiscardAll: (show: boolean) => void;
   setCheckoutError: (error: CheckoutError | null) => void;
   triggerRefresh: () => void;
+  setPullStrategy: (strategy: PullStrategy) => void;
+  setIsLoadingPull: (loading: boolean) => void;
+  setIsLoadingPush: (loading: boolean) => void;
+  setShowSetUpstreamDialog: (show: boolean) => void;
+  setLastCommitWasAmend: (wasAmend: boolean) => void;
+
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
+  setForceCheckout: (target: string | null, phase: UISlice['forceCheckoutPhase']) => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -59,6 +77,14 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   confirmDiscardAll: false,
   checkoutError: null,
   refreshTimestamp: 0,
+  pullStrategy: 'fast_forward_only',
+  isLoadingPull: false,
+  isLoadingPush: false,
+  showSetUpstreamDialog: false,
+  lastCommitWasAmend: false,
+
+  forceCheckoutTarget: null,
+  forceCheckoutPhase: 'idle',
 
   setActiveTabId: (id) => set(() => ({ activeTabId: id })),
   setRepos: (repos) => set(() => ({ repos })),
@@ -68,6 +94,13 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setConfirmDiscardAll: (show) => set(() => ({ confirmDiscardAll: show })),
   setCheckoutError: (error) => set(() => ({ checkoutError: error })),
   triggerRefresh: () => set(() => ({ refreshTimestamp: Date.now() })),
+  setPullStrategy: (strategy) => set(() => ({ pullStrategy: strategy })),
+  setIsLoadingPull: (loading) => set(() => ({ isLoadingPull: loading })),
+  setIsLoadingPush: (loading) => set(() => ({ isLoadingPush: loading })),
+  setShowSetUpstreamDialog: (show) => set(() => ({ showSetUpstreamDialog: show })),
+  setLastCommitWasAmend: (wasAmend) => set(() => ({ lastCommitWasAmend: wasAmend })),
+
+  setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   
   addToast: (message, type = 'info', duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);

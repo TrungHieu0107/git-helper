@@ -40,4 +40,10 @@
 - **Alternatives considered**: Filtering out `normal` code exclusively for the side panels and dropping empty spacing padding.
 - **Status**: Active
 
+### [2026-04-11] — ROW & SVG VIRTUALIZATION
+- **Decision**: Implemented vertical row virtualization and dynamic SVG edge filtering.
+- **Reason**: Standard HTML rendering became slow (>100ms lag) at 1000+ commits.
+- **Alternatives considered**: Heavy backend-side SVG tiling (too complex for state sync).
+- **Status**: Active
+
 <!-- Antigravity -->

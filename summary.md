@@ -1,5 +1,6 @@
-# Project Status: Modularized & Stable
-## Last Updated: 2026-04-09
-## Backend: Decomposed monolithic commands into domain-scoped modules (repo, branch, stash, log, diff, remote).
-## Frontend: Sliced the monolithic Zustand store into domain-specific slices (repoSlice, logSlice, stashSlice, uiSlice).
-## Status: Backend builds (cargo check pass), Frontend types verified (tsc pass modulo minor lint). Ready for Phase 2: Multi-repo support.
+# Summary
+## Version: 2.3.1
+## Last updated: 2026-04-11 – Fixes & Build Verification.
+## Project: GitKit
+
+GitKit now features high-performance Commit Graph Virtualization (v2.3.0+) and a complete Force Checkout workflow. Version 2.3.1 resolved syntax issues and TypeScript errors identified during build verification, ensuring a clean and stable production distribution.

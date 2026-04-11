@@ -31,60 +31,17 @@ pub fn checkout_branch(repo_path: String, branch_name: String, options: Checkout
     }
 
     let conflict_files = Arc::new(Mutex::new(Vec::<String>::new()));
+    let (target_name, target_type) = resolve_checkout_target(&repo, &branch_name);
 
-    if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Local) {
-        let commit = branch.get().peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
-        
-        let checkout_result = {
-            let mut checkout_builder = build_checkout(&options, &conflict_files);
-            repo.checkout_tree(commit.as_object(), Some(&mut checkout_builder))
-        };
-        
-        if let Err(e) = checkout_result {
-            let conflicts = extract_conflicts(&conflict_files);
-            if !conflicts.is_empty() {
-                return Err(CheckoutError::Conflict { files: conflicts });
-            }
-            return Err(CheckoutError::Generic { message: e.to_string() });
-        }
-        
-        repo.set_head(branch.get().name().unwrap()).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
-        return Ok(());
-    }
-
-    if let Ok(remote_branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
-        let reference = remote_branch.get();
-        let commit = reference.peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
-        
-        let parts: Vec<&str> = branch_name.splitn(2, '/').collect();
-        let local_name = if parts.len() > 1 { parts[1] } else { &branch_name };
-        
-        let local_branch = repo.branch(local_name, &commit, false).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
-        
-        let checkout_result = {
-            let mut checkout_builder = build_checkout(&options, &conflict_files);
-            repo.checkout_tree(commit.as_object(), Some(&mut checkout_builder))
-        };
-        
-        if let Err(e) = checkout_result {
-            let conflicts = extract_conflicts(&conflict_files);
-            if !conflicts.is_empty() {
-                return Err(CheckoutError::Conflict { files: conflicts });
-            }
-            return Err(CheckoutError::Generic { message: e.to_string() });
-        }
-        
-        repo.set_head(local_branch.get().name().unwrap()).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
-        return Ok(());
-    }
-
-    if let Ok(obj) = repo.revparse_single(&branch_name) {
-        if let Some(commit) = obj.as_commit() {
-            let commit_id = commit.id();
+    match target_type {
+        git2::BranchType::Local => {
+            let branch = repo.find_branch(&target_name, git2::BranchType::Local)
+                .map_err(|_| CheckoutError::NotFound { branch: target_name.clone() })?;
+            let commit = branch.get().peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
             
             let checkout_result = {
                 let mut checkout_builder = build_checkout(&options, &conflict_files);
-                repo.checkout_tree(&obj, Some(&mut checkout_builder))
+                repo.checkout_tree(commit.as_object(), Some(&mut checkout_builder))
             };
             
             if let Err(e) = checkout_result {
@@ -94,30 +51,63 @@ pub fn checkout_branch(repo_path: String, branch_name: String, options: Checkout
                 }
                 return Err(CheckoutError::Generic { message: e.to_string() });
             }
-            repo.set_head_detached(commit_id).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
-            return Err(CheckoutError::DetachedHead { oid: commit_id.to_string() });
+            
+            repo.set_head(branch.get().name().unwrap()).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+            Ok(())
+        },
+        git2::BranchType::Remote => {
+            let remote_branch = repo.find_branch(&target_name, git2::BranchType::Remote)
+                .map_err(|_| CheckoutError::NotFound { branch: target_name.clone() })?;
+            let remote_commit = remote_branch.get().peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+            
+            let local_name = derive_local_name(&target_name);
+            
+            // 1. Locate or create local branch
+            let local_branch = match repo.find_branch(&local_name, git2::BranchType::Local) {
+                Ok(b) => b,
+                Err(_) => {
+                    let mut b = repo.branch(&local_name, &remote_commit, false)
+                        .map_err(|e| CheckoutError::Generic { message: format!("Failed to create local branch '{}': {}", local_name, e) })?;
+                    // Set upstream tracking for new branch
+                    b.set_upstream(Some(&target_name))
+                        .map_err(|e| CheckoutError::Generic { message: format!("Failed to set upstream: {}", e) })?;
+                    b
+                }
+            };
+            
+            // 2. Perform checkout (tree of the LOCAL branch tip)
+            let local_commit = local_branch.get().peel_to_commit().map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+            let checkout_result = {
+                let mut checkout_builder = build_checkout(&options, &conflict_files);
+                repo.checkout_tree(local_commit.as_object(), Some(&mut checkout_builder))
+            };
+            
+            if let Err(e) = checkout_result {
+                let conflicts = extract_conflicts(&conflict_files);
+                if !conflicts.is_empty() {
+                    return Err(CheckoutError::Conflict { files: conflicts });
+                }
+                return Err(CheckoutError::Generic { message: e.to_string() });
+            }
+            
+            // 3. Move HEAD
+            repo.set_head(local_branch.get().name().unwrap()).map_err(|e| CheckoutError::Generic { message: e.to_string() })?;
+            Ok(())
         }
     }
-
-    Err(CheckoutError::NotFound { branch: branch_name })
 }
 
-fn extract_conflicts(conflict_files: &Arc<Mutex<Vec<String>>>) -> Vec<String> {
-    conflict_files.lock().unwrap_or_else(|e| e.into_inner()).clone()
-}
-
-fn build_checkout<'a>(options: &CheckoutOptions, conflict_files: &'a Arc<Mutex<Vec<String>>>) -> CheckoutBuilder<'a> {
+fn build_checkout<'a>(options: &CheckoutOptions, conflict_files: &Arc<Mutex<Vec<String>>>) -> CheckoutBuilder<'a> {
     let mut checkout_builder = CheckoutBuilder::new();
     if options.force {
         checkout_builder.force();
-    } else if options.merge {
-        checkout_builder.conflict_style_merge(true);
     } else {
         checkout_builder.safe();
     }
-
+    
     let cf = Arc::clone(conflict_files);
-    checkout_builder.notify(move |_checkout_notif, path, _baseline, _target, _workdir| {
+    checkout_builder.notify_on(git2::CheckoutNotificationType::CONFLICT);
+    checkout_builder.notify(move |_notif, path, _baseline, _target, _workdir| {
         if let Some(p) = path {
             if let Ok(mut files) = cf.lock() {
                 files.push(p.to_string_lossy().to_string());
@@ -125,8 +115,35 @@ fn build_checkout<'a>(options: &CheckoutOptions, conflict_files: &'a Arc<Mutex<V
         }
         true
     });
-
     checkout_builder
+}
+
+fn extract_conflicts(conflict_files: &Arc<Mutex<Vec<String>>>) -> Vec<String> {
+    let mut files = conflict_files.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    files.sort();
+    files.dedup();
+    files
+}
+
+/// Resolves a branch name to its effective checkout target.
+/// If it's a remote branch (e.g., origin/foo), it returns the local name (foo) 
+/// and indicates it's a remote source.
+fn resolve_checkout_target(repo: &Repository, name: &str) -> (String, git2::BranchType) {
+    if repo.find_branch(name, git2::BranchType::Local).is_ok() {
+        return (name.to_string(), git2::BranchType::Local);
+    }
+    
+    if repo.find_branch(name, git2::BranchType::Remote).is_ok() {
+        return (name.to_string(), git2::BranchType::Remote);
+    }
+
+    // Default to local (handles new branch names or raw OIDs via revparse later)
+    (name.to_string(), git2::BranchType::Local)
+}
+
+fn derive_local_name(remote_name: &str) -> String {
+    let parts: Vec<&str> = remote_name.splitn(2, '/').collect();
+    if parts.len() > 1 { parts[1].to_string() } else { remote_name.to_string() }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -150,29 +167,40 @@ pub fn safe_checkout(repo_path: String, branch_name: String) -> Result<SafeCheck
             state: format!("{:?}", state).to_lowercase(),
         });
     }
+
+    let (target_name, target_type) = resolve_checkout_target(&repo, &branch_name);
+    let effective_local_name = if target_type == git2::BranchType::Remote {
+        derive_local_name(&target_name)
+    } else {
+        target_name.clone()
+    };
     
     if let Ok(head) = repo.head() {
         if let Some(current) = head.shorthand() {
-            if current == branch_name {
+            if current == effective_local_name {
                 return Ok(SafeCheckoutResult::AlreadyOnBranch);
             }
         }
     }
     
-    let target_commit = if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Local) {
-        Some(branch.get().peel_to_commit().map_err(|e| e.to_string())?)
-    } else if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
-        Some(branch.get().peel_to_commit().map_err(|e| e.to_string())?)
-    } else if let Ok(obj) = repo.revparse_single(&branch_name) {
-        obj.as_commit().cloned()
+    let target_oid = if target_type == git2::BranchType::Remote {
+        let local_name = derive_local_name(&target_name);
+        match repo.find_branch(&local_name, git2::BranchType::Local) {
+            Ok(b) => b.get().target().ok_or("Local branch has no target")?,
+            Err(_) => {
+                let rb = repo.find_branch(&target_name, git2::BranchType::Remote).map_err(|e| e.to_string())?;
+                rb.get().target().ok_or("Remote branch has no target")?
+            }
+        }
+    } else if let Ok(branch) = repo.find_branch(&target_name, git2::BranchType::Local) {
+        branch.get().target().ok_or("Branch has no target")?
+    } else if let Ok(obj) = repo.revparse_single(&target_name) {
+        obj.id()
     } else {
-        return Ok(SafeCheckoutResult::NotFound { branch: branch_name });
+        return Ok(SafeCheckoutResult::NotFound { branch: target_name });
     };
-    
-    let commit = match target_commit {
-        Some(c) => c,
-        None => return Ok(SafeCheckoutResult::NotFound { branch: branch_name }),
-    };
+
+    let commit = repo.find_commit(target_oid).map_err(|e| e.to_string())?;
     
     let mut opts = git2::StatusOptions::new();
     opts.include_untracked(true).recurse_untracked_dirs(true).include_ignored(false);
@@ -375,4 +403,116 @@ pub fn open_terminal(path: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type", content = "data")]
+pub enum ForceCheckoutResult {
+    Clean,
+    NeedsStash,
+    StashAndDone { stash_restored: bool },
+    StashConflict { files: Vec<String> },
+    NoRemoteRef,
+    NotOnBranch,
+    Generic { message: String },
+}
+
+#[tauri::command]
+pub fn force_checkout_from_origin(repo_path: String, branch_name: String) -> Result<ForceCheckoutResult, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Validate repo is not in detached HEAD state
+    if repo.head_detached().unwrap_or(false) {
+        return Ok(ForceCheckoutResult::NotOnBranch);
+    }
+
+    // 2. Resolve origin/{branch_name}
+    let remote_ref_name = format!("origin/{}", branch_name);
+    let remote_branch = match repo.find_branch(&remote_ref_name, git2::BranchType::Remote) {
+        Ok(b) => b,
+        Err(_) => return Ok(ForceCheckoutResult::NoRemoteRef),
+    };
+    let remote_oid = remote_branch.get().target().ok_or("Remote branch has no target")?;
+    let remote_obj = repo.find_object(remote_oid, None).map_err(|e| e.to_string())?;
+
+    // 3. Check working tree for local changes
+    let check = check_working_tree(repo_path.clone())?;
+    if check.has_staged || check.has_unstaged {
+        return Ok(ForceCheckoutResult::NeedsStash);
+    }
+
+    // 4. Determine if we are force-resetting the current branch
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let is_current = head.shorthand() == Some(&branch_name);
+
+    if is_current {
+        // Force reset current branch (updates ref + workdir)
+        repo.reset(&remote_obj, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
+    } else {
+        // Move a different branch ref to the remote's OID (force=true to avoid "already exists")
+        let remote_commit = remote_obj.as_commit()
+            .ok_or("Remote object is not a commit")?;
+        repo.branch(&branch_name, remote_commit, true).map_err(|e| e.to_string())?;
+    }
+    
+    Ok(ForceCheckoutResult::Clean)
+}
+
+#[tauri::command]
+pub fn force_checkout_confirm_with_stash(repo_path: String, branch_name: String) -> Result<ForceCheckoutResult, String> {
+    let mut repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Create stash
+    let sig = repo.signature().map_err(|e| e.to_string())?;
+    let stash_msg = format!("Auto-stash before force checkout {}", branch_name);
+    
+    let _stash_oid = repo.stash_save(&sig, &stash_msg, None).map_err(|e| e.to_string())?;
+    
+    // 2. Resolve origin/{branch_name} and reset
+    {
+        let remote_ref_name = format!("origin/{}", branch_name);
+        let remote_branch = match repo.find_branch(&remote_ref_name, git2::BranchType::Remote) {
+            Ok(b) => b,
+            Err(_) => return Ok(ForceCheckoutResult::NoRemoteRef),
+        };
+        let remote_oid = remote_branch.get().target().ok_or("Remote branch has no target")?;
+        let remote_obj = repo.find_object(remote_oid, None).map_err(|e| e.to_string())?;
+        
+        let head = repo.head().map_err(|e| e.to_string())?;
+        let is_current = head.shorthand() == Some(&branch_name);
+
+        if is_current {
+            repo.reset(&remote_obj, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
+        } else {
+            let remote_commit = remote_obj.as_commit()
+                .ok_or("Remote object is not a commit")?;
+            repo.branch(&branch_name, remote_commit, true).map_err(|e| e.to_string())?;
+        }
+    }
+    // remote_branch and remote_obj are dropped here, releasing the borrow on repo
+
+    // 3. Attempt pop stash
+    match repo.stash_apply(0, None) {
+        Ok(_) => {
+            // Check for conflicts after apply
+            let index = repo.index().map_err(|e| e.to_string())?;
+            if index.has_conflicts() {
+                let mut conflicted_files = Vec::new();
+                for entry in index.iter() {
+                    if (entry.flags & 0x3000) >> 12 != 0 {
+                        conflicted_files.push(String::from_utf8_lossy(&entry.path).to_string());
+                    }
+                }
+                conflicted_files.sort();
+                conflicted_files.dedup();
+                return Ok(ForceCheckoutResult::StashConflict { files: conflicted_files });
+            }
+            
+            // Clean apply, drop the stash
+            let _ = repo.stash_drop(0); 
+            Ok(ForceCheckoutResult::StashAndDone { stash_restored: true })
+        },
+        Err(e) => {
+            Err(format!("Failed to apply stash: {}", e))
+        }
+    }
 }
