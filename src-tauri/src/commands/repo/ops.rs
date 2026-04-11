@@ -632,3 +632,64 @@ pub fn force_checkout_confirm_with_stash(repo_path: String, branch_name: String)
         }
     }
 }
+
+#[tauri::command]
+pub fn restore_file_from_commit(repo_path: String, commit_oid: String, file_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let oid = git2::Oid::from_str(&commit_oid).map_err(|e| e.to_string())?;
+    let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
+    let tree = commit.tree().map_err(|e| e.to_string())?;
+    
+    // Check if file exists in the commit's tree
+    let entry = tree.get_path(Path::new(&file_path)).map_err(|_| {
+        format!("File '{}' does not exist at commit {}", file_path, &commit_oid[..7])
+    })?;
+    
+    let obj = entry.to_object(&repo).map_err(|e| e.to_string())?;
+    let blob = obj.as_blob().ok_or("Object is not a blob")?;
+    
+    let full_path = Path::new(&repo_path).join(&file_path);
+    
+    // Ensure parent directories exist
+    if let Some(parent) = full_path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {}", e))?;
+        }
+    }
+    
+    let mut content = blob.content().to_vec();
+    
+    // CRLF conversion for Windows if core.autocrlf is enabled
+    #[cfg(target_os = "windows")]
+    {
+        let autocrlf = repo.config()
+            .and_then(|c| c.get_bool("core.autocrlf"))
+            .unwrap_or(false);
+            
+        // Basic heuristic: check if it's text (no null bytes in first 8KB)
+        let is_binary = content.iter().take(8192).any(|&b| b == 0);
+            
+        if autocrlf && !is_binary {
+            let mut new_content = Vec::with_capacity(content.len());
+            let mut last_was_cr = false;
+            for &b in &content {
+                if b == b'\n' && !last_was_cr {
+                    new_content.push(b'\r');
+                }
+                new_content.push(b);
+                last_was_cr = b == b'\r';
+            }
+            content = new_content;
+        }
+    }
+    
+    std::fs::write(&full_path, content).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::PermissionDenied {
+            "Cannot write file: it may be open in another application or locked.".to_string()
+        } else {
+            format!("Failed to write file: {}", e)
+        }
+    })?;
+    
+    Ok(())
+}

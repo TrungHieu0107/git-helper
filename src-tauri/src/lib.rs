@@ -41,6 +41,7 @@ pub fn run() {
             commands::repo::discard_file_changes,
             commands::repo::force_checkout_from_origin,
             commands::repo::force_checkout_confirm_with_stash,
+            commands::repo::restore_file_from_commit,
             commands::status::get_status,
             commands::status::get_repo_status,
             commands::status::stage_file,

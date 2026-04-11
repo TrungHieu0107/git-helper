@@ -1036,6 +1036,20 @@ export async function discardFileChanges(filePath: string) {
   }
 }
 
+export async function restoreFileFromCommit(commitOid: string, filePath: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('restore_file_from_commit', { repoPath: path, commitOid, filePath });
+    await refreshActiveRepoStatus();
+    toast.success(`"${filePath}" restored from commit ${commitOid.substring(0, 7)}`);
+    return true;
+  } catch (e) {
+    toast.error(`Failed to restore file: ${e}`);
+    return false;
+  }
+}
+
 export async function getFileLog(filePath: string): Promise<FileCommit[]> {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return [];
