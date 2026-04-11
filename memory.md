@@ -1,7 +1,6 @@
 # GitManager App Memory
-## Version: 2.4.6
-## Last updated: 2026-04-11 – Completed GitKit visual overhaul Phase 1 (Sidebar, CommitGraph, RightPanel, Toolbar)
-
+## Version: 2.5.3
+## Last updated: 2026-04-11 – Fixed "Discard Changes" IPC mismatch
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
