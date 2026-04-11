@@ -135,6 +135,7 @@ export function TopToolbar() {
             count={repoStatus?.ahead || 0} 
             title={repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined}
           />
+
         </div>
 
         <div className="w-px h-6 bg-[#30363d]" />
@@ -300,7 +301,8 @@ function ToolbarButton({
   loading = false, 
   onClick,
   count = 0,
-  title
+  title,
+  className
 }: { 
   icon: React.ReactNode, 
   label: string, 
@@ -308,15 +310,17 @@ function ToolbarButton({
   loading?: boolean, 
   onClick?: () => void,
   count?: number,
-  title?: string
+  title?: string,
+  className?: string
 }) {
   const isDisabled = disabled || loading;
   return (
     <div 
       onClick={() => !isDisabled && onClick?.()}
       title={title}
-      className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''} ${className || ''}`}
     >
+
        <div className={`text-slate-300 ${!isDisabled && 'group-hover:text-white transition-colors'}`}>
          {loading ? <Loader2 size={18} className="animate-spin" /> : icon}
        </div>
@@ -331,3 +335,6 @@ function ToolbarButton({
     </div>
   );
 }
+
+const DownloadButton = ToolbarButton;
+
