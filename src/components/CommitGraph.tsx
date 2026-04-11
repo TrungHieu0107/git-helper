@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAppStore, CommitNode } from '../store';
 import { loadMoreCommits, selectCommitDetail, safeSwitchBranch } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
@@ -32,7 +33,7 @@ const ly = (row: number) => row * ROW_H + ROW_H / 2;
 const hue = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return Math.abs(h) % 360; };
 
 // ── Manhattan-routed edge paths ──────────────────────────────────────
-type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean };
+type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
 
 function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 8) {
   if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
@@ -67,10 +68,18 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
   // WIP → first commit
   if (wip && commits.length > 0) {
     const x1 = lx(0), y1 = ly(0), x2 = lx(commits[0].lane), y2 = ly(off);
-    out.push({ path: roundedPath(x1, y1, x2, y2, 'branch-off'), colorIdx: commits[0].color_idx, childOid: 'WIP', isMerge: false, dashed: true });
+    out.push({ 
+      path: roundedPath(x1, y1, x2, y2, 'branch-off'), 
+      colorIdx: commits[0].color_idx, 
+      childOid: 'WIP', 
+      isMerge: false, 
+      dashed: true,
+      r1: 0,
+      r2: off
+    });
   }
   commits.forEach((c, i) => {
-    if (c.node_type === 'stash') return; // Stashes have custom L-shape edges built separately
+    if (c.node_type === 'stash') return; 
 
     const row = i + off;
     c.parents.forEach((po, pi) => {
@@ -83,12 +92,26 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
       if (idx === -1) {
         const tl = e?.to_lane ?? c.lane;
         const x2 = lx(tl), y2 = ly(row + 5);
-        out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci, childOid: c.oid, isMerge: pi > 0 });
+        out.push({ 
+          path: roundedPath(x1, y1, x2, y2, type), 
+          colorIdx: ci, 
+          childOid: c.oid, 
+          isMerge: pi > 0,
+          r1: row,
+          r2: row + 5
+        });
         return;
       }
       const pRow = idx + off;
       const x2 = lx(commits[idx].lane), y2 = ly(pRow);
-      out.push({ path: roundedPath(x1, y1, x2, y2, type), colorIdx: ci, childOid: c.oid, isMerge: pi > 0 });
+      out.push({ 
+        path: roundedPath(x1, y1, x2, y2, type), 
+        colorIdx: ci, 
+        childOid: c.oid, 
+        isMerge: pi > 0,
+        r1: Math.min(row, pRow),
+        r2: Math.max(row, pRow)
+      });
     });
   });
   return out;
@@ -99,21 +122,27 @@ function buildStashEdges(commits: CommitNode[], off: number): Edge[] {
   commits.forEach((c, i) => {
     if (c.node_type !== 'stash' || !c.base_oid) return;
     
-    // Find base commit row
     const baseIdx = commits.findIndex(n => n.oid === c.base_oid);
     if (baseIdx === -1) return;
 
     const row = i + off;
     const pRow = baseIdx + off;
     
-    const x1 = lx(commits[baseIdx].lane); // Base commit X
-    const y1 = ly(pRow);                 // Base commit Y
-    const x2 = lx(c.lane);               // Stash node X
-    const y2 = ly(row);                  // Stash node Y
+    const x1 = lx(commits[baseIdx].lane); 
+    const y1 = ly(pRow);                 
+    const x2 = lx(c.lane);               
+    const y2 = ly(row);                  
 
-    // L-shape: Horizontal from base to stash lane, then Vertical up to stash node (with rounding)
     const path = roundedPath(x1, y1, x2, y2, 'merge');
-    out.push({ path, colorIdx: c.color_idx, childOid: c.oid, isMerge: false, dashed: true });
+    out.push({ 
+      path, 
+      colorIdx: c.color_idx, 
+      childOid: c.oid, 
+      isMerge: false, 
+      dashed: true,
+      r1: Math.min(row, pRow),
+      r2: Math.max(row, pRow)
+    });
   });
   return out;
 }
@@ -250,7 +279,7 @@ export function CommitGraph() {
   }, [filteredCommits]);
 
   const gw = LANE_PAD * 2 + maxLane * LANE_W;
-  const th = totalRows * ROW_H;
+
 
   const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip) : [], [filteredCommits, off, hasWip]);
   const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off) : [], [filteredCommits, off]);
@@ -289,6 +318,28 @@ export function CommitGraph() {
   }, []);
 
   const closeContextMenu = useCallback(() => setCtxMenu(null), []);
+  
+  // ── Virtualization Setup ──────────────────────────────────────────
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: totalRows,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_H,
+    overscan: 20,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // Trigger loading more when we approach the bottom of the virtual list
+  useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem) return;
+
+    if (hasMoreCommits && !isLoadingMore && lastItem.index >= totalRows - 10) {
+      loadMoreCommits();
+    }
+  }, [virtualItems, totalRows, hasMoreCommits, isLoadingMore]);
 
   useEffect(() => {
     if (commitLog?.length)
@@ -310,36 +361,50 @@ export function CommitGraph() {
       </div>
 
       {/* Scroll */}
+      {/* Scroll Container */}
       <div 
-        className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117]"
-        onScroll={(e) => {
-          const target = e.target as HTMLDivElement;
-          if (hasMoreCommits && !isLoadingMore && target.scrollHeight - target.scrollTop - target.clientHeight < 100) {
-            loadMoreCommits();
-          }
-        }}
+        ref={parentRef}
+        className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117] relative"
       >
-        <div className="relative min-w-max" style={{ minHeight: th }}>
-
+        <div 
+          className="relative min-w-max" 
+          style={{ height: `${virtualizer.getTotalSize()}px` }}
+        >
           {/* ═══ SVG Graph Layer ═══ */}
-          <svg className="absolute pointer-events-none z-[5]"
-            style={{ left: cw.label + 5, top: 0 }} width={gw} height={th}>
+          <svg 
+            className="absolute pointer-events-none z-[5]"
+            style={{ 
+              left: cw.label + 5, 
+              top: 0 
+            }} 
+            width={gw} 
+            height={virtualizer.getTotalSize()}
+          >
+            {/* Layer 1: Stash connection lines */}
+            {(() => {
+              const minVis = virtualItems[0]?.index ?? 0;
+              const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
+              return stashEdges
+                .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
+                .map((e, i) => (
+                  <path key={`se-${i}`} d={e.path} fill="none"
+                    stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.6}
+                    strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
+                ));
+            })()}
 
-            {/* Layer 1: Stash connection lines (behind branch lines) */}
-            {stashEdges.map((e, i) => (
-              <path key={`se-${i}`} d={e.path} fill="none"
-                stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.6}
-                strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
-            ))}
-
-            {/* Layer 2: Manhattan-routed horizontal+vertical connections */}
-            {edges.map((e: Edge, i: number) => {
-              return (
-                <path key={`e-${i}`} d={e.path} fill="none"
-                  stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-                  strokeDasharray={e.dashed ? '6 4' : 'none'} />
-              );
-            })}
+            {/* Layer 2: Manhattan-routed connections */}
+            {(() => {
+              const minVis = virtualItems[0]?.index ?? 0;
+              const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
+              return edges
+                .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
+                .map((e: Edge, i: number) => (
+                  <path key={`e-${i}`} d={e.path} fill="none"
+                    stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+                    strokeDasharray={e.dashed ? '6 4' : 'none'} />
+                ));
+            })()}
 
             {/* Layer 3: WIP node */}
             {hasWip && (
@@ -351,9 +416,12 @@ export function CommitGraph() {
               </g>
             )}
 
-            {/* Layer 4: Commit nodes — ON TOP of all lines */}
-            {filteredCommits?.map((n: CommitNode, i: number) => {
-              const row = i + off;
+            {/* Layer 4: Commit nodes — Rendered in virtual view only */}
+            {virtualItems.map((virtualRow) => {
+              const row = virtualRow.index;
+              const n = row === 0 && hasWip ? null : filteredCommits[row - off];
+              if (!n) return null;
+
               const cx = lx(n.lane), cy = ly(row);
               const c = color(n.color_idx);
               const h = hue(n.author);
@@ -361,38 +429,22 @@ export function CommitGraph() {
               const r = isMerge ? MERGE_DOT_R : NODE_R;
 
               if (n.node_type === 'stash') {
-                // Stash — rounded square
-                const s = NODE_R * 2;
                 return (
                   <g key={n.oid}>
-                    <rect x={cx - NODE_R} y={cy - NODE_R} width={s} height={s} rx={4}
+                    <rect x={cx - NODE_R} y={cy - NODE_R} width={NODE_R * 2} height={NODE_R * 2} rx={4}
                       fill={`hsl(${h}, 30%, 20%)`} stroke={c} strokeWidth={2} strokeDasharray="3 2" />
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
                       fill="#fff" fontSize={9} fontWeight={700} style={{ userSelect: 'none', pointerEvents: 'none' }}>
                       S
                     </text>
-                    <title className="z-50">{n.short_oid}: {n.message}</title>
-                    {(hov === row || sel === row) && (
-                      <rect x={cx - NODE_R - 2} y={cy - NODE_R - 2} width={s + 4} height={s + 4} rx={6}
-                        fill="none" stroke={sel === row ? '#fff' : c} strokeWidth={1.5} opacity={0.7} />
-                    )}
                   </g>
                 );
               }
 
               if (isMerge) {
-                // Merge point — small filled dot
-                return (
-                  <g key={n.oid}>
-                    <circle cx={cx} cy={cy} r={r} fill={c} />
-                    {(hov === row || sel === row) && (
-                      <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="#fff" strokeWidth={1.5} opacity={0.6} />
-                    )}
-                  </g>
-                );
+                return <circle key={n.oid} cx={cx} cy={cy} r={r} fill={c} />;
               }
 
-              // Regular commit — large circle with avatar initial
               return (
                 <g key={n.oid}>
                   <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={2} />
@@ -400,64 +452,75 @@ export function CommitGraph() {
                     fill="#fff" fontSize={10} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
                     {(n.author || '?')[0].toUpperCase()}
                   </text>
-                  {(hov === row || sel === row) && (
-                    <circle cx={cx} cy={cy} r={r + 3} fill="none" stroke={sel === row ? '#fff' : c} strokeWidth={1.5} opacity={0.7} />
-                  )}
                 </g>
               );
             })}
           </svg>
 
           {/* ═══ HTML Rows ═══ */}
-          {hasWip && (
-            <div
-              className={`flex items-center cursor-pointer transition-colors
-                ${hov === 0 ? 'bg-[#1e293b]/40' : ''} ${sel === 0 ? 'bg-[#3b82f6]/10' : ''}`}
-              style={{ height: ROW_H }}
-              onClick={() => {
-                setSel(0);
-                useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false });
-              }}
-              onMouseEnter={() => setHov(0)} 
-              onMouseLeave={() => setHov(null)}>
-              <div className="pl-3 flex items-center" style={{ width: cw.label }}>
-                <span className="bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-medium">WIP</span>
-              </div>
-              <div style={{ width: gw + 5 }} />
-              <div className="flex-1 flex items-center pl-3 pr-4 min-w-0">
-                <div className="h-6 rounded border border-[#245d84]/60 bg-[#0b2942]/65 flex items-center px-2 gap-3">
-                  <span className="text-[11px] font-mono text-[#79c0ff]">// WIP</span>
-                  <span className="text-[10px] text-[#3fb950]">+{status?.staged_count ?? staged.length} staged</span>
-                  <span className="text-[10px] text-[#f2cc60]">+{status?.unstaged_count ?? unstaged.length} unstaged</span>
-                </div>
-              </div>
-              <div className="pl-3 font-mono text-xs text-[#8b949e]/60" style={{ width: cw.hash }}>—</div>
-              <div className="pl-3 text-xs text-[#8b949e]/60 truncate" style={{ width: cw.author }}>Working Tree</div>
-            </div>
-          )}
+          {virtualItems.map((virtualRow) => {
+            const row = virtualRow.index;
+            const isWip = row === 0 && hasWip;
+            const n = isWip ? null : filteredCommits[row - off];
 
-          {filteredCommits?.map((n: CommitNode, i: number) => {
-            const row = i + off;
+            if (isWip) {
+              return (
+                <div
+                  key="WIP"
+                  className={`absolute left-0 w-full flex items-center cursor-pointer transition-colors
+                    ${hov === 0 ? 'bg-[#1e293b]/40' : ''} ${sel === 0 ? 'bg-[#3b82f6]/10' : ''}`}
+                  style={{ 
+                    height: ROW_H,
+                    transform: `translateY(${virtualRow.start}px)`
+                  }}
+                  onClick={() => {
+                    setSel(0);
+                    useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false });
+                  }}
+                  onMouseEnter={() => setHov(0)} 
+                  onMouseLeave={() => setHov(null)}
+                >
+                  <div className="pl-3 flex items-center" style={{ width: cw.label }}>
+                    <span className="bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-medium">WIP</span>
+                  </div>
+                  <div style={{ width: gw + 5 }} />
+                  <div className="flex-1 flex items-center pl-3 pr-4 min-w-0">
+                    <div className="h-6 rounded border border-[#245d84]/60 bg-[#0b2942]/65 flex items-center px-2 gap-3">
+                      <span className="text-[11px] font-mono text-[#79c0ff]">// WIP</span>
+                      <span className="text-[10px] text-[#3fb950]">+{status?.staged_count ?? staged.length} staged</span>
+                      <span className="text-[10px] text-[#f2cc60]">+{status?.unstaged_count ?? unstaged.length} unstaged</span>
+                    </div>
+                  </div>
+                  <div className="pl-3 font-mono text-xs text-[#8b949e]/60" style={{ width: cw.hash }}>—</div>
+                  <div className="pl-3 text-xs text-[#8b949e]/60 truncate" style={{ width: cw.author }}>Working Tree</div>
+                </div>
+              );
+            }
+
+            if (!n) return null;
+
             const isActiveNode = activeOids.has(n.oid);
             return (
-              <div key={n.oid}
-                className={`flex items-center cursor-pointer transition-colors
+              <div 
+                key={n.oid}
+                className={`absolute left-0 w-full flex items-center cursor-pointer transition-colors
                   ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}`}
-                style={{ height: ROW_H }}
+                style={{ 
+                  height: ROW_H,
+                  transform: `translateY(${virtualRow.start}px)`
+                }}
                 onClick={() => {
                   setSel(row);
                   selectCommitDetail(n.oid);
                 }}
                 onContextMenu={(e) => handleContextMenu(e, n)}
                 onMouseEnter={() => setHov(row)} 
-                onMouseLeave={() => setHov(null)}>
-                {/* Branch labels */}
+                onMouseLeave={() => setHov(null)}
+              >
                 <div className="pl-2 overflow-visible shrink-0" style={{ width: cw.label }}>
                   <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActiveNode} />
                 </div>
-                {/* Graph spacer */}
                 <div style={{ width: gw + 5 }} />
-                {/* Message */}
                 <div className="flex-1 flex items-center pl-3 pr-4 min-w-0">
                   {n.node_type === 'stash' ? (
                     <div className="flex items-center gap-2">
@@ -468,9 +531,7 @@ export function CommitGraph() {
                     <span className="truncate text-[#c9d1d9] text-[13px]">{n.message}</span>
                   )}
                 </div>
-                {/* Hash */}
                 <div className="pl-3 font-mono text-xs text-[#8b949e] hover:text-white transition-colors" style={{ width: cw.hash }}>{n.short_oid}</div>
-                {/* Author */}
                 <div className="pl-3 text-xs text-[#8b949e] truncate" style={{ width: cw.author }}>{n.author}</div>
               </div>
             );
