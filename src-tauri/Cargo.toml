@@ -27,6 +27,7 @@ tauri-plugin-dialog = "2.7.0"
 encoding_rs = "0.8.35"
 rayon = "1.10"
 once_cell = "1.19"
+chardetng = "0.1"
 
 [profile.release]
 lto = true
