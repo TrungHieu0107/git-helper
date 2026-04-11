@@ -110,25 +110,49 @@ pub fn get_diff(repo_path: String, path: String, staged: bool) -> Result<String,
     Ok(result)
 }
 
+#[derive(Serialize)]
+pub struct CommitResult {
+    pub oid: String,
+    pub amended: bool,
+}
+
 #[tauri::command]
-pub fn create_commit(repo_path: String, message: String, amend: bool) -> Result<String, String> {
+pub fn create_commit(repo_path: String, message: String, amend: bool) -> Result<CommitResult, String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
     
+    // Guard for detached HEAD
+    if repo.head_detached().map_err(|e: git2::Error| e.to_string())? && amend {
+        return Err("Cannot amend: HEAD is detached. Checkout a branch first.".to_string());
+    }
+
     let mut index = repo.index().map_err(|e| e.message().to_string())?;
     let oid = index.write_tree().map_err(|e| e.message().to_string())?;
     let tree = repo.find_tree(oid).map_err(|e| e.message().to_string())?;
 
     let signature = repo.signature().or_else(|_| Signature::now("GitKit User", "user@gitkit.app")).map_err(|e| e.message().to_string())?;
 
+    if amend {
+        let head = repo.head().map_err(|_| "No commit to amend".to_string())?;
+        let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
+        
+        // Use commit.amend to preserve original author (author=None)
+        let commit_oid = commit.amend(
+            Some("HEAD"),
+            None, // Preserve author
+            Some(&signature), // Update committer
+            None,
+            Some(&message),
+            Some(&tree),
+        ).map_err(|e| e.message().to_string())?;
+
+        return Ok(CommitResult {
+            oid: commit_oid.to_string(),
+            amended: true,
+        });
+    }
+
     let head = repo.head().ok();
     let parent_commit = head.as_ref().and_then(|h| h.peel_to_commit().ok());
-
-    if amend {
-        let parent = parent_commit.ok_or("No commit to amend")?;
-        let parents = parent.parents().collect::<Vec<_>>();
-        let commit_oid = repo.commit(Some("HEAD"), &signature, &signature, &message, &tree, &parents.iter().collect::<Vec<_>>()).map_err(|e| e.message().to_string())?;
-        return Ok(commit_oid.to_string());
-    }
 
     let parents: Vec<&git2::Commit> = match &parent_commit {
         Some(commit) => vec![commit],
@@ -137,7 +161,10 @@ pub fn create_commit(repo_path: String, message: String, amend: bool) -> Result<
 
     let commit_oid = repo.commit(Some("HEAD"), &signature, &signature, &message, &tree, &parents).map_err(|e| e.message().to_string())?;
     
-    Ok(commit_oid.to_string())
+    Ok(CommitResult {
+        oid: commit_oid.to_string(),
+        amended: false,
+    })
 }
 
 #[derive(Serialize)]

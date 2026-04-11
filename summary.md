@@ -1,1 +1,6 @@
-The Git Helper (GitKit) application is stable following a critical fix to the backend checkout logic in `ops.rs`. All documentation (Architecture, Spec, etc.) has been updated to reflect the v2.1.0 state. Core features including Remote Branch Checkout and multi-strategy Pull are verified and functional.
+# Summary
+## Version: 2.2.0
+## Last updated: 2026-04-11 – Implemented Robust Push Workflow.
+## Project: GitKit
+
+GitKit now supports a robust Push workflow (v2.2.0). Features include Safe Force Push (with lease), automated upstream publishing via the new SetUpstreamDialog, and an intelligent Split-Button UI in the toolbar that highlights amendment states.

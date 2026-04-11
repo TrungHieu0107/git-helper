@@ -41,6 +41,9 @@ export interface UISlice {
   refreshTimestamp: number;
   pullStrategy: PullStrategy;
   isLoadingPull: boolean;
+  isLoadingPush: boolean;
+  showSetUpstreamDialog: boolean;
+  lastCommitWasAmend: boolean;
 
   forceCheckoutTarget: string | null;
   forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
@@ -55,6 +58,9 @@ export interface UISlice {
   triggerRefresh: () => void;
   setPullStrategy: (strategy: PullStrategy) => void;
   setIsLoadingPull: (loading: boolean) => void;
+  setIsLoadingPush: (loading: boolean) => void;
+  setShowSetUpstreamDialog: (show: boolean) => void;
+  setLastCommitWasAmend: (wasAmend: boolean) => void;
 
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
@@ -73,6 +79,9 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   refreshTimestamp: 0,
   pullStrategy: 'fast_forward_only',
   isLoadingPull: false,
+  isLoadingPush: false,
+  showSetUpstreamDialog: false,
+  lastCommitWasAmend: false,
 
   forceCheckoutTarget: null,
   forceCheckoutPhase: 'idle',
@@ -87,6 +96,9 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   triggerRefresh: () => set(() => ({ refreshTimestamp: Date.now() })),
   setPullStrategy: (strategy) => set(() => ({ pullStrategy: strategy })),
   setIsLoadingPull: (loading) => set(() => ({ isLoadingPull: loading })),
+  setIsLoadingPush: (loading) => set(() => ({ isLoadingPush: loading })),
+  setShowSetUpstreamDialog: (show) => set(() => ({ showSetUpstreamDialog: show })),
+  setLastCommitWasAmend: (wasAmend) => set(() => ({ lastCommitWasAmend: wasAmend })),
 
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   

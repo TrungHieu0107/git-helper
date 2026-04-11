@@ -66,10 +66,22 @@
     - **Backend**: Implemented `resolve_checkout_target` to automatically handle remote-to-local ref resolution. Updated `checkout_branch` to switch to existing local tracking branches or create new ones with `set_upstream`. Refactored `safe_checkout` to dry-run against the effective local tip, ensuring accurate conflict detection even when clicking remote tags.
     - **Frontend**: Updated `Sidebar.tsx` tree view to propagate remote prefixes, ensuring full ref names are passed to the backend. Verified `CommitGraph.tsx` badge click logic.
 - 2026-04-11: Fix `ops.rs` Compilation Error — Resolved an "unexpected closing delimiter" syntax error in `src-tauri/src/commands/repo/ops.rs`. Restored missing `build_checkout` and `extract_conflicts` helper functions that were accidentally deleted, ensuring branch checkout and conflict detection logic is fully functional. Verified fix with `cargo check`.
+- 2026-04-11: Implemented **Amend Previous Commit** workflow (v2.1.1).
+    - **Backend**: Update `create_commit` to preserve author info using `commit.amend`. Added `get_head_commit_info` for pre-population and safety checking. Implemented guards for detached HEAD and empty repositories.
+    - **Frontend**: Integrated amend metadata display, pushed-to-remote warnings, and automatic state resets on navigation. Allowed message-only amends.
+    - **Quality**: Resolved compilation errors related to `Signature` lifetimes and Tauri IPC serialization for `CommitResult`.
+- 2026-04-11: Fixed "Amend previous commit" checkbox responsiveness and backend connection.
+    - **Logic**: Implemented optimistic updates in `handleAmendToggle` for instant visual feedback.
+    - **Bug Fix**: Resolved a casing mismatch in the `get_head_commit_info` invoke call (`repo_path` -> `repoPath`) that caused silent failures.
+    - **Feedback**: Added toast error reporting to `RightPanel.tsx` for better debugging visibility.
+- 2026-04-11: Implemented robust Push Workflow (v2.2.0).
+    - **Backend**: Added `push_current_branch` and `list_remotes`. Implemented `PushMode` and `PushResult` enums. Added CLI delegation for `--force-with-lease` safety.
+    - **Frontend**: Transformed Push button into a Split-Button in `TopToolbar.tsx`. Added `SetUpstreamDialog.tsx` for untracked branches.
+    - **Alerting**: Implemented amber warning indicator and "Amend Push" state triggered by local amendments.
 
-# Project Status: Bug Fixed
-Resolved backend compilation error in the checkout logic. Codebase is now stable and building correctly.
+# Project Status: Stable (v2.1.1)
+The GitKit application is stable and fully supports the "Amend Previous Commit" feature.
 
 # Project Status Summary
-The Git Helper (GitKit) application is stable following a critical fix to the backend checkout logic. All documentation (Architecture, Spec, etc.) accurately reflects the v2.1.0 state. Core features including Remote Branch Checkout and Pull Strategies are verified and building successfully.
+Version 2.1.1 introduces a high-polish Amend workflow, featuring original author preservation, safety guards for remote history protection, and intelligent UI synchronization across the commit graph.
 

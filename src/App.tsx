@@ -15,6 +15,7 @@ import { CheckoutAlert } from "./components/CheckoutAlert";
 import { DiscardAlert } from "./components/DiscardAlert";
 import { StashAlerts } from "./components/StashAlerts";
 import { ForceCheckoutAlert } from "./components/ForceCheckoutAlert";
+import { SetUpstreamDialog } from "./components/SetUpstreamDialog";
 import { ToastContainer } from "./components/ToastContainer";
 
 function App() {
@@ -24,6 +25,8 @@ function App() {
   const cherryPickState = useAppStore(state => state.cherryPickState);
   const selectedConflictFile = useAppStore(state => state.selectedConflictFile);
   const conflictVersions = useAppStore(state => state.conflictVersions);
+  const showSetUpstreamDialog = useAppStore(state => state.showSetUpstreamDialog);
+  const setShowSetUpstreamDialog = useAppStore(state => state.setShowSetUpstreamDialog);
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -79,6 +82,15 @@ function App() {
       <DiscardAlert />
       <StashAlerts />
       <ForceCheckoutAlert />
+      {showSetUpstreamDialog && (
+        <SetUpstreamDialog 
+          onClose={() => setShowSetUpstreamDialog(false)} 
+          onSuccess={() => {
+            setShowSetUpstreamDialog(false);
+            refreshActiveRepoStatus();
+          }} 
+        />
+      )}
       <ToastContainer />
     </div>
   );

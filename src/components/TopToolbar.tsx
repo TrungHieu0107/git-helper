@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushRepo, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { pullRepo, pushRepo, pushCurrentBranch, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";
 
@@ -13,7 +13,10 @@ export function TopToolbar() {
   const [pushing, setPushing] = useState(false);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [showPullDropdown, setShowPullDropdown] = useState(false);
+  const [showPushDropdown, setShowPushDropdown] = useState(false);
   const pullDropdownRef = useRef<HTMLDivElement>(null);
+  const pushDropdownRef = useRef<HTMLDivElement>(null);
+  const { isLoadingPush, lastCommitWasAmend } = useAppStore();
 
 
   const handleFetch = async () => {
@@ -47,6 +50,25 @@ export function TopToolbar() {
       };
     }
   }, [showPullDropdown]);
+
+  useEffect(() => {
+    if (showPushDropdown) {
+      const handleClickOutside = (e: MouseEvent) => {
+        if (pushDropdownRef.current && !pushDropdownRef.current.contains(e.target as Node)) {
+          setShowPushDropdown(false);
+        }
+      };
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowPushDropdown(false);
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEsc);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [showPushDropdown]);
 
 
   const handlePush = async () => {
@@ -127,14 +149,58 @@ export function TopToolbar() {
             )}
           </div>
 
-          <ToolbarButton 
-            icon={<ArrowUp size={18} />} 
-            label="Push" 
-            onClick={handlePush} 
-            loading={pushing} 
-            count={repoStatus?.ahead || 0} 
-            title={repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined}
-          />
+          {/* Split Push Button */}
+          <div className="relative flex items-center group/push" ref={pushDropdownRef}>
+            <ToolbarButton 
+              icon={<ArrowUp size={18} className={lastCommitWasAmend ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]" : ""} />} 
+              label={lastCommitWasAmend ? "Amend Push" : "Push"} 
+              onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
+              loading={isLoadingPush} 
+              count={repoStatus?.ahead || 0} 
+              title={lastCommitWasAmend ? "Changes were amended. Force push may be required." : (repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined)}
+              className={`pr-1 ${lastCommitWasAmend ? "border-amber-500/20" : ""}`}
+            />
+            <div 
+              onClick={() => !isLoadingPush && setShowPushDropdown(!showPushDropdown)}
+              className={`h-full flex items-center px-1 py-1 rounded-sm hover:bg-white/10 cursor-pointer ${isLoadingPush ? 'opacity-20 pointer-events-none' : ''}`}
+            >
+              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showPushDropdown ? 'rotate-180' : ''}`} />
+            </div>
+
+            {showPushDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c2128] border border-[#30363d] rounded-md shadow-xl z-[250] p-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-[#768390] uppercase border-b border-[#30363d] mb-1">
+                  Push Mode
+                </div>
+                
+                <div 
+                  onClick={() => { pushCurrentBranch(activeRepoPath!, 'normal'); setShowPushDropdown(false); }}
+                  className="px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                     <span className="text-[12px] font-medium text-[#adbac7]">Normal Push</span>
+                  </div>
+                  <span className="text-[10px] text-[#768390]">Fast-forward to remote</span>
+                </div>
+
+                <div 
+                  onClick={() => { pushCurrentBranch(activeRepoPath!, 'force_with_lease'); setShowPushDropdown(false); }}
+                  className={`px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer ${lastCommitWasAmend ? 'bg-amber-500/5' : ''}`}
+                >
+                  <div className="flex items-center justify-between">
+                     <span className={`text-[12px] font-medium ${lastCommitWasAmend ? 'text-amber-400' : 'text-[#adbac7]'}`}>
+                       Force Push (with lease) ⚠️
+                     </span>
+                  </div>
+                  <span className="text-[10px] text-[#768390]">Rewrites history, only if remote matches your local tracking</span>
+                </div>
+              </div>
+            )}
+            
+            {lastCommitWasAmend && (
+              <div className="absolute -top-1 right-8 w-2 h-2 bg-amber-500 rounded-full animate-pulse border border-[#1c2128]" />
+            )}
+          </div>
 
         </div>
 

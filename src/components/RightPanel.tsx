@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAppStore, FileStatus } from "../store";
 import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X } from "lucide-react";
-import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile } from "../lib/repo";
+import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../lib/repo";
+import { toast } from "../lib/toast";
 import { CommitDetailPanel } from "./CommitDetailPanel";
 
 interface TreeNode {
@@ -44,6 +45,44 @@ export function RightPanel() {
   const [description, setDescription] = useState('');
 
   const [amend, setAmend] = useState(false);
+  const [headCommitInfo, setHeadCommitInfo] = useState<HeadCommitInfo | null>(null);
+
+  // Reset amend state when navigating between commits or after selection change
+  useEffect(() => {
+    if (amend && selectedCommitDetail) {
+      setAmend(false);
+      setHeadCommitInfo(null);
+    }
+  }, [selectedCommitDetail]);
+
+  const handleAmendToggle = async (checked: boolean) => {
+    // Optimistically set amend state for better UI responsiveness
+    setAmend(checked);
+    
+    if (checked) {
+      try {
+        const info = await getHeadCommitInfo();
+        if (info) {
+          setHeadCommitInfo(info);
+          setMessage(info.message.split('\n')[0]);
+          setDescription(info.message.split('\n').slice(1).join('\n').trim());
+        } else {
+          // If no info returned, revert
+          setAmend(false);
+          setHeadCommitInfo(null);
+        }
+      } catch (err: any) {
+        setAmend(false);
+        setHeadCommitInfo(null);
+        toast.error(`Could not fetch head info: ${err}`);
+        console.error("Failed to fetch head commit info:", err);
+      }
+    } else {
+      setHeadCommitInfo(null);
+      setMessage('');
+      setDescription('');
+    }
+  };
   const [viewMode, setViewMode] = useState<'path' | 'tree'>('path');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -115,6 +154,7 @@ export function RightPanel() {
       setMessage('');
       setDescription('');
       setAmend(false);
+      setHeadCommitInfo(null);
     }
   };
 
@@ -390,12 +430,27 @@ export function RightPanel() {
                     <input 
                       type="checkbox" 
                       checked={amend}
-                      onChange={e => setAmend(e.target.checked)}
+                      onChange={e => handleAmendToggle(e.target.checked)}
                       className="accent-[#3fb950] w-3 h-3 rounded-sm bg-[#0d1117] border-[#30363d] cursor-pointer" 
                     />
                     Amend previous commit
                  </label>
              </div>
+             
+             {amend && headCommitInfo && (
+               <div className="flex flex-col gap-1.5 mb-1 px-1">
+                 {headCommitInfo.is_pushed && (
+                   <div className="flex items-center gap-1.5 text-[10px] text-[#d29922] bg-[#d29922]/10 border border-[#d29922]/20 px-2 py-1 rounded">
+                     <AlertTriangle size={10} />
+                     <span>This commit is already on remote. Rewriting will require a force push.</span>
+                   </div>
+                 )}
+                 <div className="text-[10px] text-[#8b949e] font-mono flex items-center gap-2">
+                   <span className="shrink-0 bg-[#30363d] text-[#c9d1d9] px-1 rounded">{headCommitInfo.oid.substring(0, 7)}</span>
+                   <span className="truncate">By {headCommitInfo.author_name} ({new Date(headCommitInfo.author_timestamp * 1000).toLocaleString()})</span>
+                 </div>
+               </div>
+             )}
              
              <div className="flex flex-col gap-2">
                <div className="relative">

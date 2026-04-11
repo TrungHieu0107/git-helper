@@ -19,6 +19,20 @@ pub enum PullResult {
     Rebased { commits_rebased: usize },
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum PushMode {
+    Normal,
+    ForceWithLease,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "type", content = "data")]
+pub enum PushResult {
+    Success { commits_pushed: usize },
+    UpToDate,
+}
+
 
 fn setup_callbacks() -> RemoteCallbacks<'static> {
     let mut cb = RemoteCallbacks::new();
@@ -266,7 +280,6 @@ pub fn push_branch_to_remote(
     remote_obj.push(&[&refspec], Some(&mut po))
         .map_err(|e| e.to_string())?;
 
-    // Set upstream tracking if requested
     if set_upstream {
         let mut branch = repo
             .find_branch(&branch_name, git2::BranchType::Local)
@@ -278,6 +291,128 @@ pub fn push_branch_to_remote(
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn list_remotes(repo_path: String) -> Result<Vec<String>, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let remotes = repo.remotes().map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for r in remotes.iter().flatten() {
+        result.push(r.to_string());
+    }
+    Ok(result)
+}
+
+// ── New Robust Push Workflow ─────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn push_current_branch(
+    repo_path: String,
+    mode: PushMode,
+) -> Result<PushResult, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+
+    // Guard: detached HEAD
+    if repo.head_detached().map_err(|e| e.to_string())? {
+        return Err("Cannot push: HEAD is detached. Please checkout a branch first.".to_string());
+    }
+
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let branch_name = head.shorthand()
+        .ok_or("Cannot resolve current branch name")?
+        .to_string();
+
+    // Resolve upstream tracking config
+    let branch = repo.find_branch(&branch_name, git2::BranchType::Local)
+        .map_err(|_| format!("Branch '{}' not found.", branch_name))?;
+
+    let upstream = branch.upstream().map_err(|_| {
+        // No upstream configured — return structured error for UI to offer setup
+        "NO_UPSTREAM".to_string()
+    })?;
+
+    let upstream_name = upstream.get().name().ok_or("Invalid upstream reference")?;
+    
+    // Parse remote name from upstream ref (e.g., "refs/remotes/origin/main" -> "origin")
+    let remote_name = repo.branch_remote_name(upstream_name)
+        .map(|buf| buf.as_str().unwrap_or("origin").to_string())
+        .map_err(|_| "Could not resolve remote name".to_string())?;
+
+    // Calculate ahead count before push
+    let mut ahead = 0;
+    let local_target = branch.get().target();
+    let upstream_target = upstream.get().target();
+
+    if let (Some(local_oid), Some(upstream_oid)) = (local_target, upstream_target) {
+        if let Ok((a, _)) = repo.graph_ahead_behind(local_oid, upstream_oid) {
+            ahead = a;
+        }
+    }
+
+    if ahead == 0 && matches!(mode, PushMode::Normal) {
+        return Ok(PushResult::UpToDate);
+    }
+
+    match mode {
+        PushMode::Normal => push_normal(&repo, &remote_name, &branch_name, ahead),
+        PushMode::ForceWithLease => push_force_with_lease(&repo_path, &remote_name, &branch_name, ahead),
+    }
+}
+
+fn push_normal(
+    repo: &Repository,
+    remote_name: &str,
+    branch_name: &str,
+    ahead: usize,
+) -> Result<PushResult, String> {
+    let mut remote = repo.find_remote(remote_name).map_err(|e| e.to_string())?;
+    let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
+
+    let mut po = PushOptions::new();
+    po.remote_callbacks(setup_callbacks());
+
+    remote.push(&[&refspec], Some(&mut po))
+        .map_err(|e| map_push_error_str(e.message()))?;
+
+    Ok(PushResult::Success { commits_pushed: ahead })
+}
+
+fn push_force_with_lease(
+    repo_path: &str,
+    remote_name: &str,
+    branch_name: &str,
+    ahead: usize,
+) -> Result<PushResult, String> {
+    let output = Command::new("git")
+        .args([
+            "-C", repo_path,
+            "push",
+            remote_name,
+            branch_name,
+            "--force-with-lease",
+        ])
+        .output()
+        .map_err(|e| format!("Failed to run git command: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(map_push_error_str(&stderr));
+    }
+
+    Ok(PushResult::Success { commits_pushed: ahead })
+}
+
+fn map_push_error_str(err: &str) -> String {
+    if err.contains("non-fast-forward") || err.contains("rejected") {
+        "Push rejected: remote has changes you don't have locally. Pull first, or use Force Push if you intentionally rewrote history (e.g., after amend).".to_string()
+    } else if err.contains("stale info") || err.contains("fetch first") {
+        "Force push rejected: someone else has pushed since your last fetch. Fetch first to review their changes.".to_string()
+    } else if err.contains("could not read Username") || err.contains("Authentication failed") {
+        "Authentication failed. Ensure your SSH key or credential helper is configured correctly.".to_string()
+    } else {
+        format!("Push failed: {}", err.trim())
+    }
 }
 
 // ── List Remote Branches ─────────────────────────────────────────────────────

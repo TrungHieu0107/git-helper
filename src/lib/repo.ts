@@ -63,6 +63,24 @@ export type PullResult =
   | { type: 'Merged', data: { merge_commit_oid: string } }
   | { type: 'Rebased', data: { commits_rebased: number } };
 
+export type PushResult = 
+  | { type: 'Success', data: { commits_pushed: number } }
+  | { type: 'UpToDate' };
+
+export interface HeadCommitInfo {
+  oid: string;
+  message: string;
+  author_name: string;
+  author_email: string;
+  author_timestamp: number;
+  is_pushed: boolean;
+}
+
+export interface CommitResult {
+  oid: string;
+  amended: boolean;
+}
+
 
 export interface StashUnstagedOptions {
   message?: string;
@@ -361,16 +379,41 @@ export async function pullRepo(strategy?: PullStrategy) {
 
 
 export async function pushRepo() {
-  const path = useAppStore.getState().activeRepoPath;
-  if (!path) return;
-  
+  const state = useAppStore.getState();
+  if (!state.activeRepoPath) return;
+  return pushCurrentBranch(state.activeRepoPath, 'normal');
+}
+
+export async function pushCurrentBranch(
+  repoPath: string,
+  mode: 'normal' | 'force_with_lease',
+) {
+  const store = useAppStore.getState();
+  store.setIsLoadingPush(true);
   try {
-    toast.info("Pushing changes...");
-    await invoke('push_remote', { repoPath: path, remote: 'origin' });
-    await loadRepo(path);
-    toast.success("Pushed successfully");
+    const result = await invoke<PushResult>('push_current_branch', {
+      repoPath,
+      mode,
+    });
+    
+    if (result.type === 'Success') {
+      toast.success(`Pushed ${result.data.commits_pushed} commit(s) to remote.`);
+      store.setLastCommitWasAmend(false);
+    } else if (result.type === 'UpToDate') {
+      toast.info('Already up to date.');
+    }
+    
+    await loadRepo(repoPath);
   } catch (e) {
-    toast.error(`Push failed: ${e}`);
+    const msg = String(e);
+    if (msg === 'NO_UPSTREAM') {
+      store.setShowSetUpstreamDialog(true);
+    } else {
+      toast.error(msg);
+      console.error('Push failed:', e);
+    }
+  } finally {
+    store.setIsLoadingPush(false);
   }
 }
 
@@ -570,14 +613,21 @@ export async function commitRepo(message: string, amend: boolean = false) {
   
   try {
     toast.info(amend ? "Amending commit..." : "Creating commit...");
-    await invoke('create_commit', { repoPath: path, message, amend });
+    const result = await invoke<CommitResult>('create_commit', { repoPath: path, message, amend });
+    useAppStore.getState().setLastCommitWasAmend(result.amended);
     await loadRepo(path);
-    toast.success(amend ? "Amended successfully" : "Committed successfully");
+    toast.success(result.amended ? "Amended successfully" : "Committed successfully");
     return true;
   } catch (e) {
     toast.error(`Commit failed: ${e}`);
     return false;
   }
+}
+
+export async function getHeadCommitInfo(): Promise<HeadCommitInfo | null> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return null;
+  return await invoke<HeadCommitInfo>('get_head_commit_info', { repoPath: path });
 }
 
 export async function stageFile(filePath: string) {
@@ -805,9 +855,8 @@ export async function restoreAppState() {
         if (state.pull_strategy) {
           useAppStore.setState({ pullStrategy: state.pull_strategy });
         }
-
-} catch (e) {
-        console.error('Failed to restore app state:', e);
+    } catch (e) {
+      console.error('Failed to restore app state:', e);
     }
 }
 
