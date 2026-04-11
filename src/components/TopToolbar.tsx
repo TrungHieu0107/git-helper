@@ -90,53 +90,52 @@ export function TopToolbar() {
       <div className="flex-[2] flex items-center justify-center space-x-7">
         
         {/* Undo / Redo */}
-        <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<Undo size={18} />} label="Undo" onClick={undoLastCommit} />
-          <ToolbarButton icon={<Redo size={18} />} label="Redo" disabled />
+        <div className="flex items-center gap-6">
+          <ToolbarButton icon={<Undo size={20} />} label="Undo" onClick={undoLastCommit} />
+          <ToolbarButton icon={<Redo size={20} />} label="Redo" disabled />
         </div>
 
-        <div className="w-px h-6 bg-[#30363d]" />
+        <div className="w-px h-6 bg-[#30363d] mx-2" />
         
         {/* Fetch / Pull / Push */}
-        <div className="flex items-center space-x-4 text-[#58a6ff]">
-          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={18} />} label="Fetch" />
+        <div className="flex items-center gap-6 text-[#58a6ff]">
+          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={20} />} label="Fetch" />
           
           {/* Split Pull Button */}
-          <div className="relative flex items-center group/pull" ref={pullDropdownRef}>
+          <div className="relative flex items-center" ref={pullDropdownRef}>
             <ToolbarButton 
-              icon={<ArrowDown size={18} />} 
+              icon={<ArrowDown size={20} />} 
               label="Pull" 
               onClick={() => handlePull()} 
               loading={isLoadingPull} 
               count={repoStatus?.behind || 0} 
               title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
-              className="pr-1"
             />
             <div 
               onClick={() => !isLoadingPull && setShowPullDropdown(!showPullDropdown)}
-              className={`h-full flex items-center px-1 py-1 rounded-sm hover:bg-white/10 cursor-pointer ${isLoadingPull ? 'opacity-20 pointer-events-none' : ''}`}
+              className={`h-8 flex items-center px-1 hover:bg-white/5 rounded-md cursor-pointer ml-1 ${isLoadingPull ? 'opacity-20 pointer-events-none' : ''}`}
             >
-              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showPullDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`text-[#6e7681] transition-transform ${showPullDropdown ? 'rotate-180' : ''}`} />
             </div>
 
             {showPullDropdown && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c2128] border border-[#30363d] rounded-md shadow-xl z-[250] p-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-2 py-1.5 text-[10px] font-bold text-[#768390] uppercase border-b border-[#30363d] mb-1">
+              <div className="absolute top-full left-0 mt-3 w-56 bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[250] p-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-[#6e7681] uppercase border-b border-[#30363d] mb-1 tracking-wider">
                   Pull Strategy
                 </div>
                 {(['fast_forward_only', 'fast_forward_or_merge', 'rebase'] as const).map(s => (
                   <div 
                     key={s}
                     onClick={() => handlePull(s)}
-                    className={`px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer ${pullStrategy === s ? 'bg-blue-500/10' : ''}`}
+                    className={`px-3 py-2 rounded-md flex flex-col hover:bg-[#1f2937] cursor-pointer transition-colors ${pullStrategy === s ? 'bg-[#388bfd]/10' : ''}`}
                   >
                     <div className="flex items-center justify-between">
-                       <span className={`text-[12px] font-medium ${pullStrategy === s ? 'text-blue-400' : 'text-[#adbac7]'}`}>
-                         {s === 'fast_forward_only' ? 'Fast-Forward Only' : s === 'fast_forward_or_merge' ? 'Merge (FF or Merge)' : 'Rebase ⚠️'}
+                       <span className={`text-[12px] font-semibold ${pullStrategy === s ? 'text-[#388bfd]' : 'text-[#e6edf3]'}`}>
+                         {s === 'fast_forward_only' ? 'Fast-Forward Only' : s === 'fast_forward_or_merge' ? 'Merge (FF or Merge)' : 'Rebase'}
                        </span>
-                       {pullStrategy === s && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />}
+                       {pullStrategy === s && <div className="w-1.5 h-1.5 bg-[#388bfd] rounded-full shadow-[0_0_8px_rgba(56,139,253,0.6)]" />}
                     </div>
-                    <span className="text-[10px] text-[#768390]">
+                    <span className="text-[10px] text-[#6e7681]">
                       {s === 'fast_forward_only' ? 'Fails if branches have diverged' : s === 'fast_forward_or_merge' ? 'Merges if FF is not possible' : 'Rebases local commits on remote'}
                     </span>
                   </div>
@@ -146,82 +145,81 @@ export function TopToolbar() {
           </div>
 
           {/* Split Push Button */}
-          <div className="relative flex items-center group/push" ref={pushDropdownRef}>
+          <div className="relative flex items-center" ref={pushDropdownRef}>
             <ToolbarButton 
-              icon={<ArrowUp size={18} className={lastCommitWasAmend ? "text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]" : ""} />} 
-              label={lastCommitWasAmend ? "Amend Push" : "Push"} 
+              icon={<ArrowUp size={20} className={lastCommitWasAmend ? "text-[#e3b341] drop-shadow-[0_0_8px_rgba(227,179,65,0.3)]" : ""} />} 
+              label={lastCommitWasAmend ? "Force Push" : "Push"} 
               onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
               loading={isLoadingPush} 
               count={repoStatus?.ahead || 0} 
               title={lastCommitWasAmend ? "Changes were amended. Force push may be required." : (repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined)}
-              className={`pr-1 ${lastCommitWasAmend ? "border-amber-500/20" : ""}`}
             />
             <div 
               onClick={() => !isLoadingPush && setShowPushDropdown(!showPushDropdown)}
-              className={`h-full flex items-center px-1 py-1 rounded-sm hover:bg-white/10 cursor-pointer ${isLoadingPush ? 'opacity-20 pointer-events-none' : ''}`}
+              className={`h-8 flex items-center px-1 hover:bg-white/5 rounded-md cursor-pointer ml-1 ${isLoadingPush ? 'opacity-20 pointer-events-none' : ''}`}
             >
-              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showPushDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`text-[#6e7681] transition-transform ${showPushDropdown ? 'rotate-180' : ''}`} />
             </div>
 
             {showPushDropdown && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c2128] border border-[#30363d] rounded-md shadow-xl z-[250] p-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-2 py-1.5 text-[10px] font-bold text-[#768390] uppercase border-b border-[#30363d] mb-1">
+              <div className="absolute top-full left-0 mt-3 w-56 bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[250] p-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-[#6e7681] uppercase border-b border-[#30363d] mb-1 tracking-wider">
                   Push Mode
                 </div>
                 
                 <div 
                   onClick={() => { pushCurrentBranch(activeRepoPath!, 'normal'); setShowPushDropdown(false); }}
-                  className="px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer"
+                  className="px-3 py-2 rounded-md flex flex-col hover:bg-[#1f2937] cursor-pointer transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                     <span className="text-[12px] font-medium text-[#adbac7]">Normal Push</span>
+                     <span className="text-[12px] font-semibold text-[#e6edf3]">Normal Push</span>
                   </div>
-                  <span className="text-[10px] text-[#768390]">Fast-forward to remote</span>
+                  <span className="text-[10px] text-[#6e7681]">Fast-forward to remote</span>
                 </div>
 
                 <div 
                   onClick={() => { pushCurrentBranch(activeRepoPath!, 'force_with_lease'); setShowPushDropdown(false); }}
-                  className={`px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer ${lastCommitWasAmend ? 'bg-amber-500/5' : ''}`}
+                  className={`px-3 py-2 rounded-md flex flex-col hover:bg-[#1f2937] cursor-pointer transition-colors ${lastCommitWasAmend ? 'bg-[#e3b341]/10' : ''}`}
                 >
                   <div className="flex items-center justify-between">
-                     <span className={`text-[12px] font-medium ${lastCommitWasAmend ? 'text-amber-400' : 'text-[#adbac7]'}`}>
-                       Force Push (with lease) ⚠️
+                     <span className={`text-[12px] font-semibold ${lastCommitWasAmend ? 'text-[#e3b341]' : 'text-[#e6edf3]'}`}>
+                       Force Push (with lease)
                      </span>
                   </div>
-                  <span className="text-[10px] text-[#768390]">Rewrites history, only if remote matches your local tracking</span>
+                  <span className="text-[10px] text-[#6e7681]">Rewrites history securely</span>
                 </div>
               </div>
             )}
             
             {lastCommitWasAmend && (
-              <div className="absolute -top-1 right-8 w-2 h-2 bg-amber-500 rounded-full animate-pulse border border-[#1c2128]" />
+              <div className="absolute -top-1 right-8 w-2 h-2 bg-[#e3b341] rounded-full animate-pulse border border-[#1c2128]" />
             )}
           </div>
 
         </div>
 
-        <div className="w-px h-6 bg-[#30363d]" />
+        <div className="w-px h-6 bg-[#30363d] mx-2" />
 
         {/* Branch / Stash / Pop */}
-        <div className="flex items-center space-x-4 text-[#adbac7]">
+        <div className="flex items-center gap-6 text-[#e6edf3]">
           <ToolbarButton 
-            icon={<GitBranch size={18} />} 
+            icon={<GitBranch size={20} />} 
             label="Branch" 
             onClick={() => setShowCreateBranch(true)} 
           />
           <ToolbarButton 
-            icon={<Archive size={18} />} 
+            icon={<Archive size={20} />} 
             label="Stash" 
             onClick={() => useAppStore.setState({ showCreateStash: true })} 
           />
-          <ToolbarButton icon={<Navigation size={18} />} label="Pop" onClick={() => popStash(0)} />
+          <ToolbarButton icon={<Navigation size={20} />} label="Pop" onClick={() => popStash(0)} />
         </div>
 
-        <div className="w-px h-6 bg-[#30363d]" />
+        <div className="w-px h-6 bg-[#30363d] mx-2" />
 
         {/* Terminal */}
-        <div className="flex items-center space-x-4">
-          <ToolbarButton icon={<Terminal size={18} />} label="Terminal" onClick={openTerminal} />
+        <div className="flex items-center">
+          <ToolbarButton icon={<Terminal size={20} />} label="Terminal" onClick={openTerminal} />
         </div>
         
       </div>
@@ -293,17 +291,21 @@ function RepoSelector() {
     <div className="relative" ref={dropdownRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#30363d]/50 rounded-md cursor-pointer group transition-colors min-w-0"
+        className="flex items-center gap-3 px-3 py-1.5 hover:bg-[#1f2937] rounded-lg cursor-pointer group transition-all min-w-0 border border-transparent hover:border-[#30363d]"
       >
-        <div className="w-6 h-6 bg-sky-500 rounded flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm">
+        <div className="w-7 h-7 bg-[#388bfd] rounded-md flex items-center justify-center text-white font-black text-sm shrink-0 shadow-lg">
           {repoInfo?.name[0]?.toUpperCase() || 'G'}
         </div>
         <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-1">
-            <span className="text-[13px] font-bold text-[#e6edf3] truncate tracking-tight uppercase">
-              {repoInfo?.name || 'Git Helper'}
+          <div className="flex items-center gap-2">
+            <span className="text-[14px] font-bold text-[#e6edf3] truncate tracking-tight">
+              {repoInfo?.name || 'GitKit'}
             </span>
-            <ChevronDown size={14} className={`text-[#768390] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] text-[#6e7681] font-medium">
+             <GitBranch size={10} className="text-[#3fb950]" />
+             <span className="truncate">{activeBranch || 'detaching...'}</span>
           </div>
         </div>
       </div>
@@ -380,20 +382,19 @@ function ToolbarButton({
     <div 
       onClick={() => !isDisabled && onClick?.()}
       title={title}
-      className={`flex flex-col items-center justify-center cursor-pointer group relative ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''} ${className || ''}`}
+      className={`flex flex-col items-center justify-center cursor-pointer group relative transition-all duration-200 hover:scale-105 ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''} ${className || ''}`}
     >
-
-       <div className={`text-slate-300 ${!isDisabled && 'group-hover:text-white transition-colors'}`}>
-         {loading ? <Loader2 size={18} className="animate-spin" /> : icon}
+       <div className={`p-2 rounded-lg transition-all ${!isDisabled ? 'group-hover:bg-white/5 group-hover:shadow-inner' : ''} ${!isDisabled ? 'text-[#e6edf3]' : 'text-[#6e7681]'}`}>
+         {loading ? <Loader2 size={20} className="animate-spin text-[#388bfd]" /> : icon}
        </div>
        
        {count > 0 && (
-         <div className="absolute -top-1.5 -right-2 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-[#1c2128] shadow-sm transform scale-90">
+         <div className="absolute top-0 -right-2 bg-[#388bfd] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border-2 border-[#1c2128] shadow-lg transform scale-90">
            {count}
          </div>
        )}
 
-       <span className="text-[10px] text-slate-500 mt-0.5">{label}</span>
+       <span className="text-[10px] font-bold text-[#6e7681] mt-0.5 uppercase tracking-tighter group-hover:text-[#e6edf3] transition-colors">{label}</span>
     </div>
   );
 }
