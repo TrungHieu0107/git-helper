@@ -34,7 +34,14 @@ pub struct AppStateData {
     pub active_tab: Option<String>,
     pub stash_mode: Option<String>,
     pub include_untracked: Option<bool>,
+    #[serde(default = "default_pull_strategy")]
+    pub pull_strategy: String,
 }
+
+fn default_pull_strategy() -> String {
+    "fast_forward_only".to_string()
+}
+
 
 fn get_app_state_file(app: &AppHandle) -> Result<PathBuf, String> {
     let mut path = app
@@ -55,7 +62,9 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
             active_tab: None,
             stash_mode: Some("all".to_string()),
             include_untracked: Some(false),
+            pull_strategy: default_pull_strategy(),
         });
+
     }
     let content = fs::read_to_string(file_path).map_err(|e| e.to_string())?;
     let state: AppStateData = serde_json::from_str(&content).unwrap_or(AppStateData {
@@ -63,7 +72,9 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
         active_tab: None,
         stash_mode: Some("all".to_string()),
         include_untracked: Some(false),
+        pull_strategy: default_pull_strategy(),
     });
+
     Ok(state)
 }
 

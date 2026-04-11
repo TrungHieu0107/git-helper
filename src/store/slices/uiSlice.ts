@@ -26,6 +26,9 @@ export type CheckoutError =
   | { type: 'DetachedHead', data: { oid: string } }
   | { type: 'Generic', data: { message: string } };
 
+export type PullStrategy = 'fast_forward_only' | 'fast_forward_or_merge' | 'rebase';
+
+
 export interface UISlice {
   repos: RepoMeta[];
   activeTabId: string;
@@ -36,6 +39,9 @@ export interface UISlice {
   confirmDiscardAll: boolean;
   checkoutError: CheckoutError | null;
   refreshTimestamp: number;
+  pullStrategy: PullStrategy;
+  isLoadingPull: boolean;
+
   forceCheckoutTarget: string | null;
   forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
@@ -47,6 +53,9 @@ export interface UISlice {
   setConfirmDiscardAll: (show: boolean) => void;
   setCheckoutError: (error: CheckoutError | null) => void;
   triggerRefresh: () => void;
+  setPullStrategy: (strategy: PullStrategy) => void;
+  setIsLoadingPull: (loading: boolean) => void;
+
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
   setForceCheckout: (target: string | null, phase: UISlice['forceCheckoutPhase']) => void;
@@ -62,6 +71,9 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   confirmDiscardAll: false,
   checkoutError: null,
   refreshTimestamp: 0,
+  pullStrategy: 'fast_forward_only',
+  isLoadingPull: false,
+
   forceCheckoutTarget: null,
   forceCheckoutPhase: 'idle',
 
@@ -73,6 +85,9 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setConfirmDiscardAll: (show) => set(() => ({ confirmDiscardAll: show })),
   setCheckoutError: (error) => set(() => ({ checkoutError: error })),
   triggerRefresh: () => set(() => ({ refreshTimestamp: Date.now() })),
+  setPullStrategy: (strategy) => set(() => ({ pullStrategy: strategy })),
+  setIsLoadingPull: (loading) => set(() => ({ isLoadingPull: loading })),
+
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   
   addToast: (message, type = 'info', duration = 5000) => {

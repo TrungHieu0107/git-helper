@@ -54,7 +54,15 @@ export interface AppStateData {
   active_tab: string | null;
   stash_mode: 'all' | 'unstaged';
   include_untracked: boolean;
+  pull_strategy: 'fast_forward_only' | 'fast_forward_or_merge' | 'rebase';
 }
+
+export type PullResult = 
+  | { type: 'UpToDate' }
+  | { type: 'FastForwarded', data: { commits_added: number } }
+  | { type: 'Merged', data: { merge_commit_oid: string } }
+  | { type: 'Rebased', data: { commits_rebased: number } };
+
 
 export interface StashUnstagedOptions {
   message?: string;
@@ -732,13 +740,15 @@ export function closeRepoTab(path: string) {
 }
 
 export async function saveCurrentState() {
-  const { repos, activeTabId, lastStashMode, lastIncludeUntracked } = useAppStore.getState();
+  const { repos, activeTabId, lastStashMode, lastIncludeUntracked, pullStrategy } = useAppStore.getState();
   const state: AppStateData = {
     tabs: repos.map(r => ({ path: r.path, name: r.name })),
     active_tab: activeTabId === 'home' ? null : activeTabId,
     stash_mode: lastStashMode,
     include_untracked: lastIncludeUntracked,
+    pull_strategy: pullStrategy,
   };
+
   try {
     await invoke('save_app_state', { state });
   } catch (e) {
@@ -765,6 +775,10 @@ export async function restoreAppState() {
         if (state.include_untracked !== undefined) {
           useAppStore.setState({ lastIncludeUntracked: state.include_untracked });
         }
+        if (state.pull_strategy) {
+          useAppStore.setState({ pullStrategy: state.pull_strategy });
+        }
+
 } catch (e) {
         console.error('Failed to restore app state:', e);
     }
