@@ -81,6 +81,15 @@ export interface CommitResult {
   amended: boolean;
 }
 
+export interface FileCommit {
+  oid: string;
+  short_oid: string;
+  message: string;
+  author_name: string;
+  author_email: string;
+  timestamp: number;
+}
+
 
 export interface StashUnstagedOptions {
   message?: string;

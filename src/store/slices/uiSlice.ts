@@ -48,6 +48,9 @@ export interface UISlice {
   forceCheckoutTarget: string | null;
   forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
+  showFileHistoryModal: boolean;
+  fileHistoryPath: string | null;
+
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
   setSelectedDiff: (diff: SelectedDiff | null) => void;
@@ -65,6 +68,7 @@ export interface UISlice {
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
   setForceCheckout: (target: string | null, phase: UISlice['forceCheckoutPhase']) => void;
+  setFileHistory: (path: string | null) => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -86,6 +90,9 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   forceCheckoutTarget: null,
   forceCheckoutPhase: 'idle',
 
+  showFileHistoryModal: false,
+  fileHistoryPath: null,
+
   setActiveTabId: (id) => set(() => ({ activeTabId: id })),
   setRepos: (repos) => set(() => ({ repos })),
   setSelectedDiff: (diff) => set(() => ({ selectedDiff: diff })),
@@ -101,6 +108,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setLastCommitWasAmend: (wasAmend) => set(() => ({ lastCommitWasAmend: wasAmend })),
 
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
+  setFileHistory: (path) => set(() => ({ fileHistoryPath: path, showFileHistoryModal: !!path })),
   
   addToast: (message, type = 'info', duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);

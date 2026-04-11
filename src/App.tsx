@@ -17,6 +17,7 @@ import { StashAlerts } from "./components/StashAlerts";
 import { ForceCheckoutAlert } from "./components/ForceCheckoutAlert";
 import { SetUpstreamDialog } from "./components/SetUpstreamDialog";
 import { ToastContainer } from "./components/ToastContainer";
+import { FileHistoryModal } from "./components/FileHistoryModal";
 
 function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
@@ -92,6 +93,7 @@ function App() {
         />
       )}
       <ToastContainer />
+      <FileHistoryModal />
     </div>
   );
 }
