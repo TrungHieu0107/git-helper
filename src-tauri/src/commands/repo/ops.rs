@@ -32,10 +32,17 @@ pub fn open_file(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn reveal_file(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+
     #[cfg(target_os = "windows")]
     {
+        // explorer.exe /select expects backslashes and no extra quotes inside the arg
+        let windows_path = path.replace("/", "\\");
         Command::new("explorer.exe")
-            .arg(format!("/select,\"{}\"", path))
+            .arg(format!("/select,{}", windows_path))
             .spawn()
             .map_err(|e| e.to_string())?;
     }

@@ -4,6 +4,10 @@ All notable changes to GitKit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2026-04-11
+### Added
+- **Split Copy Path**: The context menu now offers both "Copy Repo Path" (relative) and "Copy Full Path" (absolute) options for better developer productivity.
+
 ## [2.5.0] - 2026-04-11
 ### Added
 - **File History Modal**: A full-screen overlay for exploring the historical versions of any file with integrated Monaco-based diff views.

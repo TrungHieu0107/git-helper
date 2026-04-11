@@ -15,7 +15,7 @@ export interface FileContextMenuProps {
 export function FileContextMenu({ path, isStaged, position, onClose }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState(position);
-  const { setFileHistory } = useAppStore();
+  const { setFileHistory, activeRepoPath } = useAppStore();
 
   // Adjust position to stay within viewport
   useEffect(() => {
@@ -53,9 +53,18 @@ export function FileContextMenu({ path, isStaged, position, onClose }: FileConte
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleCopyPath = () => {
+  const handleCopyRepoPath = () => {
     navigator.clipboard.writeText(path);
-    toast.success('Path copied to clipboard');
+    toast.success('Repo path copied');
+    onClose();
+  };
+
+  const handleCopyFullPath = () => {
+    if (!activeRepoPath) return;
+    // Normalize path separators for Windows/Unix
+    const fullPath = `${activeRepoPath}${activeRepoPath.endsWith('/') || activeRepoPath.endsWith('\\') ? '' : '/'}${path}`;
+    navigator.clipboard.writeText(fullPath.replace(/\//g, '\\'));
+    toast.success('Full path copied');
     onClose();
   };
 
@@ -102,10 +111,16 @@ export function FileContextMenu({ path, isStaged, position, onClose }: FileConte
       action: () => { setFileHistory(path); onClose(); }
     },
     {
-      id: 'copy',
+      id: 'copy-repo',
       icon: <Copy size={14} />,
-      label: 'Copy Path',
-      action: handleCopyPath
+      label: 'Copy Repo Path',
+      action: handleCopyRepoPath
+    },
+    {
+      id: 'copy-full',
+      icon: <Copy size={14} />,
+      label: 'Copy Full Path',
+      action: handleCopyFullPath
     }
   ];
 

@@ -155,3 +155,15 @@ The GitKit application is stable.
 - *New*: Right-click any file for deep operations; full-screen history modal with integrated diffing.
 
 **Status**: Version 2.5.0 ✓
+
+---
+
+### 2026-04-11 – Split Copy Path Feature
+**Reason**: Improved developer workflow by providing both relative (repo) and absolute (full) paths in the context menu.
+
+**Changes**:
+- **FileContextMenu**:
+    - Replaced generic "Copy Path" with "Copy Repo Path" and "Copy Full Path".
+    - "Copy Full Path" automatically concatenates `activeRepoPath` and normalizes separators to backslashes (Windows-style) for consistency with system paths.
+
+**Status**: Version 2.5.1 ✓
