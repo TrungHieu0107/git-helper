@@ -175,8 +175,8 @@ pub fn get_log(
             stashes.sort_by(|a, b| b.3.cmp(&a.3));
 
             for (s_oid, s_msg, s_time, s_idx) in stashes {
-                // Find first free lane to the right of base commit
-                let mut s_lane = lane_idx + 1;
+                // Find first free lane to the right of ALL active branch lines
+                let mut s_lane = active_lanes.len().max(lane_idx + 1);
                 while row_occupied.contains(&s_lane) {
                     s_lane += 1;
                 }

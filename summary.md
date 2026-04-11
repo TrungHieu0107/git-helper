@@ -1,9 +1,9 @@
 # GitKit Status Summary
 ## Version: 2.4.5
-## Status: Stable - Stash Lane Isolation
+## Status: Stable - Commit Graph Visual Refinement
 
-The GitKit commit graph now features isolated stash lanes to improve visual clarity and prevent overlap with active branch lines.
+The GitKit commit graph now features isolated stash lanes and active branch highlighting to improve visual clarity and navigation.
 
 **Recent Highlights**:
 - **Stash Isolation**: Stash commits are now dynamically pushed to the right of all active branch lines, providing a clear "outside" representation as requested.
-- **Improved Layout Logic**: Updated the backend layout engine to calculate occupancy based on the entire branch area rather than just the base commit's immediate neighbors.
+- **Active Branch Highlighting**: The commit graph now visually highlights the name of the currently active branch in its ref badges, making navigation and focus much easier.

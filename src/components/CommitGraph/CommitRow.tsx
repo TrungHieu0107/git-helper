@@ -21,6 +21,7 @@ const hue = (s: string) => {
 // ── BranchLabels Component ───────────────────────────────────────────
 function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: number, isActive: boolean }) {
   const [open, setOpen] = useState(false);
+  const activeBranch = useAppStore(s => s.activeBranch);
   
   const branchGroups: [string, any][] = useMemo(() => {
     const groups = new Map<string, { isLocal: boolean; isRemote: boolean; isHead: boolean; isTag?: boolean }>();
@@ -64,14 +65,15 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
     const isRemoteOnly = info.isRemote && !info.isLocal;
     const isHead = info.isHead;
     const isTag = info.isTag;
+    const isActiveBranch = name === activeBranch && !isRemoteOnly && !isTag;
     const clr = color(colorIdx);
     
     let baseClass = "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap truncate cursor-pointer select-none border transition-all shadow-sm";
     let bg = "";
     let style = {};
 
-    if (isHead) {
-      bg = "bg-[#0b213f] text-[#388bfd] border-[#388bfd]/30 hover:border-[#388bfd]/60";
+    if (isHead || isActiveBranch) {
+      bg = "bg-[#0b213f] text-[#388bfd] border-[#388bfd]/30 hover:border-[#388bfd]/60 shadow-[0_0_8px_rgba(56,139,253,0.15)] ring-1 ring-[#388bfd]/20";
     } else if (isTag) {
       bg = "bg-[#251e0b] text-[#e3b341] border-[#e3b341]/30 hover:border-[#e3b341]/60";
     } else if (isRemoteOnly) {
