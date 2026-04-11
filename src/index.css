@@ -25,6 +25,23 @@
   background-color: rgba(255, 255, 255, 0.05);
 }
   :root {
+    /* Background Hierarchy */
+    --bg-main: #0d1117;
+    --bg-panel: #161b22;
+    --bg-elevated: #1c2128;
+    --border-subtle: #30363d;
+    
+    /* Text Colors */
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-header: #6e7681;
+    
+    /* Accents */
+    --accent-primary: #388bfd;
+    --accent-hover: #1f2937;
+    --accent-active: #1d2d3e;
+    
+    /* Dimensions */
     --sidebar-width: 220px;
     --right-width: 340px;
     --row-height: 36px;
@@ -36,9 +53,56 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #0f172a; /* standard dark mode base */
-  color: #f8fafc;
-  overflow: hidden; /* no outer scroll */
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Typography Scale ────────────────────────────────────────────── */
+
+.section-header-text {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-header);
+  font-weight: 600;
+}
+
+.branch-name-text {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.hash-mono-text {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.commit-msg-text {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* ── Interactive States ──────────────────────────────────────────── */
+
+.row-hover {
+  transition: background-color 150ms ease;
+}
+.row-hover:hover {
+  background-color: var(--accent-hover);
+}
+
+.row-active {
+  background-color: var(--accent-active);
+  border-left: 2px solid var(--accent-primary);
+}
+
+.focus-ring {
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 /* Base tailwind defaults mapped to UI spec */
