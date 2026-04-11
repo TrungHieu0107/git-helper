@@ -63,10 +63,15 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
   }
 }
 
-function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
+function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number): Edge[] {
   const out: Edge[] = [];
+  
+  // Use a map for O(1) row lookups instead of findIndex (O(N))
+  const oidMap = new Map<string, number>();
+  commits.forEach((c, i) => oidMap.set(c.oid, i));
+
   // WIP → first commit
-  if (wip && commits.length > 0) {
+  if (wip && commits.length > 0 && minIdx <= 0) {
     const x1 = lx(0), y1 = ly(0), x2 = lx(commits[0].lane), y2 = ly(off);
     out.push({ 
       path: roundedPath(x1, y1, x2, y2, 'branch-off'), 
@@ -78,18 +83,26 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
       r2: off
     });
   }
-  commits.forEach((c, i) => {
-    if (c.node_type === 'stash') return; 
+
+  // Only process commits that could have visible edges
+  // We buffer the range significantly to ensure long merge lines are captured
+  const start = Math.max(0, minIdx - 50);
+  const end = Math.min(commits.length, maxIdx + 50);
+
+  for (let i = start; i < end; i++) {
+    const c = commits[i];
+    if (c.node_type === 'stash') continue; 
 
     const row = i + off;
     c.parents.forEach((po, pi) => {
-      const idx = commits.findIndex(n => n.oid === po);
+      const targetIdx = oidMap.get(po);
       const e = c.edges[pi];
       const ci = e?.color_idx ?? c.color_idx;
       const x1 = lx(c.lane), y1 = ly(row);
       const type = pi === 0 ? 'branch-off' : 'merge';
 
-      if (idx === -1) {
+      if (targetIdx === undefined) {
+        // Parent not in current batch/view
         const tl = e?.to_lane ?? c.lane;
         const x2 = lx(tl), y2 = ly(row + 5);
         out.push({ 
@@ -102,48 +115,60 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
         });
         return;
       }
-      const pRow = idx + off;
-      const x2 = lx(commits[idx].lane), y2 = ly(pRow);
-      out.push({ 
-        path: roundedPath(x1, y1, x2, y2, type), 
-        colorIdx: ci, 
-        childOid: c.oid, 
-        isMerge: pi > 0,
-        r1: Math.min(row, pRow),
-        r2: Math.max(row, pRow)
-      });
+
+      const pRow = targetIdx + off;
+      // Only add edge if it's within or entering the visible range
+      if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
+        const x2 = lx(commits[targetIdx].lane), y2 = ly(pRow);
+        out.push({ 
+          path: roundedPath(x1, y1, x2, y2, type), 
+          colorIdx: ci, 
+          childOid: c.oid, 
+          isMerge: pi > 0,
+          r1: Math.min(row, pRow),
+          r2: Math.max(row, pRow)
+        });
+      }
     });
-  });
+  }
   return out;
 }
 
-function buildStashEdges(commits: CommitNode[], off: number): Edge[] {
+function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, maxIdx: number): Edge[] {
   const out: Edge[] = [];
-  commits.forEach((c, i) => {
-    if (c.node_type !== 'stash' || !c.base_oid) return;
+  const oidMap = new Map<string, number>();
+  commits.forEach((c, i) => oidMap.set(c.oid, i));
+
+  const start = Math.max(0, minIdx - 20);
+  const end = Math.min(commits.length, maxIdx + 20);
+
+  for (let i = start; i < end; i++) {
+    const c = commits[i];
+    if (c.node_type !== 'stash' || !c.base_oid) continue;
     
-    const baseIdx = commits.findIndex(n => n.oid === c.base_oid);
-    if (baseIdx === -1) return;
+    const baseIdx = oidMap.get(c.base_oid);
+    if (baseIdx === undefined) continue;
 
     const row = i + off;
     const pRow = baseIdx + off;
     
-    const x1 = lx(commits[baseIdx].lane); 
-    const y1 = ly(pRow);                 
-    const x2 = lx(c.lane);               
-    const y2 = ly(row);                  
-
-    const path = roundedPath(x1, y1, x2, y2, 'merge');
-    out.push({ 
-      path, 
-      colorIdx: c.color_idx, 
-      childOid: c.oid, 
-      isMerge: false, 
-      dashed: true,
-      r1: Math.min(row, pRow),
-      r2: Math.max(row, pRow)
-    });
-  });
+    if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
+      const x1 = lx(commits[baseIdx].lane); 
+      const y1 = ly(pRow);                 
+      const x2 = lx(c.lane);               
+      const y2 = ly(row);                  
+      const path = roundedPath(x1, y1, x2, y2, 'merge');
+      out.push({ 
+        path, 
+        colorIdx: c.color_idx, 
+        childOid: c.oid, 
+        isMerge: false, 
+        dashed: true,
+        r1: Math.min(row, pRow),
+        r2: Math.max(row, pRow)
+      });
+    }
+  }
   return out;
 }
 
@@ -159,16 +184,23 @@ export function CommitGraph() {
 
   const commitSearchInput = useAppStore(s => s.commitSearchInput);
 
+  const [debouncedSearch, setDebouncedSearch] = useState(commitSearchInput);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(commitSearchInput), 150);
+    return () => clearTimeout(timer);
+  }, [commitSearchInput]);
+
   const filteredCommits = useMemo(() => {
     if (!commitLog) return [];
-    if (!commitSearchInput.trim()) return commitLog;
-    const q = commitSearchInput.toLowerCase();
+    if (!debouncedSearch.trim()) return commitLog;
+    const q = debouncedSearch.toLowerCase();
     return commitLog.filter((c: CommitNode) => 
       c.message.toLowerCase().includes(q) || 
       c.short_oid.toLowerCase().includes(q) || 
       c.author.toLowerCase().includes(q)
     );
-  }, [commitLog, commitSearchInput]);
+  }, [commitLog, debouncedSearch]);
 
   const hasWip = (status?.staged_count ?? 0) > 0 || (status?.unstaged_count ?? 0) > 0 || staged.length > 0 || unstaged.length > 0;
   const off = hasWip ? 1 : 0;
@@ -181,9 +213,21 @@ export function CommitGraph() {
 
   const gw = LANE_PAD * 2 + maxLane * LANE_W;
 
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip) : [], [filteredCommits, off, hasWip]);
-  const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off) : [], [filteredCommits, off]);
+  const virtualizer = useVirtualizer({
+    count: totalRows,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 30,
+    overscan: 20,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+  const minVis = virtualItems[0]?.index ?? 0;
+  const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
+
+  const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip, minVis, maxVis) : [], [filteredCommits, off, hasWip, minVis, maxVis]);
+  const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off, minVis, maxVis) : [], [filteredCommits, off, hasWip, minVis, maxVis]);
 
   const activeOids = useMemo(() => {
     const set = new Set<string>();
@@ -220,17 +264,7 @@ export function CommitGraph() {
 
   const closeContextMenu = useCallback(() => setCtxMenu(null), []);
   
-  // ── Virtualization Setup ──────────────────────────────────────────
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  const virtualizer = useVirtualizer({
-    count: totalRows,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_H,
-    overscan: 20,
-  });
-
-  const virtualItems = virtualizer.getVirtualItems();
+  // ── Virtualization Setup (already called above) ───────────────────
 
   // Trigger loading more when we approach the bottom of the virtual list
   useEffect(() => {
