@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit } from 'lucide-react';
-import { CommitNode } from '../store';
-import { safeSwitchBranch, selectCommitDetail } from '../lib/repo';
+import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, CloudSync, Trash2, ChevronsDown } from 'lucide-react';
+import { CommitNode, useAppStore, StashEntry } from '../store';
+import { safeSwitchBranch, selectCommitDetail, applyStash, popStash } from '../lib/repo';
 import { toast } from '../lib/toast';
 import { CreateBranchDialog } from './CreateBranchDialog';
 import { CherryPickDialog } from './CherryPickDialog';
@@ -25,6 +25,8 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
   const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [showCherryPick, setShowCherryPick] = useState(false);
   const [menuPos, setMenuPos] = useState(position);
+  
+  const isStash = commit.node_type === 'stash';
 
   // Adjust position to keep menu on-screen
   useEffect(() => {
@@ -84,6 +86,35 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     await safeSwitchBranch(commit.oid);
     onClose();
   }, [commit.oid, onClose]);
+
+  const handleApplyStash = useCallback(() => {
+    if (commit.stash_index !== undefined) {
+      applyStash(commit.stash_index);
+      onClose();
+    }
+  }, [commit.stash_index, onClose]);
+
+  const handlePopStash = useCallback(() => {
+    if (commit.stash_index !== undefined) {
+      popStash(commit.stash_index);
+      onClose();
+    }
+  }, [commit.stash_index, onClose]);
+
+  const handleDropStash = useCallback(() => {
+    if (commit.stash_index !== undefined) {
+      // Map CommitNode to StashEntry for the confirmation dialog
+      const stashEntry: StashEntry = {
+        stackIndex: commit.stash_index,
+        message: commit.message,
+        oid: commit.oid,
+        parent_oid: commit.parents?.[0] || '',
+        timestamp: commit.timestamp
+      };
+      useAppStore.setState({ confirmStashDrop: stashEntry });
+      onClose();
+    }
+  }, [commit, onClose]);
 
   if (showCreateBranch) {
     return (
@@ -152,6 +183,34 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     },
   ];
 
+  // If stash, add stash operations at the beginning
+  const stashItems = isStash ? [
+    {
+      id: 'apply-stash',
+      icon: <CloudSync size={14} />,
+      label: 'Apply This Stash',
+      color: 'text-[#388bfd]',
+      action: handleApplyStash,
+    },
+    {
+      id: 'pop-stash',
+      icon: <ChevronsDown size={14} />,
+      label: 'Pop This Stash',
+      color: 'text-[#3fb950]',
+      action: handlePopStash,
+    },
+    {
+      id: 'drop-stash',
+      icon: <Trash2 size={14} />,
+      label: 'Delete This Stash',
+      color: 'text-red-400',
+      action: handleDropStash,
+    },
+    { id: 'stash-sep', separator: true },
+  ] : [];
+
+  const finalItems = [...stashItems, ...menuItems];
+
   return (
     <div
       ref={menuRef}
@@ -164,7 +223,7 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       }}
     >
       {/* Commit info header */}
-      <div className="px-3 py-2 border-b border-[#21262d]">
+      <div className="commit-context-menu-header">
         <div className="flex items-center gap-2">
           <code className="text-[10px] font-mono text-[#79c0ff] bg-[#0d1117] px-1.5 py-0.5 rounded">{commit.short_oid}</code>
           <span className="text-[11px] text-[#8b949e] truncate max-w-[180px]">{commit.message}</span>
@@ -173,7 +232,7 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
 
       {/* Menu items */}
       <div className="py-1">
-        {menuItems.map((item) =>
+        {finalItems.map((item) =>
           'separator' in item ? (
             <div key={item.id} className="my-1 border-t border-[#21262d]" />
           ) : (

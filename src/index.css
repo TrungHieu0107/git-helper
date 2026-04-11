@@ -158,8 +158,14 @@ body {
     0 8px 30px rgba(0, 0, 0, 0.5),
     0 2px 8px rgba(0, 0, 0, 0.3);
   overflow: hidden;
-  animation: ctx-menu-in 0.12s ease-out;
+  animation: ctx-menu-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
+}
+
+.commit-context-menu-header {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(48, 54, 61, 0.8);
 }
 
 .commit-context-menu-item {
@@ -178,13 +184,19 @@ body {
   white-space: nowrap;
 }
 
-.commit-context-menu-item:hover {
-  background: rgba(56, 139, 253, 0.15);
+.commit-context-menu-item:hover:not(.text-red-400) {
+  background: rgba(56, 139, 253, 0.12);
   color: #e6edf3;
 }
 
+.commit-context-menu-item.text-red-400:hover {
+  background: rgba(248, 81, 73, 0.12);
+  color: #ff7b72;
+}
+
 .commit-context-menu-item:active {
-  background: rgba(56, 139, 253, 0.25);
+  transform: scale(0.98);
+  background: rgba(56, 139, 253, 0.2);
 }
 
 @keyframes ctx-menu-in {
