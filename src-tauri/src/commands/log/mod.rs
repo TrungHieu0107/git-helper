@@ -26,6 +26,78 @@ pub struct CommitNode {
     pub base_oid: Option<String>, // only for stashes
 }
 
+#[derive(Serialize)]
+pub struct FileCommit {
+    pub oid: String,
+    pub short_oid: String,
+    pub message: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub timestamp: i64,
+}
+
+#[tauri::command]
+pub fn get_file_log(repo_path: String, file_path: String) -> Result<Vec<FileCommit>, String> {
+    let repo = Repository::open(&repo_path)
+        .map_err(|e| format!("Failed to open repository: {}", e))?;
+    
+    let mut revwalk = repo.revwalk()
+        .map_err(|e| format!("Failed to create revwalk: {}", e))?;
+    
+    revwalk.set_sorting(Sort::TIME)
+        .map_err(|e| format!("Failed to set sorting: {}", e))?;
+    
+    let _ = revwalk.push_head();
+
+    let mut result = Vec::new();
+    // Initial commit (empty tree) to compare against for root commits
+    let empty_tree = {
+        let builder = repo.treebuilder(None).map_err(|e| e.to_string())?;
+        let empty_oid = builder.write().map_err(|e| e.to_string())?;
+        repo.find_tree(empty_oid).map_err(|e| e.to_string())?
+    };
+
+    for oid_res in revwalk {
+        let oid = oid_res.map_err(|e| e.to_string())?;
+        let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
+        
+        let mut changed = false;
+        let mut diff_opts = git2::DiffOptions::new();
+        diff_opts.pathspec(&file_path);
+
+        if commit.parent_count() == 0 {
+            // First commit: compare against empty tree
+            let diff = repo.diff_tree_to_tree(Some(&empty_tree), Some(&commit.tree().map_err(|e| e.to_string())?), Some(&mut diff_opts))
+                .map_err(|e| e.to_string())?;
+            if diff.deltas().len() > 0 {
+                changed = true;
+            }
+        } else {
+            // Compare against first parent (standard for file log)
+            let parent = commit.parent(0).map_err(|e| e.to_string())?;
+            let diff = repo.diff_tree_to_tree(Some(&parent.tree().map_err(|e| e.to_string())?), Some(&commit.tree().map_err(|e| e.to_string())?), Some(&mut diff_opts))
+                .map_err(|e| e.to_string())?;
+            if diff.deltas().len() > 0 {
+                changed = true;
+            }
+        }
+
+        if changed {
+            let author = commit.author();
+            result.push(FileCommit {
+                oid: oid.to_string(),
+                short_oid: oid.to_string()[0..7].to_string(),
+                message: commit.summary().unwrap_or("").to_string(),
+                author_name: author.name().unwrap_or("Unknown").to_string(),
+                author_email: author.email().unwrap_or("").to_string(),
+                timestamp: commit.time().seconds(),
+            });
+        }
+    }
+
+    Ok(result)
+}
+
 #[tauri::command]
 pub fn get_log(
     state: tauri::State<crate::AppState>,

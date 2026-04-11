@@ -66,6 +66,7 @@ pub fn run() {
             commands::remote::push_branch_to_remote,
             commands::remote::list_remote_branches,
             commands::log::get_log,
+            commands::log::get_file_log,
             commands::cherry_pick::get_cherry_pick_state,
             commands::cherry_pick::cherry_pick_abort,
             commands::cherry_pick::cherry_pick_commit,
