@@ -69,7 +69,30 @@ flowchart TD
     OfferStash -- User Agrees --> StashSwitch[Tauri: stash:create_stash + repo:checkout_branch]
 ```
 
-## 5. Interaction Mapping
+## 5. File History & Operations
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant R as RightPanel (FileRow)
+    participant M as FileContextMenu
+    participant H as FileHistoryModal
+    participant T as Tauri (log:get_file_log)
+    participant G as git2 (Rust)
+
+    U->>R: Right-Click File
+    R->>M: Show Context Menu
+    U->>M: Click "File History"
+    M->>H: Render Modal (setFileHistory)
+    H->>T: Invoke get_file_log(path)
+    T->>G: Revwalk with pathspec
+    G-->>T: Returns Commit List
+    T-->>H: Updates local state
+    U->>H: Select Commit
+    H->>T: Invoke get_file_contents(path, commitOid)
+    T-->>H: Returns Historical Diff
+```
+
+## 6. Interaction Mapping
 
 | UI Action | Tauri Command | Store update | UI Component |
 |---|---|---|---|
@@ -77,12 +100,14 @@ flowchart TD
 | Pull (FF/Merge/Rebase)| `pull_remote` | `repoStatus`, `commitLog` | `TopToolbar` |
 | Cherry-pick | `cherry_pick_commit` | `cherryPickState` | `CommitContextMenu` |
 | Resolve Conflict | `resolve_conflict_file`| `cherryPickState` | `ConflictEditorView` |
+| Open File History | `get_file_log` | `showFileHistoryModal` | `FileContextMenu` |
+| Discard File | `discard_file_changes` | `repoStatus` | `FileContextMenu` |
 | Stage File | `stage_file` | `stagedFiles`, `unstagedFiles` | `RightPanel` |
-| Change Branch | `checkout_branch` | `activeBranch`, `commitLog` | `Sidebar` |
 
-## 6. View States logic
+## 7. View States logic
 
 - **`activeTabId === 'home'`**: Shows `WelcomeScreen`.
+- **`showFileHistoryModal === true`**: Shows `FileHistoryModal` overlay.
 - **`selectedDiff !== null`**: Overlays `MainDiffView` (Monaco) over the `CommitGraph`.
 - **`cherryPickState.status === 'conflicting'`**: Shows `CherryPickBanner`.
 - **`isLoadingRepo === true`**: Global spinner overlay.

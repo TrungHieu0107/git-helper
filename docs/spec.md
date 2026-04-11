@@ -30,10 +30,18 @@ This document outlines the implemented and planned features of GitKit, along wit
 - **Details**:
     - **File Status**: Real-time status with rename tracking.
     - **Committing**: Supports standard commits and amendment.
-    - **Discard Changes**: Robust discard via CLI delegation for `git clean`.
-- **Key Files**: `src-tauri/src/commands/status.rs`, `src-tauri/src/commands/diff/`.
+    - **Discard Changes**: Advanced per-file discard via `Repository::reset_default` (tracked) or `fs::remove_file` (untracked).
+- **Key Files**: `src-tauri/src/commands/status.rs`, `src-tauri/src/commands/repo/ops.rs`.
 
-### 4. Branch Management
+### 4. File History & Operations
+- **Status**: Implemented
+- **Details**:
+    - **File Log**: Searchable history for specific paths using `revwalk` and `pathspec`.
+    - **Historical Diff**: Integrated diff view for specific commits, isolated from the active working tree.
+    - **Context Menu**: Native-feel context menu for common file actions (Open, Reveal, History).
+- **Key Files**: `src-tauri/src/commands/log/mod.rs`, `src/components/FileHistoryModal.tsx`.
+
+### 5. Branch Management
 - **Status**: Implemented
 - **Details**:
     - **Safe Checkout**: Dry-run checks with conflict detection.

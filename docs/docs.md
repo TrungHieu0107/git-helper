@@ -44,6 +44,18 @@ Branch switching uses a two-step "Safe Checkout" pattern:
 2.  **Resolution**: `resolve_checkout_target` normalizes remote branches (e.g., `origin/main`) to their local tracking counterparts.
 3.  **Checkout**: Only if the dry-run is clean (or after a user-initiated stash) does `checkout_branch` execute the actual switch.
 
+### 2.4 File History & History Modal
+File history is fetched using `git2`'s `revwalk` combined with `DiffOptions::pathspec` filtering.
+- **Log Calculation**: Iterates through commits reachable from HEAD, filtering by the specific file path.
+- **Empty Tree Comparison**: For the first commit in a repo's history, the file is compared against an empty tree (created via `treebuilder`) to show all initial content as additions.
+- **History Modal**: A full-screen overlay that isolates the diff view from the main working tree state. It reuses the `MainDiffView` component with explicit `path` and `commitOid` props.
+
+### 2.5 File Operations
+- **System Editor**: Uses `std::process::Command` to open files in the default system-registered editor (`open` on macOS, `cmd /c start` on Windows, `xdg-open` on Linux).
+- **Safe Discard**:
+    - **Untracked files**: Deleted from disk using `fs::remove_file`.
+    - **Tracked files**: Reset from HEAD (`repo.reset_default`) and then checked out to synchronize the working tree.
+
 ## 3. Persistence Layer (`app_state.json`)
 
 The application persists user sessions in the app-specific data directory.
