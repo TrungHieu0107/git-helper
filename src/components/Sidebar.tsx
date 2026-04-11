@@ -71,22 +71,6 @@ function filterBranchTree(nodes: BranchNode[], filterText: string): BranchNode[]
     }, [] as BranchNode[]);
 }
 
-function Highlight({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-  
-  const parts = text.split(new RegExp(`(${query})`, 'gi'));
-  return (
-    <>
-      {parts.map((part, i) => 
-        part.toLowerCase() === query.toLowerCase() ? (
-          <span key={i} className="text-blue-400 bg-blue-500/10 font-bold px-0.5 rounded-sm">{part}</span>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
-}
 
 export function Sidebar() {
   const [localOpen, setLocalOpen] = useState(true);
@@ -245,24 +229,29 @@ export function Sidebar() {
             </div>
         
             <div className="flex items-center">
-               <div className="flex-1 flex items-center bg-[#282c33] rounded px-2">
+               <div className="flex-1 flex items-center bg-[#0d1117] rounded-md px-2 border border-[#30363d] focus-within:border-[#388bfd] shadow-inner transition-colors">
+                  <Search size={14} className="text-[#6e7681] mr-2" />
                   <input
                     type="text"
-                    placeholder="Filter (Ctrl+Alt+F)"
+                    placeholder="Filter branches, stashes..."
                     value={filter}
                     onChange={e => setFilter(e.target.value)}
-                    className="w-full bg-transparent border-none text-xs py-1 outline-none text-[#a0a6b1] placeholder-[#5c6370]"
+                    className="w-full bg-transparent border-none text-[13px] py-1.5 outline-none text-[#e6edf3] placeholder-[#6e7681]"
                   />
-                  <Search size={14} className="text-[#5c6370]" />
+                  {filter && (
+                    <button onClick={() => setFilter('')} className="text-[#6e7681] hover:text-[#e6edf3] ml-1">
+                      <X size={14} />
+                    </button>
+                  )}
                </div>
             </div>
           </div>
 
           <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
                <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
                {localOpen && (
-                 <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar-hidden bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
                     {filteredLocalTree.length === 0 ? (
                       <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                     ) : (
@@ -278,10 +267,10 @@ export function Sidebar() {
               <SidebarResizeHandle onMouseDown={startResizing('local')} />
             )}
 
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 pt-3 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
                <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                {remoteOpen && (
-                 <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar-hidden bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
                    {filteredRemoteTree.size === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                    ) : (
@@ -555,39 +544,47 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
                         await safeSwitchBranch(fullRef);
                     }
                 }}
-                className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors
-                    ${isHead ? 'bg-[#2c313a]' : 'hover:bg-[#2c313a]'}
+                className={`flex items-center group h-[28px] px-1.5 mx-1 rounded-md transition-all cursor-pointer whitespace-nowrap
+                    ${isHead ? 'bg-[#1d3a5f] border-l-2 border-[#388bfd]' : 'hover:bg-[#1f2937] border-l-2 border-transparent'}
                 `}
-                style={{ paddingLeft: `${level * 12 + 4}px` }}
+                style={{ paddingLeft: `${Math.max(1.5, level * 4 + 1.5)}px` }}
             >
-                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                <div className="flex items-center gap-2 overflow-hidden flex-1 group">
                     {hasChildren ? (
-                        <div className="flex items-center gap-1.5 shrink-0 overflow-hidden">
-                            {expanded ? <ChevronDown size={12} className="text-[#5c6370]" /> : <ChevronRight size={12} className="text-[#5c6370]" />}
-                            <Folder size={14} className="text-amber-600/80 shrink-0" fill="currentColor" />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${expanded ? '' : '-rotate-90'}`} />
+                            <Folder size={14} className="text-[#388bfd] opacity-70" />
                         </div>
                     ) : (
-                        <div className="shrink-0 w-[24px] flex justify-center">
-                           {isHead ? <CircleDot size={12} className="text-[#3b82f6]" /> : <Circle size={12} className="text-[#5c6370]" />}
+                        <div className="shrink-0 w-4 flex justify-center">
+                           {remotePrefix ? (
+                             <Cloud size={14} className={isHead ? "text-[#388bfd]" : "text-[#6e7681] group-hover:text-[#e6edf3]"} />
+                           ) : (
+                             <GitBranch size={14} className={isHead ? "text-[#388bfd]" : "text-[#6e7681] group-hover:text-[#e6edf3]"} />
+                           )}
                         </div>
                     )}
                     
-                    <span className={`text-[13px] truncate ${isHead ? 'text-[#e5e5e6] font-semibold' : 'text-[#a0a6b1]'}`}>
+                    <span className={`text-[13px] truncate flex-1 group-hover:text-[#e6edf3] transition-colors ${isHead ? 'text-[#e6edf3] font-semibold' : 'text-[#8b949e]'}`}>
                         <Highlight text={node.name} query={filter} />
                     </span>
-                    
-                    {isHead && <CloudSync size={12} className="text-slate-400 shrink-0 ml-1" />}
+
+                    {isHead && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#388bfd] mr-1" />
+                    )}
                 </div>
                 
                 {node.isBranch && (
-                    <MoreHorizontal 
-                      size={14} 
+                    <button 
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
                         setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
                       }}
-                    />
+                    >
+                      <MoreHorizontal size={14} className="text-[#8b949e]" />
+                    </button>
                 )}
             </div>
 
@@ -604,13 +601,12 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
 
 function SectionHeader({ title, count, open, setOpen }: { title: string; count: number | string; open: boolean; setOpen: (b: boolean) => void }) {
   return (
-    <div onClick={() => setOpen(!open)} className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-[#5c6370] uppercase cursor-pointer hover:text-slate-300">
-      <div className="flex items-center gap-1 shrink-0">
-         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-         {title}
-      </div>
+    <div onClick={() => setOpen(!open)} className="flex items-center group cursor-pointer h-7 px-2">
+      <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 mr-1.5 ${open ? '' : '-rotate-90'}`} />
+      <span className="section-header-text whitespace-nowrap mr-3">{title}</span>
+      <hr className="flex-1 border-[#30363d]" />
       {count !== "" && (
-          <span className="bg-[#282c33] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{count}</span>
+          <span className="ml-3 bg-[#1c2128] text-[#6e7681] text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-[#30363d] min-w-[20px] text-center">{count}</span>
       )}
     </div>
   );
