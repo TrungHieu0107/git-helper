@@ -295,7 +295,7 @@ export function Sidebar() {
                          </div>
                           <div className="pl-4">
                              {tree.map(node => (
-                               <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} filter={filter} setBranchContextMenu={setBranchContextMenu} />
+                               <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remote} />
                              ))}
                           </div>
                        </div>
@@ -521,7 +521,7 @@ function BranchSelector() {
   );
 }
 
-function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchContextMenu }: { node: BranchNode; activeBranch: string | null; level: number, filter?: string, setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void }) {
+function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchContextMenu, remotePrefix }: { node: BranchNode; activeBranch: string | null; level: number, filter?: string, setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void, remotePrefix?: string }) {
     const [expanded, setExpanded] = useState(true);
     const isHead = activeBranch === node.fullPath;
     const hasChildren = node.children.size > 0;
@@ -541,13 +541,14 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
                 onContextMenu={(e) => {
                     if (node.isBranch) {
                         e.preventDefault();
-                        e.stopPropagation();
-                        setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: node.fullPath });
+                        const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+                        setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
                     }
                 }}
                 onDoubleClick={async () => {
                     if (node.isBranch && !isHead) {
-                        await safeSwitchBranch(node.fullPath);
+                        const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+                        await safeSwitchBranch(fullRef);
                     }
                 }}
                 className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors
@@ -577,10 +578,10 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
                 {node.isBranch && (
                     <MoreHorizontal 
                       size={14} 
-                      className="text-slate-400 invisible group-hover:visible shrink-0 ml-2" 
                       onClick={(e) => {
                         e.stopPropagation();
-                        setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: node.fullPath });
+                        const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+                        setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
                       }}
                     />
                 )}
@@ -589,7 +590,7 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
             {hasChildren && expanded && (
                 <div className="flex flex-col">
                     {children.map(child => (
-                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} filter={filter} setBranchContextMenu={setBranchContextMenu} />
+                        <BranchTreeItem key={child.fullPath} node={child} activeBranch={activeBranch} level={level + 1} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remotePrefix} />
                     ))}
                 </div>
             )}
