@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { invoke } from '@tauri-apps/api/core';
 import { DiffEditor } from "@monaco-editor/react";
-import { X, Columns, AlignLeft, Settings, ArrowUp, ArrowDown } from "lucide-react";
+import { X, Columns, AlignLeft, Settings, ArrowUp, ArrowDown, Globe, Check, ChevronDown } from "lucide-react";
 import { useAppStore } from "../store";
 
 export interface MainDiffViewProps {
@@ -11,6 +11,13 @@ export interface MainDiffViewProps {
   hideClose?: boolean;
   onClose?: () => void;
 }
+
+const ENCODINGS = [
+  { label: 'Unicode', value: 'utf-8' },
+  { label: 'Japanese', value: 'shift_jis' },
+  { label: 'Vietnamese', value: 'windows-1258' },
+  { label: 'Simplified Chinese', value: 'gbk' },
+];
 
 export function MainDiffView(props: MainDiffViewProps) {
   const store = useAppStore();
@@ -32,6 +39,8 @@ export function MainDiffView(props: MainDiffViewProps) {
   
   const [changes, setChanges] = useState<any[]>([]);
   const [currentChangeIndex, setCurrentChangeIndex] = useState<number>(-1);
+  const [isEncodingMenuOpen, setIsEncodingMenuOpen] = useState(false);
+  const encodingMenuRef = useRef<HTMLDivElement>(null);
   const diffEditorRef = useRef<any>(null);
   const prevTimestampRef = useRef<number>(refreshTimestamp);
   const lastSelectionRef = useRef<string | null>(null);
@@ -147,6 +156,18 @@ export function MainDiffView(props: MainDiffViewProps) {
   }, [path, staged, commitOid, activeRepoPath, fileEncoding, refreshTimestamp]);
 
   useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (encodingMenuRef.current && !encodingMenuRef.current.contains(event.target as Node)) {
+        setIsEncodingMenuOpen(false);
+      }
+    };
+    if (isEncodingMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEncodingMenuOpen]);
+
+  useEffect(() => {
     return () => {
       if (diffEditorRef.current) {
         try {
@@ -258,18 +279,41 @@ export function MainDiffView(props: MainDiffViewProps) {
             </button>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#21262d] px-2 py-1 rounded-md border border-[#30363d]">
-            <Settings size={12} className="text-[#8b949e]" />
-            <select 
-              value={fileEncoding}
-              onChange={(e) => store.setFileEncoding(e.target.value)}
-              className="bg-transparent text-[11px] text-[#c9d1d9] outline-none cursor-pointer"
+          <div className="relative" ref={encodingMenuRef}>
+            <button
+              onClick={() => setIsEncodingMenuOpen(!isEncodingMenuOpen)}
+              className="flex items-center gap-2 bg-[#21262d] px-2.5 py-1 rounded-md border border-[#30363d] hover:border-[#8b949e] transition-all group"
             >
-              <option value="utf-8">UTF-8</option>
-              <option value="shift_jis">Shift-JIS</option>
-              <option value="windows-1258">Windows-1258</option>
-              <option value="gbk">GBK</option>
-            </select>
+              <Globe size={12} className="text-[#8b949e] group-hover:text-[#c9d1d9]" />
+              <span className="text-[11px] text-[#c9d1d9] font-medium min-w-[60px] text-left">
+                {ENCODINGS.find(e => e.value === fileEncoding)?.label || fileEncoding.toUpperCase()}
+              </span>
+              <ChevronDown size={10} className={`text-[#8b949e] transition-transform duration-200 ${isEncodingMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isEncodingMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-[#161b22]/95 backdrop-blur-xl border border-[#30363d] rounded-lg shadow-2xl z-[100] py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-3 py-2 text-[10px] font-bold text-[#6e7681] uppercase tracking-wider border-b border-[#30363d] mb-1">
+                  Text Encoding
+                </div>
+                {ENCODINGS.map((enc) => (
+                  <button
+                    key={enc.value}
+                    onClick={() => {
+                      store.setFileEncoding(enc.value);
+                      setIsEncodingMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors group ${fileEncoding === enc.value ? 'bg-[#388bfd]/10 text-[#388bfd]' : 'text-[#c9d1d9] hover:bg-[#21262d]'}`}
+                  >
+                    <div className="flex flex-col items-start">
+                      <span className="font-semibold">{enc.label}</span>
+                      <span className="text-[10px] opacity-60 uppercase">{enc.value}</span>
+                    </div>
+                    {fileEncoding === enc.value && <Check size={14} className="text-[#388bfd]" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {!props.hideClose && (
