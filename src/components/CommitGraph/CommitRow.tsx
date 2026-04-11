@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, Monitor, Cloud, ChevronDown, RotateCcw } from 'lucide-react';
+import { Copy, Check, Monitor, Cloud, ChevronDown } from 'lucide-react';
 import { CommitNode, useAppStore } from '../../store';
 import { selectCommitDetail, safeSwitchBranch } from '../../lib/repo';
 
@@ -160,8 +160,6 @@ export function CommitRow({
   };
 
   const authorFirstName = n.author.split(' ')[0];
-  const authorInitial = n.author[0].toUpperCase();
-  const authorHue = hue(n.author);
 
   return (
     <div 

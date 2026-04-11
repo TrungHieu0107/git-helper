@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAppStore, CommitNode } from '../store';
-import { loadMoreCommits, selectCommitDetail, safeSwitchBranch } from '../lib/repo';
+import { loadMoreCommits } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { CommitRow, WipRow } from './CommitGraph/CommitRow';
 import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
