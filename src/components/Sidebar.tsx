@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw } from "lucide-react";
-import { useAppStore } from "../store";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw, Cloud, Layers, X } from "lucide-react";
+import { useAppStore, StashEntry } from "../store";
 import { safeSwitchBranch, applyStash, popStash } from "../lib/repo";
-import { StashEntry } from "../store";
+import { Highlight } from "./Sidebar/utils";
+import { StashEntryItem, StashContextMenu } from "./Sidebar/Stashes";
 
 // Hierarchical Branch Tree Types
 export interface BranchNode {
@@ -71,22 +72,6 @@ function filterBranchTree(nodes: BranchNode[], filterText: string): BranchNode[]
     }, [] as BranchNode[]);
 }
 
-function Highlight({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-  
-  const parts = text.split(new RegExp(`(${query})`, 'gi'));
-  return (
-    <>
-      {parts.map((part, i) => 
-        part.toLowerCase() === query.toLowerCase() ? (
-          <span key={i} className="text-blue-400 bg-blue-500/10 font-bold px-0.5 rounded-sm">{part}</span>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
-}
 
 export function Sidebar() {
   const [localOpen, setLocalOpen] = useState(true);
@@ -245,24 +230,29 @@ export function Sidebar() {
             </div>
         
             <div className="flex items-center">
-               <div className="flex-1 flex items-center bg-[#282c33] rounded px-2">
+               <div className="flex-1 flex items-center bg-[#0d1117] rounded-md px-2 border border-[#30363d] focus-within:border-[#388bfd] shadow-inner transition-colors">
+                  <Search size={14} className="text-[#6e7681] mr-2" />
                   <input
                     type="text"
-                    placeholder="Filter (Ctrl+Alt+F)"
+                    placeholder="Filter branches, stashes..."
                     value={filter}
                     onChange={e => setFilter(e.target.value)}
-                    className="w-full bg-transparent border-none text-xs py-1 outline-none text-[#a0a6b1] placeholder-[#5c6370]"
+                    className="w-full bg-transparent border-none text-[13px] py-1.5 outline-none text-[#e6edf3] placeholder-[#6e7681]"
                   />
-                  <Search size={14} className="text-[#5c6370]" />
+                  {filter && (
+                    <button onClick={() => setFilter('')} className="text-[#6e7681] hover:text-[#e6edf3] ml-1">
+                      <X size={14} />
+                    </button>
+                  )}
                </div>
             </div>
           </div>
 
           <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
                <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
                {localOpen && (
-                 <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
                     {filteredLocalTree.length === 0 ? (
                       <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                     ) : (
@@ -278,10 +268,10 @@ export function Sidebar() {
               <SidebarResizeHandle onMouseDown={startResizing('local')} />
             )}
 
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 pt-3 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
                <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                {remoteOpen && (
-                 <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
                    {filteredRemoteTree.size === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                    ) : (
@@ -309,62 +299,25 @@ export function Sidebar() {
               <SidebarResizeHandle onMouseDown={startResizing('remote')} />
             )}
 
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 pt-3 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
                <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
                {stashOpen && (
-                 <div className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-2">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1 px-1 gap-1.5">
                    {filteredStashes.length === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                    ) : (
-                      filteredStashes.map((s: StashEntry) => {
-                        const timeStr = new Date(s.timestamp * 1000).toLocaleString(undefined, {
-                          year: 'numeric', month: 'short', day: 'numeric',
-                          hour: '2-digit', minute: '2-digit'
-                        });
-                        return (
-                          <div 
-                            key={s.oid} 
-                            onClick={() => { /* maybe select later */ }}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setStashContextMenu({ x: e.clientX, y: e.clientY, stash: s });
-                            }}
-                            className="flex flex-col py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-default group text-[13px] text-slate-300 overflow-hidden relative"
-                            title={`stash@{${s.stackIndex}}: ${s.message}`}
-                          >
-                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 min-w-0 pr-12">
-                                  <span className="text-slate-500 shrink-0 select-none">≡</span>
-                                  <span className="truncate text-slate-300 font-medium">
-                                     <Highlight text={s.message || `stash@{${s.stackIndex}}`} query={filter} />
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1 invisible group-hover:visible absolute right-1 top-1 bg-[#2c313a]/90 pl-2 pr-1 py-0.5 rounded-l backdrop-blur-sm shadow-sm transition-all">
-                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); applyStash(s.stackIndex); }}
-                                      className="p-1 hover:bg-blue-500/20 text-blue-400 rounded transition-colors" 
-                                      title="Apply Stash (keeps entry)"
-                                   >
-                                      <CloudSync size={14} />
-                                   </button>
-                                   <button 
-                                      onClick={(e) => { e.stopPropagation(); useAppStore.setState({ confirmStashDrop: s }); }}
-                                      className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors" 
-                                      title="Drop Stash (deletes entry)"
-                                   >
-                                      <Trash2 size={14} />
-                                   </button>
-                                </div>
-                             </div>
-                             <div className="flex items-center gap-2 pl-4">
-                               <span className="text-[10px] text-slate-500 whitespace-nowrap">{timeStr}</span>
-                               <span className="text-[10px] text-slate-600 font-mono">stash@{s.stackIndex}</span>
-                             </div>
-                          </div>
-                        )
-                      })
-                   )}
+                      filteredStashes.map((s: StashEntry) => (
+                        <StashEntryItem 
+                          key={s.oid} 
+                          stash={s} 
+                          filter={filter} 
+                          onContextMenu={(e, stash) => {
+                            e.preventDefault();
+                            setStashContextMenu({ x: e.clientX, y: e.clientY, stash });
+                          } } 
+                        />
+                      ))
+                    )}
                  </div>
                )}
             </div>
@@ -555,39 +508,47 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
                         await safeSwitchBranch(fullRef);
                     }
                 }}
-                className={`flex items-center justify-between py-1 px-1 rounded cursor-pointer group whitespace-nowrap transition-colors
-                    ${isHead ? 'bg-[#2c313a]' : 'hover:bg-[#2c313a]'}
+                className={`flex items-center group h-[24px] px-1.5 mx-1 rounded-md transition-all cursor-pointer whitespace-nowrap
+                    ${isHead ? 'bg-[#1d3a5f] border-l-2 border-[#388bfd]' : 'hover:bg-[#1f2937] border-l-2 border-transparent'}
                 `}
-                style={{ paddingLeft: `${level * 12 + 4}px` }}
+                style={{ paddingLeft: `${Math.max(6, level * 20.5 + 6)}px` }}
             >
-                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                <div className="flex items-center gap-2 overflow-hidden flex-1 group">
                     {hasChildren ? (
-                        <div className="flex items-center gap-1.5 shrink-0 overflow-hidden">
-                            {expanded ? <ChevronDown size={12} className="text-[#5c6370]" /> : <ChevronRight size={12} className="text-[#5c6370]" />}
-                            <Folder size={14} className="text-amber-600/80 shrink-0" fill="currentColor" />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${expanded ? '' : '-rotate-90'}`} />
+                            <Folder size={14} className="text-[#388bfd] opacity-70" />
                         </div>
                     ) : (
-                        <div className="shrink-0 w-[24px] flex justify-center">
-                           {isHead ? <CircleDot size={12} className="text-[#3b82f6]" /> : <Circle size={12} className="text-[#5c6370]" />}
+                        <div className="shrink-0 w-4 flex justify-center">
+                           {remotePrefix ? (
+                             <Cloud size={14} className={isHead ? "text-[#388bfd]" : "text-[#6e7681] group-hover:text-[#e6edf3]"} />
+                           ) : (
+                             <GitBranch size={14} className={isHead ? "text-[#388bfd]" : "text-[#6e7681] group-hover:text-[#e6edf3]"} />
+                           )}
                         </div>
                     )}
                     
-                    <span className={`text-[13px] truncate ${isHead ? 'text-[#e5e5e6] font-semibold' : 'text-[#a0a6b1]'}`}>
+                    <span className={`text-[13px] truncate flex-1 group-hover:text-[#e6edf3] transition-colors ${isHead ? 'text-[#e6edf3] font-semibold' : 'text-[#8b949e]'}`}>
                         <Highlight text={node.name} query={filter} />
                     </span>
-                    
-                    {isHead && <CloudSync size={12} className="text-slate-400 shrink-0 ml-1" />}
+
+                    {isHead && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#388bfd] mr-1" />
+                    )}
                 </div>
                 
                 {node.isBranch && (
-                    <MoreHorizontal 
-                      size={14} 
+                    <button 
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation();
                         const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
                         setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
                       }}
-                    />
+                    >
+                      <MoreHorizontal size={14} className="text-[#8b949e]" />
+                    </button>
                 )}
             </div>
 
@@ -604,13 +565,12 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
 
 function SectionHeader({ title, count, open, setOpen }: { title: string; count: number | string; open: boolean; setOpen: (b: boolean) => void }) {
   return (
-    <div onClick={() => setOpen(!open)} className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-[#5c6370] uppercase cursor-pointer hover:text-slate-300">
-      <div className="flex items-center gap-1 shrink-0">
-         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-         {title}
-      </div>
+    <div onClick={() => setOpen(!open)} className="flex items-center group cursor-pointer h-6 px-2">
+      <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 mr-1.5 ${open ? '' : '-rotate-90'}`} />
+      <span className="section-header-text whitespace-nowrap mr-3">{title}</span>
+      <hr className="flex-1 border-[#30363d]" />
       {count !== "" && (
-          <span className="bg-[#282c33] px-1.5 py-0.5 rounded-full min-w-[20px] text-center">{count}</span>
+          <span className="ml-3 bg-[#1c2128] text-[#6e7681] text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-[#30363d] min-w-[20px] text-center">{count}</span>
       )}
     </div>
   );
@@ -623,84 +583,6 @@ function SidebarResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEven
       className="h-1 cursor-row-resize hover:bg-blue-500/30 transition-colors my-1 shrink-0 z-10"
       title="Drag to resize"
     />
-  );
-}
-function StashContextMenu({ stash, position, onClose }: { stash: StashEntry, position: { x: number, y: number }, onClose: () => void }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState(position);
-
-  useEffect(() => {
-    if (!menuRef.current) return;
-    const rect = menuRef.current.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    let { x, y } = position;
-
-    if (x + rect.width > vw - 8) x = vw - rect.width - 8;
-    if (y + rect.height > vh - 8) y = vh - rect.height - 8;
-    if (x < 8) x = 8;
-    if (y < 8) y = 8;
-
-    setMenuPos({ x, y });
-  }, [position]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  return (
-    <div
-      ref={menuRef}
-      className="absolute bg-[#1c2128] border border-[#30363d] rounded shadow-2xl z-[9999] overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-left min-w-[160px]"
-      style={{
-        position: 'fixed',
-        left: menuPos.x,
-        top: menuPos.y,
-      }}
-    >
-      <div className="px-3 py-1.5 border-b border-[#30363d] mb-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-slate-500">stash@{stash.stackIndex}</span>
-        </div>
-      </div>
-      
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); applyStash(stash.stackIndex); }}
-        className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-blue-600/10 hover:text-blue-400 flex items-center gap-2 transition-colors"
-      >
-        <CloudSync size={14} />
-        Apply Stash
-      </button>
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); popStash(stash.stackIndex); }}
-        className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-emerald-600/10 hover:text-emerald-400 flex items-center gap-2 transition-colors"
-      >
-        <ChevronsDown size={14} />
-        Pop Stash
-      </button>
-      <div className="h-[1px] bg-[#30363d] my-1" />
-      <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); useAppStore.setState({ confirmStashDrop: stash }); }}
-        className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
-      >
-        <Trash2 size={14} />
-        Drop Stash
-      </button>
-    </div>
   );
 }
 

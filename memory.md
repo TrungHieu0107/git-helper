@@ -1,7 +1,6 @@
 # GitManager App Memory
-## Version: 2.3.2
-## Last updated: 2026-04-11 – Fix CreateBranchDialog UI obscuring dropdown
-
+## Version: 2.4.4
+## Last updated: 2026-04-11 – Completed GitKit visual overhaul Phase 1 (Sidebar, CommitGraph, RightPanel, Toolbar)
 
 ## Project: GitKit
 
@@ -79,24 +78,46 @@
     - **Frontend**: Transformed Push button into a Split-Button in `TopToolbar.tsx`. Added `SetUpstreamDialog.tsx` for untracked branches.
     - **Alerting**: Implemented amber warning indicator and "Amend Push" state triggered by local amendments.
 
-# Project Status: Stable (v2.1.1)
-The GitKit application is stable and fully supports the "Amend Previous Commit" feature.
-
-# Project Status Summary
-Version 2.1.1 introduces a high-polish Amend workflow, featuring original author preservation, safety guards for remote history protection, and intelligent UI synchronization across the commit graph.
-
-- **2026-04-11 (v2.3.0)**: 
+- 2026-04-11 (v2.3.0): 
   - Implemented **Commit Graph Virtualization** using `@tanstack/react-virtual` v3.
   - Refactored `CommitGraph.tsx` to handle 10k+ rows with 60fps scrolling.
   - Optimized SVG rendering by filtering non-visible edges and nodes.
   - Completed **Force Checkout** workflow with safety stashing and UI alerts.
   - Added "Force Reset to Origin" to Sidebar and Branch Selector context menus.
-- **2026-04-11 (v2.3.1)**: 
+- 2026-04-11 (v2.3.1): 
   - Fixed JSX syntax error in `ForceCheckoutAlert.tsx`.
   - Resolved TypeScript errors regarding `setBranchContextMenu` scoping.
   - Cleaned up unused variables and imports in `Sidebar`, `TopToolbar`, `CommitGraph`, and `ConflictEditorView`.
   - Verified clean production build with `npm run build`.
-- **2026-04-11 (v2.3.2)**: 
+- 2026-04-11 (v2.3.2): 
   - Fixed UI bug in `CreateBranchDialog` where the "Source Branch" dropdown was obscured by the dialog container.
   - Removed `overflow: hidden` from `.create-branch-dialog` class in `index.css` to allow absolute-positioned overlays to render outside the dialog boundaries.
+- 2026-04-11 (v2.3.3): 
+  - Initiated comprehensive UI/UX redesign. Created implementation plan for 5-stage overhaul affecting Design System, Sidebar, Commit Graph, Right Panel, and Top Toolbar.
+- 2026-04-11 (v2.3.4):
+  - **Request**: Complete redesign of GitKit UI for premium look and feel.
+  - **Reason**: Standardize visual hierarchy, improve readability, and achieve "GitHub-dark" level depth.
+  - **Changes**:
+    - `index.css`: Defined design tokens (--bg-main, --bg-panel, etc.) and global typography classes.
+    - `Sidebar.tsx`: Redesigned SectionHeaders, BranchTreeItems (28px height, active pill state), Search bar, and Stash cards.
+    - `CommitGraph.tsx`: Redesigned Ref badges (premium pills), sticky headers, author avatars, and hash copy functionality. 36px row height.
+    - `RightPanel.tsx`: Redesigned FileRows (26px height), StatusIcon pills, and Commit area with Amend toggle.
+    - `TopToolbar.tsx`: Grouped actions with vertical separators and refined icon buttons. Added Active Branch indicator to RepoSelector.
+  - **Status**: Completed Phase 1 UI/UX redesign.
 
+- 2026-04-11 (v2.3.5): 
+  - **Feature**: Modularized Sidebar stashes into src/components/Sidebar/Stashes.tsx.
+  - **Fix**: Resolved JSX syntax error in Sidebar.tsx and cleaned up legacy code.
+  - **Refinement**: Applied premium redesign styling to modular components.
+
+- 2026-04-11 (v2.3.6): 
+  - **Fix**: Resolved ReferenceError in TopToolbar.tsx by properly destructuring activeBranch in the RepoSelector component.
+  - **Rules of Hooks Violation**: Resolved a critical runtime error in `CommitGraph.tsx` where `useState` was being called inside a `map` loop.
+  - **CommitGraph Modularization**: Extracted row rendering logic into dedicated `CommitRow` and `WipRow` components in `src/components/CommitGraph/`.
+  - **Logic Isolation**: Isolated the "Copy Hash" state for each commit row, ensuring stable and independent state handling.
+
+- 2026-04-11 (v2.4.4):
+  - **Refinement**: Further reduced sidebar and section headers to **7px** to create an extremely sharp, high-density visual contrast between headers and content.
+
+# Project Status: Stable (v2.3.8)
+The GitKit application is stable and has completed the first phase of its comprehensive UI/UX redesign, featuring a modernized design system, standardized typography, and a compact, high-density layout.

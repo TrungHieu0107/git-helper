@@ -129,6 +129,20 @@ export function MainDiffView() {
     return () => { isMounted = false; };
   }, [selectedDiff, activeRepoPath, fileEncoding, refreshTimestamp]);
 
+  // Bug Fix: Safely detach models before unmount to prevent Monaco disposal errors
+  useEffect(() => {
+    return () => {
+      if (diffEditorRef.current) {
+        try {
+          diffEditorRef.current.setModel(null);
+        } catch (e) {
+          console.warn("Monaco: Failed to detach models during cleanup", e);
+        }
+        diffEditorRef.current = null;
+      }
+    };
+  }, []);
+
   if (!selectedDiff) return null;
 
   const closeView = () => useAppStore.setState({ selectedDiff: null });

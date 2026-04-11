@@ -3,12 +3,12 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAppStore, CommitNode } from '../store';
 import { loadMoreCommits, selectCommitDetail, safeSwitchBranch } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
-import { Monitor, Cloud, ChevronDown } from 'lucide-react';
+import { CommitRow, WipRow } from './CommitGraph/CommitRow';
 import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
 
 // ── Constants ────────────────────────────────────────────────────────
-const ROW_H = 36;
-const LANE_W = 20;
+const ROW_H = 30;
+const LANE_W = 18;
 const NODE_R = 10;
 const MERGE_DOT_R = 4;
 const LANE_PAD = NODE_R + 8;
@@ -63,10 +63,15 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
   }
 }
 
-function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
+function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number): Edge[] {
   const out: Edge[] = [];
+  
+  // Use a map for O(1) row lookups instead of findIndex (O(N))
+  const oidMap = new Map<string, number>();
+  commits.forEach((c, i) => oidMap.set(c.oid, i));
+
   // WIP → first commit
-  if (wip && commits.length > 0) {
+  if (wip && commits.length > 0 && minIdx <= 0) {
     const x1 = lx(0), y1 = ly(0), x2 = lx(commits[0].lane), y2 = ly(off);
     out.push({ 
       path: roundedPath(x1, y1, x2, y2, 'branch-off'), 
@@ -78,18 +83,26 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
       r2: off
     });
   }
-  commits.forEach((c, i) => {
-    if (c.node_type === 'stash') return; 
+
+  // Only process commits that could have visible edges
+  // We buffer the range significantly to ensure long merge lines are captured
+  const start = Math.max(0, minIdx - 50);
+  const end = Math.min(commits.length, maxIdx + 50);
+
+  for (let i = start; i < end; i++) {
+    const c = commits[i];
+    if (c.node_type === 'stash') continue; 
 
     const row = i + off;
     c.parents.forEach((po, pi) => {
-      const idx = commits.findIndex(n => n.oid === po);
+      const targetIdx = oidMap.get(po);
       const e = c.edges[pi];
       const ci = e?.color_idx ?? c.color_idx;
       const x1 = lx(c.lane), y1 = ly(row);
       const type = pi === 0 ? 'branch-off' : 'merge';
 
-      if (idx === -1) {
+      if (targetIdx === undefined) {
+        // Parent not in current batch/view
         const tl = e?.to_lane ?? c.lane;
         const x2 = lx(tl), y2 = ly(row + 5);
         out.push({ 
@@ -102,150 +115,63 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean): Edge[] {
         });
         return;
       }
-      const pRow = idx + off;
-      const x2 = lx(commits[idx].lane), y2 = ly(pRow);
-      out.push({ 
-        path: roundedPath(x1, y1, x2, y2, type), 
-        colorIdx: ci, 
-        childOid: c.oid, 
-        isMerge: pi > 0,
-        r1: Math.min(row, pRow),
-        r2: Math.max(row, pRow)
-      });
+
+      const pRow = targetIdx + off;
+      // Only add edge if it's within or entering the visible range
+      if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
+        const x2 = lx(commits[targetIdx].lane), y2 = ly(pRow);
+        out.push({ 
+          path: roundedPath(x1, y1, x2, y2, type), 
+          colorIdx: ci, 
+          childOid: c.oid, 
+          isMerge: pi > 0,
+          r1: Math.min(row, pRow),
+          r2: Math.max(row, pRow)
+        });
+      }
     });
-  });
+  }
   return out;
 }
 
-function buildStashEdges(commits: CommitNode[], off: number): Edge[] {
+function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, maxIdx: number): Edge[] {
   const out: Edge[] = [];
-  commits.forEach((c, i) => {
-    if (c.node_type !== 'stash' || !c.base_oid) return;
+  const oidMap = new Map<string, number>();
+  commits.forEach((c, i) => oidMap.set(c.oid, i));
+
+  const start = Math.max(0, minIdx - 20);
+  const end = Math.min(commits.length, maxIdx + 20);
+
+  for (let i = start; i < end; i++) {
+    const c = commits[i];
+    if (c.node_type !== 'stash' || !c.base_oid) continue;
     
-    const baseIdx = commits.findIndex(n => n.oid === c.base_oid);
-    if (baseIdx === -1) return;
+    const baseIdx = oidMap.get(c.base_oid);
+    if (baseIdx === undefined) continue;
 
     const row = i + off;
     const pRow = baseIdx + off;
     
-    const x1 = lx(commits[baseIdx].lane); 
-    const y1 = ly(pRow);                 
-    const x2 = lx(c.lane);               
-    const y2 = ly(row);                  
-
-    const path = roundedPath(x1, y1, x2, y2, 'merge');
-    out.push({ 
-      path, 
-      colorIdx: c.color_idx, 
-      childOid: c.oid, 
-      isMerge: false, 
-      dashed: true,
-      r1: Math.min(row, pRow),
-      r2: Math.max(row, pRow)
-    });
-  });
+    if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
+      const x1 = lx(commits[baseIdx].lane); 
+      const y1 = ly(pRow);                 
+      const x2 = lx(c.lane);               
+      const y2 = ly(row);                  
+      const path = roundedPath(x1, y1, x2, y2, 'merge');
+      out.push({ 
+        path, 
+        colorIdx: c.color_idx, 
+        childOid: c.oid, 
+        isMerge: false, 
+        dashed: true,
+        r1: Math.min(row, pRow),
+        r2: Math.max(row, pRow)
+      });
+    }
+  }
   return out;
 }
 
-// ── BranchLabels Component ───────────────────────────────────────────
-function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: number, isActive: boolean }) {
-  const [open, setOpen] = useState(false);
-  
-  const branchGroups: [string, any][] = useMemo(() => {
-    const groups = new Map<string, { isLocal: boolean; isRemote: boolean; isHead: boolean }>();
-    let hasHead = false;
-    refs?.forEach(r => {
-      if (r === 'HEAD') {
-        hasHead = true;
-        return;
-      }
-      let name = r;
-      let isRemote = false;
-      if (r.startsWith('origin/')) {
-        name = r.substring(7);
-        isRemote = true;
-      }
-      const existing = groups.get(name) || { isLocal: false, isRemote: false, isHead: false };
-      if (isRemote) existing.isRemote = true;
-      else existing.isLocal = true;
-      groups.set(name, existing);
-    });
-    
-    const branchEntries = Array.from(groups.entries());
-    if (branchEntries.length === 0 && hasHead) {
-      return [['HEAD', { isLocal: true, isRemote: false, isHead: true }]];
-    }
-    return branchEntries;
-  }, [refs]);
-
-  if (branchGroups.length === 0) return null;
-
-  const [primary, ...others] = branchGroups;
-
-  const renderBadge = ([name, info]: [string, any], isDropdown = false) => {
-    const isRemoteOnly = info.isRemote && !info.isLocal;
-    const isHead = info.isHead;
-    const clr = color(colorIdx);
-    
-    const bg = isHead ? 'bg-sky-900/50 text-sky-300 border-sky-600/50'
-      : isRemoteOnly ? 'bg-purple-900/40 text-purple-300 border-purple-600/50'
-      : `border-[${clr}]/50`;
-      
-    const style = !isHead && !isRemoteOnly ? { backgroundColor: clr + '30', color: clr, borderColor: clr + '60' } : undefined;
-
-    const handleBranchClick = async (e: React.MouseEvent, fullRef: string, isFromDropdown: boolean) => {
-      if (isDropdown !== isFromDropdown) return;
-      e.stopPropagation();
-      if (isHead) return;
-      if (isDropdown) setOpen(false);
-
-      await safeSwitchBranch(fullRef);
-    };
-
-    return (
-      <span key={name} 
-        onClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name, true)}
-        onDoubleClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name, false)}
-        className={`flex items-center gap-1 border px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap truncate cursor-pointer select-none ${isDropdown ? 'max-w-none' : 'max-w-[120px]'} ${isHead || isRemoteOnly ? bg : 'border'} hover:border-white/50 transition-colors shadow-sm`}
-        style={style}>
-        {isHead ? name : (
-          <>
-            <span className="truncate">{name}</span>
-            <div className="flex items-center gap-0.5 opacity-80 shrink-0">
-              {info.isLocal && <Monitor size={10} />}
-              {info.isRemote && <Cloud size={10} />}
-            </div>
-          </>
-        )}
-      </span>
-    );
-  };
-
-  return (
-    <div className={`relative flex items-center gap-1 transition-opacity duration-300 ${!isActive ? 'opacity-30 hover:opacity-100' : ''}`}
-      onMouseEnter={() => others.length > 0 && setOpen(true)}
-      onMouseLeave={() => setOpen(false)}>
-      
-      {renderBadge(primary)}
-
-      {others.length > 0 && (
-        <div className="bg-[#1e293b] text-[#8b949e] border border-[#334155] px-1 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 cursor-default hover:text-white transition-colors h-[18px]">
-          +{others.length}
-          <ChevronDown size={10} />
-        </div>
-      )}
-
-      {/* Dropdown */}
-      {open && others.length > 0 && (
-        <div className="absolute top-full left-0 z-[100] pt-1 -mt-1 group">
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-md shadow-2xl p-1.5 flex flex-col gap-1 min-w-[140px] animate-in fade-in slide-in-from-top-1 duration-150">
-            {others.map(b => renderBadge(b, true))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Main Component ───────────────────────────────────────────────────
 export function CommitGraph() {
@@ -258,16 +184,23 @@ export function CommitGraph() {
 
   const commitSearchInput = useAppStore(s => s.commitSearchInput);
 
+  const [debouncedSearch, setDebouncedSearch] = useState(commitSearchInput);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(commitSearchInput), 150);
+    return () => clearTimeout(timer);
+  }, [commitSearchInput]);
+
   const filteredCommits = useMemo(() => {
     if (!commitLog) return [];
-    if (!commitSearchInput.trim()) return commitLog;
-    const q = commitSearchInput.toLowerCase();
+    if (!debouncedSearch.trim()) return commitLog;
+    const q = debouncedSearch.toLowerCase();
     return commitLog.filter((c: CommitNode) => 
       c.message.toLowerCase().includes(q) || 
       c.short_oid.toLowerCase().includes(q) || 
       c.author.toLowerCase().includes(q)
     );
-  }, [commitLog, commitSearchInput]);
+  }, [commitLog, debouncedSearch]);
 
   const hasWip = (status?.staged_count ?? 0) > 0 || (status?.unstaged_count ?? 0) > 0 || staged.length > 0 || unstaged.length > 0;
   const off = hasWip ? 1 : 0;
@@ -280,9 +213,21 @@ export function CommitGraph() {
 
   const gw = LANE_PAD * 2 + maxLane * LANE_W;
 
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip) : [], [filteredCommits, off, hasWip]);
-  const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off) : [], [filteredCommits, off]);
+  const virtualizer = useVirtualizer({
+    count: totalRows,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 30,
+    overscan: 20,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+  const minVis = virtualItems[0]?.index ?? 0;
+  const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
+
+  const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip, minVis, maxVis) : [], [filteredCommits, off, hasWip, minVis, maxVis]);
+  const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off, minVis, maxVis) : [], [filteredCommits, off, hasWip, minVis, maxVis]);
 
   const activeOids = useMemo(() => {
     const set = new Set<string>();
@@ -319,17 +264,7 @@ export function CommitGraph() {
 
   const closeContextMenu = useCallback(() => setCtxMenu(null), []);
   
-  // ── Virtualization Setup ──────────────────────────────────────────
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  const virtualizer = useVirtualizer({
-    count: totalRows,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_H,
-    overscan: 20,
-  });
-
-  const virtualItems = virtualizer.getVirtualItems();
+  // ── Virtualization Setup (already called above) ───────────────────
 
   // Trigger loading more when we approach the bottom of the virtual list
   useEffect(() => {
@@ -349,15 +284,15 @@ export function CommitGraph() {
   return (
     <main className="flex-1 flex flex-col bg-[#0d1117] h-full overflow-hidden text-sm">
       {/* Header */}
-      <div className="h-9 flex items-center border-b border-[#1e293b] text-[11px] font-semibold text-[#8b949e] tracking-wider uppercase shrink-0 bg-[#161b22] z-20 min-w-max">
-        <div className="pl-3" style={{ width: cw.label }}>BRANCH / TAG</div>
+      <div className="h-7 flex items-center border-b border-[#30363d] bg-[#161b22] sticky top-0 z-30 min-w-max shadow-sm">
+        <div className="pl-4 section-header-text" style={{ width: cw.label }}>BRANCH / TAG</div>
         <ResizeHandle onMouseDown={onMouseDown('label')} />
-        <div className="pl-2" style={{ width: gw }}>GRAPH</div>
-        <div className="flex-1 pl-3">MESSAGE</div>
+        <div className="pl-2 section-header-text" style={{ width: gw }}>GRAPH</div>
+        <div className="flex-1 pl-4 section-header-text">MESSAGE</div>
         <ResizeHandle onMouseDown={onMouseDown('hash')} />
-        <div className="pl-3" style={{ width: cw.hash }}>HASH</div>
+        <div className="pl-4 section-header-text" style={{ width: cw.hash }}>HASH</div>
         <ResizeHandle onMouseDown={onMouseDown('author')} />
-        <div className="pl-3" style={{ width: cw.author }}>AUTHOR</div>
+        <div className="pl-4 section-header-text" style={{ width: cw.author }}>AUTHOR</div>
       </div>
 
       {/* Scroll */}
@@ -458,82 +393,46 @@ export function CommitGraph() {
           </svg>
 
           {/* ═══ HTML Rows ═══ */}
-          {virtualItems.map((virtualRow) => {
+           {virtualItems.map((virtualRow) => {
             const row = virtualRow.index;
             const isWip = row === 0 && hasWip;
             const n = isWip ? null : filteredCommits[row - off];
 
             if (isWip) {
               return (
-                <div
+                <WipRow 
                   key="WIP"
-                  className={`absolute left-0 w-full flex items-center cursor-pointer transition-colors
-                    ${hov === 0 ? 'bg-[#1e293b]/40' : ''} ${sel === 0 ? 'bg-[#3b82f6]/10' : ''}`}
-                  style={{ 
-                    height: ROW_H,
-                    transform: `translateY(${virtualRow.start}px)`
-                  }}
-                  onClick={() => {
-                    setSel(0);
-                    useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false });
-                  }}
-                  onMouseEnter={() => setHov(0)} 
-                  onMouseLeave={() => setHov(null)}
-                >
-                  <div className="pl-3 flex items-center" style={{ width: cw.label }}>
-                    <span className="bg-cyan-900/40 text-cyan-300 border border-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-medium">WIP</span>
-                  </div>
-                  <div style={{ width: gw + 5 }} />
-                  <div className="flex-1 flex items-center pl-3 pr-4 min-w-0">
-                    <div className="h-6 rounded border border-[#245d84]/60 bg-[#0b2942]/65 flex items-center px-2 gap-3">
-                      <span className="text-[11px] font-mono text-[#79c0ff]">// WIP</span>
-                      <span className="text-[10px] text-[#3fb950]">+{status?.staged_count ?? staged.length} staged</span>
-                      <span className="text-[10px] text-[#f2cc60]">+{status?.unstaged_count ?? unstaged.length} unstaged</span>
-                    </div>
-                  </div>
-                  <div className="pl-3 font-mono text-xs text-[#8b949e]/60" style={{ width: cw.hash }}>—</div>
-                  <div className="pl-3 text-xs text-[#8b949e]/60 truncate" style={{ width: cw.author }}>Working Tree</div>
-                </div>
+                  virtualRow={virtualRow}
+                  hov={hov}
+                  sel={sel}
+                  cw={cw}
+                  gw={gw}
+                  status={status}
+                  staged={staged}
+                  unstaged={unstaged}
+                  setHov={setHov}
+                  setSel={setSel}
+                />
               );
             }
 
             if (!n) return null;
 
-            const isActiveNode = activeOids.has(n.oid);
             return (
-              <div 
+              <CommitRow 
                 key={n.oid}
-                className={`absolute left-0 w-full flex items-center cursor-pointer transition-colors
-                  ${hov === row ? 'bg-[#1e293b]/40' : ''} ${sel === row ? 'bg-[#3b82f6]/10' : ''}`}
-                style={{ 
-                  height: ROW_H,
-                  transform: `translateY(${virtualRow.start}px)`
-                }}
-                onClick={() => {
-                  setSel(row);
-                  selectCommitDetail(n.oid);
-                }}
-                onContextMenu={(e) => handleContextMenu(e, n)}
-                onMouseEnter={() => setHov(row)} 
-                onMouseLeave={() => setHov(null)}
-              >
-                <div className="pl-2 overflow-visible shrink-0" style={{ width: cw.label }}>
-                  <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActiveNode} />
-                </div>
-                <div style={{ width: gw + 5 }} />
-                <div className="flex-1 flex items-center pl-3 pr-4 min-w-0">
-                  {n.node_type === 'stash' ? (
-                    <div className="flex items-center gap-2">
-                       <span className="bg-[#2a1b1b] text-[#ffa5a5] border border-[#ff4444]/30 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0">STASH</span>
-                       <span className="truncate text-[#ffa5a5]/90 text-[13px] italic">{n.message}</span>
-                    </div>
-                  ) : (
-                    <span className="truncate text-[#c9d1d9] text-[13px]">{n.message}</span>
-                  )}
-                </div>
-                <div className="pl-3 font-mono text-xs text-[#8b949e] hover:text-white transition-colors" style={{ width: cw.hash }}>{n.short_oid}</div>
-                <div className="pl-3 text-xs text-[#8b949e] truncate" style={{ width: cw.author }}>{n.author}</div>
-              </div>
+                n={n}
+                row={row}
+                virtualRow={virtualRow}
+                hov={hov}
+                sel={sel}
+                activeOids={activeOids}
+                cw={cw}
+                gw={gw}
+                setHov={setHov}
+                setSel={setSel}
+                handleContextMenu={handleContextMenu}
+              />
             );
           })}
 

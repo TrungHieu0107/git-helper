@@ -1,6 +1,9 @@
-# Summary
-## Version: 2.3.2
-## Last updated: 2026-04-11 – Fix CreateBranchDialog UI obscuring dropdown.
-## Project: GitKit
+# GitKit Status Summary
+## Version: 2.4.3
+## Status: Stable - Balanced History Density
 
-GitKit v2.3.2 fixes a UI layout bug where the "Source Branch" dropdown in the Create Branch dialog was clipped. It also maintains previous optimizations for high-performance Commit Graph Virtualization and the Force Checkout workflow.
+The GitKit history view has been tuned for optimal legibility while maintaining a professional high-density layout.
+
+**Recent Highlights**:
+- **Balanced Typography**: Commit messages and stash descriptions in the graph have been adjusted to **12px**. This provides a perfect middle ground between the dense 11px scale and the standard 13px base, ensuring both efficiency and legibility.
+- **Visual Alignment**: The WIP row and author-column metadata have also been synchronized to the 12px scale for a consistent reading experience across the entire history log.
