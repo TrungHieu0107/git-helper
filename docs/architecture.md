@@ -19,7 +19,7 @@ GitKit is a high-performance Git client built with Tauri 2, Rust, and React. It 
 - **Virtualization**: [@tanstack/react-virtual](https://tanstack.com/virtual/latest) (v3.x) - For high-performance commit logs.
 - **Code Editor**: [@monaco-editor/react](https://github.com/suren-atoyan/monaco-react) (v4.7) - For diff views and conflict resolution.
 - **Icons**: [Lucide React](https://lucide.dev/) (v1.x)
-- **Encoding**: `encoding_rs` - For multi-encoding file support.
+- **Encoding**: `encoding_rs` & `chardetng` - For robust automatic text encoding detection and multi-encoding support.
 
 ## Directory Structure
 
@@ -46,6 +46,7 @@ GitKit is a high-performance Git client built with Tauri 2, Rust, and React. It 
 │   │   │   ├── cherry_pick.rs # Cherry-pick state machine and resolution
 │   │   │   └── status.rs   # Working tree status and rename tracking
 │   │   ├── git/            # Low-level Git operations (git2 wrappers)
+│   │   │   ├── encoding.rs # Automatic encoding detection pipeline (BOM, statistical)
 │   │   ├── lib.rs          # Tauri initialization and modular registration
 │   │   └── main.rs         # Entry point
 │   ├── tauri.conf.json     # Tauri configuration

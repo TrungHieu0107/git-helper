@@ -571,7 +571,7 @@ function FileRow({ name, status, onAction, actionLabel, onClick, onContextMenu, 
                   <HighlightText text={displayDirPath} query={highlight} />
                 </span>
               )}
-              <span className="text-[#e6edf3] font-semibold truncate">
+              <span className="text-[#e6edf3] font-medium truncate">
                 <HighlightText text={fileName} query={highlight} />
               </span>
            </div>

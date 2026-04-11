@@ -1,8 +1,15 @@
-# Changelog
-All notable changes to GitKit will be documented in this file.
+## [2.6.0] - 2026-04-11
+### Added
+- **Auto Encoding Detection**: Robust backend pipeline using Mozilla's `chardetng` and BOM detection to correctly handle international charsets (Shift_JIS, GBK, etc.).
+- **Encoding Badge**: Premium UI element in the diff view showing detected encoding, confidence levels, and allowing for manual overrides.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [2.5.3] - 2026-04-11
+### Fixed
+- **Discard Changes IPC**: Resolved a parameter naming mismatch (`file_path` vs `filePath`) in the discard command.
+
+## [2.5.2] - 2026-04-11
+### Fixed
+- **Explorer Integration**: Fixed path normalization for "Show in Explorer" on Windows.
 
 ## [2.5.1] - 2026-04-11
 ### Added

@@ -189,7 +189,7 @@ export function CommitRow({
              <span className="truncate text-[#e3b341] text-[12px] italic opacity-90">{n.message}</span>
           </div>
         ) : (
-          <span className="truncate text-[#e6edf3] text-[12px] font-medium">{n.message}</span>
+          <span className="truncate text-[#e6edf3] text-[12px] font-normal">{n.message}</span>
         )}
       </div>
       <div 

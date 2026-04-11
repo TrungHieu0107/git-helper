@@ -59,10 +59,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar Styling */
+/* Global Custom Scrollbar Styling (Premium Glassmorphic) */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -70,17 +70,26 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  border: 2px solid var(--bg-main);
+  border: 1px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a4f56;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid transparent;
+  background-clip: content-box;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox compatibility */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 }
 
@@ -134,51 +143,7 @@ body {
   color: var(--color-primary);
 }
 
-/* ── Custom Scrollbar ─────────────────────────────────────────────── */
-/* Thin, dark scrollbar matching the dark UI exactly */
-
-/* Webkit (Chrome, Edge, Safari, Tauri WebView) */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.custom-scrollbar::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* Firefox */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
-}
-
-/* Auto-hide scrollbar: invisible when idle, visible on hover/scroll */
-.scrollbar-autohide::-webkit-scrollbar-thumb {
-  background: transparent;
-  transition: background 0.2s;
-}
-
-.scrollbar-autohide:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.scrollbar-autohide:hover::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
-}
+/* ... Global scrollbar styles moved to top ... */
 
 /* ── Commit Context Menu ─────────────────────────────────────────── */
 .commit-context-menu {

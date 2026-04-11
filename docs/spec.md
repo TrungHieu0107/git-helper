@@ -34,10 +34,11 @@ This document outlines the implemented and planned features of GitKit, along wit
 - **Key Files**: `src-tauri/src/commands/status.rs`, `src-tauri/src/commands/repo/ops.rs`.
 
 ### 4. File History & Operations
-- **Status**: Implemented
+- **Status**: Implemented / Enhancing
 - **Details**:
     - **File Log**: Searchable history for specific paths using `revwalk` and `pathspec`.
     - **Historical Diff**: Integrated diff view for specific commits, isolated from the active working tree.
+    - **Encoding Detection**: [v2.6.0 Planning] Automatic detection of file charsets using BOM and statistical analysis (`chardetng`). Includes a premium UI badge with confidence indicators and manual overrides.
     - **Context Menu**: Native-feel context menu for common file actions (Open, Reveal, History).
 - **Key Files**: `src-tauri/src/commands/log/mod.rs`, `src/components/FileHistoryModal.tsx`.
 

@@ -10,7 +10,8 @@
 | `stage_file` | `repo_path: String, path: String` | `Result<(), String>` | Implemented |
 | `unstage_file` | `repo_path: String, path: String` | `Result<(), String>` | Implemented |
 | `stage_all` | `repo_path: String` | `Result<(), String>` | Implemented |
-| `get_diff` | `repo_path: String, path: String, staged: bool` | `Result<String, String>` | Implemented |
+| `get_diff` | `repo_path, path, staged` | `Result<DiffResult, String>` | Planned Upgrade |
+| `get_file_contents` | `repoPath, path, commitOid, forceEncoding` | `Result<DecodedDiff, String>` | Planned Upgrade |
 | `create_commit` | `repo_path: String, message: String, amend: bool` | `Result<String, String>` | Implemented |
 | `create_branch` | `repoPath: String, name: String, startPoint: Option<String>` | `Result<CreateBranchResult, String>` | Upgraded |
 | `validate_branch_name`| `repoPath: String, name: String` | `Result<BranchValidation, String>` | Implemented |

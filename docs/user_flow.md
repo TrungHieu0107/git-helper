@@ -92,7 +92,27 @@ sequenceDiagram
     T-->>H: Returns Historical Diff
 ```
 
-## 6. Interaction Mapping
+## 7. Auto Encoding Detection & Override
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant D as MainDiffView
+    participant T as Tauri (diff:get_file_contents)
+    participant G as git2/encoding (Rust)
+
+    D->>T: Invoke get_file_contents(path, forceEncoding?)
+    T->>G: Detect Encoding (BOM -> chardetng)
+    G-->>T: Returns DecodedDiff { content, encoding, confidence, hadBom }
+    T-->>D: Updates local state
+    D->>U: Render EncodingBadge (Badge color reflecting confidence)
+    U->>D: Click Badge & Select Manual Override
+    D->>T: Re-invoke get_file_contents(path, forceEncoding: "Shift_JIS")
+    T->>G: Decode with forced encoding
+    G-->>D: Returns updated content
+```
+
+## 8. Interaction Mapping
 
 | UI Action | Tauri Command | Store update | UI Component |
 |---|---|---|---|
@@ -103,8 +123,9 @@ sequenceDiagram
 | Open File History | `get_file_log` | `showFileHistoryModal` | `FileContextMenu` |
 | Discard File | `discard_file_changes` | `repoStatus` | `FileContextMenu` |
 | Stage File | `stage_file` | `stagedFiles`, `unstagedFiles` | `RightPanel` |
+| Override Encoding | `get_file_contents` | (local component state) | `EncodingBadge` |
 
-## 7. View States logic
+## 9. View States logic
 
 - **`activeTabId === 'home'`**: Shows `WelcomeScreen`.
 - **`showFileHistoryModal === true`**: Shows `FileHistoryModal` overlay.

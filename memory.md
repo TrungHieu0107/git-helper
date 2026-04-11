@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.5.3
-## Last updated: 2026-04-11 – Fixed "Discard Changes" IPC mismatch
+## Version: 2.7.0
+## Last updated: 2026-04-11 – Implemented Restore File from Version
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -51,27 +51,29 @@
 - 2026-04-11: Fixed `Uncaught ReferenceError: className is not defined` in `TopToolbar.tsx` by correctly destructuring the `className` prop in `ToolbarButton`.
 - 2026-04-11: Implement Remote Branch Checkout — Added seamless support for checking out remote branches from the commit graph and sidebar.
 - 2026-04-11: Fix `ops.rs` Compilation Error — Resolved an "unexpected closing delimiter" syntax error in `src-tauri/src/commands/repo/ops.rs`.
-- 2026-04-11: Implemented **Amend Previous Commit** workflow (v2.1.1).
+- 2026-04-11 (v2.1.1): Implemented **Amend Previous Commit** workflow.
 - 2026-04-11: Fixed "Amend previous commit" checkbox responsiveness and backend connection.
-- 2026-04-11: Implemented robust Push Workflow (v2.2.0).
-- 2026-04-11 (v2.3.0): Virtualized Commit Graph.
-- 2026-04-11 (v2.4.5): Stash Lane Isolation.
-- 2026-04-11 (v2.5.0): File Context Menu & History Modal.
-- 2026-04-11 (v2.5.1): Split Copy Path.
-- 2026-04-11 (v2.5.2): Fixed Reveal in Explorer.
+- 2026-04-11 (v2.2.0): Implemented robust Push Workflow.
+- 2026-04-11 (v2.3.0): Virtualized Commit Graph with @tanstack/react-virtual and L-shaped routing.
+- 2026-04-11 (v2.4.5): Stash Lane Isolation for commit graph layout.
+- 2026-04-11 (v2.5.0): File Context Menu & History Modal integration.
+- 2026-04-11 (v2.5.1): Split Copy Path (Repo vs Full).
+- 2026-04-11 (v2.5.2): Fixed Reveal in Explorer on Windows.
+- 2026-04-11 (v2.5.3): Fixed Discard Changes IPC parameter mismatch.
+- 2026-04-11: Applied premium custom scrollbar styling globally across all views in index.css.
+- 2026-04-11: Fixed `ChevronsRight` ReferenceError in CommitDetailPanel and refined commit message font weight in graph (medium -> normal) and file change weight in Right Panel (semibold -> medium).
+- 2026-04-11 (v2.7.0): Implemented "Restore File from This Version" capability. Built a targeted checkout mechanism in Rust `ops.rs` that fetches historical blobs, handles Windows CRLF conversion/Binary detection, and creates parent directories for deleted paths. Created a centered `RestoreFileAlert` modal in React with smart "Path Mismatch" and "Staged Changes" warnings. Integrated the action into `FileContextMenu` for historical change views.
 
-# Project Status: Stable (v2.5.2)
-The GitKit application is stable.
+# Project Status: Stable (v2.7.0)
+The GitKit application is stable; "Restore File from Version" feature is fully implemented and production-ready.
 
 ---
 
-### 2026-04-11 – Fix: Discard Changes IPC Mismatch
-**Reason**: User reported `Failed to discard changes: invalid args filePath for command discard_file_changes`.
-
+### 2026-04-11 – Feature: Restore File from Version (v2.7.0)
+**Reason**: User requested a feature to restore individual files from historical commits to the working tree, similar to GitKraken.
 **Changes**:
-- **Frontend (`src/lib/repo.ts`)**:
-    - Corrected the `invoke` call for `discard_file_changes`.
-    - Changed the parameter key from `file_path` to `filePath`.
-    - Rationale: Tauri automatically converts Rust-side `snake_case` parameters to `camelCase` for the frontend IPC. Passing `file_path` resulted in a "missing required key filePath" error.
+- **Backend**: Added `restore_file_from_commit` in `ops.rs`. Handles `core.autocrlf`, permission locks, and non-existent files.
+- **Frontend**: Added `confirmRestoreFile` state and `RestoreFileAlert` modal. Updated `FileContextMenu` to pass commit context.
+- **UX**: Smart warnings for staged changes and path mismatches (renamed files).
 
-**Status**: Version 2.5.3 ✓
+**Status**: Version 2.7.0 (Completed) ✓
