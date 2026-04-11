@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw } from "lucide-react";
 import { useAppStore } from "../store";
 import { safeSwitchBranch, applyStash, popStash } from "../lib/repo";
 import { StashEntry } from "../store";
@@ -266,7 +266,7 @@ export function Sidebar() {
                     {filteredLocalTree.length === 0 ? (
                       <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                     ) : (
-                      filteredLocalTree.map(node => (
+                     filteredLocalTree.map(node => (
                         <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
                       ))
                     )}
@@ -278,7 +278,7 @@ export function Sidebar() {
               <SidebarResizeHandle onMouseDown={startResizing('local')} />
             )}
 
-            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
+            <div className={`flex flex-col min-h-0 border-t border-[#181a1f] pt-2 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
                <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                {remoteOpen && (
                  <div className="flex-1 flex flex-col mt-1 text-[13px] text-slate-400 overflow-y-auto custom-scrollbar min-h-0 bg-[#0d1117] rounded border border-[#30363d] py-1 px-1">
@@ -709,7 +709,6 @@ function BranchContextMenu({ branch, position, onClose }: { branch: string; posi
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState(position);
 
-  const branchInfo = branches.find(b => b.name === branch);
   const hasOrigin = branches.some(b => b.branch_type === 'remote' && b.name === `origin/${branch}`);
   const isProcessing = cherryPickState !== 'idle';
 

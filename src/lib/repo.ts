@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult, PullStrategy } from '../store';
 import { toast } from './toast';
 
 // ── Branch Validation Types ──────────────────────────────────────────────────

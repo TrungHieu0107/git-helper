@@ -3,14 +3,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
 import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushRepo, pushCurrentBranch, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { pullRepo, pushCurrentBranch, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";
 
 export function TopToolbar() {
   const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, isLoadingPull, pullStrategy, setPullStrategy } = useAppStore();
   const [fetching, setFetching] = useState(false);
-  const [pushing, setPushing] = useState(false);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [showPullDropdown, setShowPullDropdown] = useState(false);
   const [showPushDropdown, setShowPushDropdown] = useState(false);
@@ -71,10 +70,7 @@ export function TopToolbar() {
   }, [showPushDropdown]);
 
 
-  const handlePush = async () => {
-    setPushing(true);
-    try { await pushRepo(); } finally { setPushing(false); }
-  };
+
 
   const handleRefresh = async () => {
     if (activeRepoPath) {
