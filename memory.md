@@ -1,6 +1,8 @@
 # GitManager App Memory
-## Version: 1.9.0
-## Last updated: 2026-04-10 – Backend & Frontend Architectural Refactor
+## Version: 2.1.0
+## Last updated: 2026-04-11 – Implement Remote Branch Checkout
+
+
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -59,3 +61,13 @@ Completed a comprehensive project audit and generated a persistent context docum
 
 # Project Status Summary
 The Git Helper (GitKit) application is a production-ready Git client with a unified documentation system. It features a high-fidelity commit graph, advanced branching, and sophisticated session persistence. The project is fully documented with Mermaid-diagrammed user flows and technical specifications in the `/docs` directory, serving as a robust foundation for future AI and developer contributions.
+- 2026-04-11: Pull Strategy Support — Implemented a comprehensive pull system supporting `Fast-Forward Only`, `Merge`, and `Rebase` strategies. 
+    - **Backend**: Updated `pull_remote` command with internal fetching, a robust pre-flight check for unstaged changes (blocking modified tracking files while allowing staged/untracked), and multi-strategy execution logic. Rebase is handled via CLI delegation for production stability.
+    - **Persistence**: Updated `AppStateData` to include `pull_strategy` preference with default fallback, ensuring settings survive application restarts.
+    - **Frontend**: Sliced and updated `uiSlice` with new states. Refactored `pullRepo` logic to coordinate loading states and result toast notifications.
+    - **UI/UX**: Implemented a modern Split-Button in the `TopToolbar` for Pull, featuring a strategy selection dropdown with behavioral polish (Escape/outside click close) and animated loading indicators. Resolved TODO-002.
+- 2026-04-11: Fixed `Uncaught ReferenceError: className is not defined` in `TopToolbar.tsx` by correctly destructuring the `className` prop in `ToolbarButton`.
+- 2026-04-11: Implement Remote Branch Checkout — Added seamless support for checking out remote branches from the commit graph and sidebar.
+    - **Backend**: Implemented `resolve_checkout_target` to automatically handle remote-to-local ref resolution. Updated `checkout_branch` to switch to existing local tracking branches or create new ones with `set_upstream`. Refactored `safe_checkout` to dry-run against the effective local tip, ensuring accurate conflict detection even when clicking remote tags.
+    - **Frontend**: Updated `Sidebar.tsx` tree view to propagate remote prefixes, ensuring full ref names are passed to the backend. Verified `CommitGraph.tsx` badge click logic.
+

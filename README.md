@@ -1,37 +1,30 @@
-# GitKit - High-Performance Git Client
+# GitKit (Git Helper)
 
-GitKit is a modern, premium Git desktop client designed for speed and visual clarity. Built with **Tauri 2**, **Rust**, and **React 19**, it provides a GitKraken-inspired workflow with the performance of a native Rust backend.
+GitKit is a premium, high-performance Git client built with Tauri 2, Rust, and React. It provides a visual, intuitive interface for managing Git repositories with a focus on graph density, fast workflows, and robust state management.
 
-## Project Status
+## Key Features
+- **High-Fidelity Commit Graph**: Densely packed topological graph with Manhattan routing and curved pathways.
+- **Advanced Branching**: Safe branch switching with conflict detection and automatic remote tracking.
+- **Multi-Strategy Pull**: Support for Fast-Forward, Merge, and Rebase strategies with persistent preferences.
+- **Cherry-Pick Workflow**: Interactive cherry-picking with a built-in conflict resolution editor.
+- **Modular Architecture**: Domain-scoped Rust commands and sliced Zustand state management for maximum scalability.
 
-GitKit is currently in **Active Development**. Most core Git operations (Staging, Committing, Branching, Stashing, Graphing) are implemented.
+## Tech Stack
+**Tauri 2** + **Rust (git2-rs)** + **React 19** + **Zustand** + **Tailwind CSS v4** + **Monaco Editor**
 
-## 📁 Project Documentation
+## Documentation Suite
+The project is fully documented in the `docs/` directory:
+- [Architecture Overview](docs/architecture.md): Tech stack, directory map, and IPC surface.
+- [Feature Specification](docs/spec.md): Technical details of every implemented feature.
+- [User Flow & Interaction Map](docs/user_flow.md): Mermaid diagrams of core workflows.
+- [Developer Documentation](docs/docs.md): Setup instructions and core implementation patterns.
+- [Bug Registry & Known Issues](docs/bug_registry.md): Tracking bugs and logic gaps.
+- [Changelog](docs/changelog.md): Reconstructed version history.
 
-For detailed technical and project context, please refer to the documentation suite in the `/docs` directory:
+## Getting Started
+1. Install dependencies: `npm install`
+2. Run in dev mode: `npm run tauri dev`
+3. Build production version: `npm run tauri build`
 
-- 🏗️ **[Architecture](file:///d:/learn/git-helper/docs/architecture.md)** — Tech stack, directory tree, data flow, and IPC reference.
-- 📋 **[Specifications](file:///d:/learn/git-helper/docs/spec.md)** — Detailed feature list and implementation status.
-- 🗺️ **[User Flows](file:///d:/learn/git-helper/docs/user_flow.md)** — Interaction maps and behavioral diagrams.
-- 📖 **[Developer Reference](file:///d:/learn/git-helper/docs/docs.md)** — Build instructions and implementation deep-dives.
-- 🪲 **[Bug Registry](file:///d:/learn/git-helper/docs/bug_registry.md)** — Known issues, TODOs, and technical debt log.
-- 📜 **[Changelog](file:///d:/learn/git-helper/docs/changelog.md)** — Full feature and fix history.
-
-## Quick Start
-
-### Development
-```bash
-npm install
-npm run dev
-```
-
-### Build (Windows)
-```bash
-.\build.bat
-```
-
-## Recommended IDE Setup
-- [VS Code](https://code.visualstudio.com/)
-- [Tauri Extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
-- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-- [Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)
+---
+*Version: 2.1.0 Stable*

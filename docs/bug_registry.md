@@ -1,37 +1,38 @@
 # Bug Registry & Known Issues
-## Version: 1.0.0
-## Last updated: 2026-04-09 – Initial bug registry
+## Version: 1.1.0
+## Last updated: 2026-04-11 – v2.1.0 Registry Sync
 ## Project: GitKit
 
-This document tracks identified bugs, "Simplified for now" logic, and explicitly documented TODOs in the codebase.
+This document tracks identified bugs, logic gaps, and planned improvements in the codebase.
 
 ## High Severity
 
-| ID | Title | Status | Description |
-|---|---|---|---|
-| BUG-001 | Possible Stash Drop Failure | Open | In `stubs.rs`, `pop_stash` manually applies then drops. If `stash_apply` succeeds but `stash_drop` fails for some system reason, the stash is duplicated in the list. |
+| ID | Title | Status | Fixed In | Description |
+|---|---|---|---|---|
+| BUG-001 | Possible Stash Drop Failure | Open | - | In `commands/stash/mod.rs`, if `stash_apply` succeeds but `stash_drop` fails, the stash is duplicated. |
+| BUG-002 | Remote Checkout Fix | **Resolved** | v2.1.0 | Clicking remote branch tags in the commit graph now correctly resolves tracking branches and handles diverged commits safely. |
 
 ## Medium Severity
 
-| ID | Title | Status | Description |
-|---|---|---|---|
-| TODO-001 | Conflict Mapping | Partial | `status.rs` returns `conflicted` but doesn't distinguish between types of conflicts (AA, UU, etc.). UI resolution is not implemented. |
-| TODO-002 | FF Pull Only | Open | `remote.rs` logic for `pull_remote` only supports fast-forward. It returns an error for mergeable or non-FF pulls. |
-| TODO-003 | Detached HEAD | Partial | `repo.rs` handles detached HEAD checkouts but doesn't provide a sophisticated "Reattach" or "New Branch from HEAD" workflow. |
+| ID | Title | Status | Fixed In | Description |
+|---|---|---|---|---|
+| TODO-001| Conflict Mapping | Partial | - | `status.rs` returns `conflicted` but doesn't distinguish between types (AA, UU, etc.) in the status list. |
+| TODO-002| Pull Strategies | **Resolved** | v2.1.0 | Full support for Fast-Forward Only, Merge, and Rebase pull strategies with UI selection and persistence. |
+| TODO-003| Detached HEAD | Partial | - | Basic support for detached HEAD checkouts implemented, but "Reattach" or "Create Branch from HEAD" workflow is missing. |
 
 ## Feature Gaps & TODOs
 
 | ID | Title | Status | Description |
 |---|---|---|---|
 | GAP-001 | Submodule Tracking | Open | `get_status` does not recurse into submodules or show their dirty states. |
-| GAP-002 | Binary Diffs | Open | `diff.rs` can detect binary files but doesn't provide a visual comparison (e.g., image diff, hex view). |
-| GAP-003 | Search/Filter Graph | Partial | `AppStore` has `commitSearchInput` but logic to filter the `revwalk` based on this input is pending. |
+| GAP-002 | Binary Diffs | Open | `diff.rs` detects binary files but doesn't provide a visual comparison (e.g., image hex view). |
+| GAP-003 | Commit Search logic | Partial| UI has a search input, but backend `revwalk` filtering for large logs is pending. |
 
 ## Logic Gaps identified in analysis
 
-- **`status.rs`**: `FileStatus` includes `old_path` but it is currently hardcoded to `None`. This makes tracking renames in the staging area accurate only via the filename change, not a unified rename-delta.
-- **`stubs.rs`**: `apply_stash` uses a manual conflict check after the operation because libgit2 doesn't always return an error on conflict during stash apply.
-- **`log.rs`**: Lane routing is done in a single pass. Complex large-parent-count merges might lead to lane crossovers that could be improved with a second-pass optimization.
+- **`status.rs`**: `FileStatus` includes `old_path` but rename tracking is currently limited to the filename change in the entry, not a unified rename-delta.
+- **`stash/mod.rs`**: `apply_stash` uses a manual conflict check after the operation because `libgit2` does not always return an error on conflict during stash apply.
+- **`cherry_pick.rs`**: The conflict editor assumes standard Git markers (`<<<<<<<`). Non-standard markers or binary conflicts may cause resolution errors.
 
 > [!CAUTION] UI Limitation:
-> The app currently assumes a single open repository. While `AppStateData` tracks `tabs`, switching repos currently overwrites the single operational store, which may cause jumpy UI if multi-repo support is used.
+> The app maintains a single operational store for the active repository. Rapidly switching between repository tabs may cause transient UI inconsistencies if background refreshes overlap.

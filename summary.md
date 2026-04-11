@@ -1,5 +1,5 @@
-# Project Status: Modularized & Stable
-## Last Updated: 2026-04-09
-## Backend: Decomposed monolithic commands into domain-scoped modules (repo, branch, stash, log, diff, remote).
-## Frontend: Sliced the monolithic Zustand store into domain-specific slices (repoSlice, logSlice, stashSlice, uiSlice).
-## Status: Backend builds (cargo check pass), Frontend types verified (tsc pass modulo minor lint). Ready for Phase 2: Multi-repo support.
+# Project Status: Feature Complete & Refined
+## Last Updated: 2026-04-11
+## Backend: Implemented robust Remote Branch Checkout with automatic tracking creation and local ref resolution.
+## Frontend: Unified checkout flow for graph tags and sidebar remotes, ensuring correct ref passing.
+## Status: V2.1.0 Stable. Pull strategies and Remote Checkout fully implemented. Seamless branch switching across all UI components.

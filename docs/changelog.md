@@ -1,45 +1,32 @@
 # Changelog
-## Version: 1.0.0
-## Last updated: 2026-04-09 – Initial historical record
-## Project: GitKit
+All notable changes to GitKit will be documented in this file.
 
-All notable changes to the GitKit project are documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.1.0] - 2026-04-11
+### Added
+- **Remote Branch Checkout**: Integrated automatic local tracking branch creation when checking out remote references from the graph.
+- **Cherry-Pick Support**: Full workflow for cherry-picking commits, including an interactive conflict resolution editor using Monaco.
+
+### Fixed
+- **Branch Resolution**: Resolved issues where clicking remote tags (e.g., `origin/main`) in the commit graph failed to switch correctly when local branches existed.
+- **Documentation**: Fully regenerated the developer documentation suite for modularized architecture.
+
+## [2.0.1] - 2026-04-11
+### Fixed
+- **Pull UI Exception**: Fixed `Uncaught ReferenceError: className is not defined` when rendering Split-Buttons in the TopToolbar.
+
+## [2.0.0] - 2026-04-10
+### Changed
+- **Modular Refactor**: Decomposed monolithic backend commands and frontend store into domain-scoped modules (Repo, Branch, Log, Stash, etc.).
+- **Architecture**: Transitions to a sliced Zustand store architecture for improved performance and scalability.
+
+## [1.1.0] - 2026-04-11 (Pull Strategies)
+### Added
+- **Pull Strategies**: Support for Fast-Forward Only, Merge, and Rebase pull strategies.
+- **Persistence**: Persisted user preferences for pull strategies across application restarts.
 
 ## [1.0.0] - 2026-04-09
 ### Added
-- **Core Strategy**: Project scaffold with Tauri 2, React 19, and Tailwind CSS v4.
-- **Repository Management**: 
-    - Folder discovery and validation.
-    - Recent repositories persistence.
-    - Drag & drop folder to open.
-    - Auto-refresh on window focus.
-- **Commit Graph**:
-    - High-performance topological graph rendering.
-    - Rust-powered lane routing.
-    - Separate avatar rendering from graph nodes.
-    - Stash entries visualization in graph.
-- **Staging & Committing**:
-    - Staged vs Unstaged lists.
-    - Amend support.
-    - Hard reset and clean operations.
-- **Diff & Comparison**:
-    - Monaco-powered side-by-side diff view.
-    - Historical commit content view.
-    - Unified patch view for staging area.
-- **Branch Management**:
-    - Safe Checkout workflow with conflict detection.
-    - Smart branch switching (stash offer).
-    - Remote branch tracking and creation.
-- **Stash Management**:
-    - List, Apply, Pop, and Drop stashes.
-    - Advanced stash options via CLI integration.
-
-### Fixed
-- Commit graph edge direction beziers (branch-off vs merge differentiation).
-- Avatar decoupling from graph nodes.
-- Per-row SVG rendering for performance.
-- Bezier control points for exact alignment.
-
-### Security
-- Added fallback signature for commits if user identity is missing.
-- Implemented dry-run checkout to prevent accidental data loss.
+- Initial release of GitKit with high-fidelity commit graph, repository management, and staging/committing support.

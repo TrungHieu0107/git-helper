@@ -1,6 +1,6 @@
 # User Flow & Interaction Map
-## Version: 1.0.0
-## Last updated: 2026-04-09 – Initial flow document
+## Version: 1.1.0
+## Last updated: 2026-04-11 – v2.1.0 Flow Sync
 ## Project: GitKit
 
 This document maps user actions in the UI to their corresponding Tauri commands and state updates.
@@ -25,22 +25,40 @@ sequenceDiagram
     T-->>S: Returns Status Results
 ```
 
-## 2. Staging & Committing
+## 2. Pull with Strategy
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant Toolbar as TopToolbar
+    participant T as Tauri (remote:pull_remote)
+    participant G as git2/cli (Rust)
+
+    U->>Toolbar: Click Pull (Split Button)
+    Toolbar->>U: Show Strategy Menu
+    U->>Toolbar: Select Strategy (FF/Merge/Rebase)
+    Toolbar->>T: Invoke pull_remote(remote, branch, strategy)
+    T->>G: Fetch + Execute Strategy
+    G-->>T: Success / Conflict
+    T-->>Toolbar: Pull Result
+```
+
+## 3. Cherry-Pick Workflow
 
 ```mermaid
 flowchart TD
-    Start([Unstaged File List]) --> Stage[Click '+' Stage Button]
-    Stage --> Cmd[Tauri: status:stage_file]
-    Cmd --> Refresh[Refresh Status]
-    Refresh --> Staged([Staged File List])
-    Staged --> Input[Input Commit Message]
-    Input --> Commit[Click 'Commit' Button]
-    Commit --> CommitCmd[Tauri: diff:create_commit]
-    CommitCmd --> LogRefresh[Refresh Commit Log]
-    LogRefresh --> Done([New Commit in Graph])
+    Start[Right-click Commit in Graph] --> CP[Select Cherry-Pick]
+    CP --> Cmd[Tauri: cherry_pick_commit]
+    Cmd -- Success --> Done([New Commit])
+    Cmd -- Conflict --> ShowBanner[Show CherryPickBanner]
+    ShowBanner --> Resolve[Open ConflictEditorView]
+    Resolve --> Continue[Tauri: cherry_pick_continue]
+    Continue -- Success --> Done
+    Continue -- Conflict --> Resolve
+    ShowBanner -- Abort --> AbortCmd[Tauri: cherry_pick_abort]
 ```
 
-## 3. Branch Management (Safe Checkout)
+## 4. Branch Management (Safe Checkout)
 
 ```mermaid
 flowchart TD
@@ -48,22 +66,23 @@ flowchart TD
     SafeCheck -- Clean --> FastSwitch[Tauri: repo:checkout_branch]
     SafeCheck -- DirtyNoConflict --> OfferStash[Show CheckoutAlert: Offer Stash]
     SafeCheck -- DirtyWithConflict --> ShowError[Show CheckoutAlert: Block Switch]
-    OfferStash -- User Agrees --> StashSwitch[Tauri: stubs:create_stash + repo:checkout_branch]
+    OfferStash -- User Agrees --> StashSwitch[Tauri: stash:create_stash + repo:checkout_branch]
 ```
 
-## 4. Interaction Mapping
+## 5. Interaction Mapping
 
 | UI Action | Tauri Command | Store update | UI Component |
 |---|---|---|---|
 | Open Folder | `open_repo` | `activeRepoPath`, `repoInfo` | `WelcomeScreen` |
-| Hover Commit | `get_commit_detail` | `selectedCommitDetail` | `CommitGraph` |
+| Pull (FF/Merge/Rebase)| `pull_remote` | `repoStatus`, `commitLog` | `TopToolbar` |
+| Cherry-pick | `cherry_pick_commit` | `cherryPickState` | `CommitContextMenu` |
+| Resolve Conflict | `resolve_conflict_file`| `cherryPickState` | `ConflictEditorView` |
 | Stage File | `stage_file` | `stagedFiles`, `unstagedFiles` | `RightPanel` |
 | Change Branch | `checkout_branch` | `activeBranch`, `commitLog` | `Sidebar` |
-| Fetch Remote | `fetch_remote` | `repoStatus` (ahead/behind) | `TopToolbar` |
-| Create Stash | `stash_save_advanced`| `stashes`, `commitLog` | `CreateStashDialog`|
 
-## 5. View States logic
+## 6. View States logic
 
 - **`activeTabId === 'home'`**: Shows `WelcomeScreen`.
 - **`selectedDiff !== null`**: Overlays `MainDiffView` (Monaco) over the `CommitGraph`.
+- **`cherryPickState.status === 'conflicting'`**: Shows `CherryPickBanner`.
 - **`isLoadingRepo === true`**: Global spinner overlay.
