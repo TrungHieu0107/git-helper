@@ -319,19 +319,46 @@ export async function fetchAllRepo() {
   }
 }
 
-export async function pullRepo() {
-  const path = useAppStore.getState().activeRepoPath;
+export async function pullRepo(strategy?: PullStrategy) {
+  const state = useAppStore.getState();
+  const path = state.activeRepoPath;
   if (!path) return;
   
+  const pullStrategy = strategy || state.pullStrategy;
+  
   try {
+    state.setIsLoadingPull(true);
     toast.info("Pulling changes...");
-    await invoke('pull_remote', { repoPath: path, remote: 'origin' });
+    
+    const result = await invoke<PullResult>('pull_remote', { 
+      repoPath: path, 
+      remote: 'origin',
+      strategy: pullStrategy 
+    });
+
     await loadRepo(path);
-    toast.success("Pulled successfully");
-  } catch (e) {
+    
+    switch (result.type) {
+      case 'UpToDate':
+        toast.info("Already up to date.");
+        break;
+      case 'FastForwarded':
+        toast.success(`Fast-forwarded ${result.data.commits_added} commit(s).`);
+        break;
+      case 'Merged':
+        toast.success(`Merged — new commit ${result.data.merge_commit_oid.substring(0, 7)}.`);
+        break;
+      case 'Rebased':
+        toast.success(`Rebased successfully.`);
+        break;
+    }
+  } catch (e: any) {
     toast.error(`Pull failed: ${e}`);
+  } finally {
+    state.setIsLoadingPull(false);
   }
 }
+
 
 export async function pushRepo() {
   const path = useAppStore.getState().activeRepoPath;

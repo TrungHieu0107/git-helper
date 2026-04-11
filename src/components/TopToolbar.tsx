@@ -8,21 +8,46 @@ import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";
 
 export function TopToolbar() {
-  const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash } = useAppStore();
+  const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, isLoadingPull, pullStrategy, setPullStrategy } = useAppStore();
   const [fetching, setFetching] = useState(false);
-  const [pulling, setPulling] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
+  const [showPullDropdown, setShowPullDropdown] = useState(false);
+  const pullDropdownRef = useRef<HTMLDivElement>(null);
+
 
   const handleFetch = async () => {
     setFetching(true);
     try { await fetchAllRepo(); } finally { setFetching(false); }
   };
 
-  const handlePull = async () => {
-    setPulling(true);
-    try { await pullRepo(); } finally { setPulling(false); }
+  const handlePull = async (strategy?: any) => {
+    if (strategy) {
+      setPullStrategy(strategy);
+      setShowPullDropdown(false);
+    }
+    await pullRepo(strategy);
   };
+
+  useEffect(() => {
+    if (showPullDropdown) {
+      const handleClickOutside = (e: MouseEvent) => {
+        if (pullDropdownRef.current && !pullDropdownRef.current.contains(e.target as Node)) {
+          setShowPullDropdown(false);
+        }
+      };
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setShowPullDropdown(false);
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEsc);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleEsc);
+      };
+    }
+  }, [showPullDropdown]);
+
 
   const handlePush = async () => {
     setPushing(true);
@@ -56,15 +81,52 @@ export function TopToolbar() {
         
         {/* Fetch / Pull / Push */}
         <div className="flex items-center space-x-4 text-[#58a6ff]">
-          <ToolbarButton icon={<Download size={18} />} label="Fetch" onClick={handleFetch} loading={fetching} />
-          <ToolbarButton 
-            icon={<ArrowDown size={18} />} 
-            label="Pull" 
-            onClick={handlePull} 
-            loading={pulling} 
-            count={repoStatus?.behind || 0} 
-            title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
-          />
+          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={18} />} label="Fetch" />
+          
+          {/* Split Pull Button */}
+          <div className="relative flex items-center group/pull" ref={pullDropdownRef}>
+            <ToolbarButton 
+              icon={<ArrowDown size={18} />} 
+              label="Pull" 
+              onClick={() => handlePull()} 
+              loading={isLoadingPull} 
+              count={repoStatus?.behind || 0} 
+              title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
+              className="pr-1"
+            />
+            <div 
+              onClick={() => !isLoadingPull && setShowPullDropdown(!showPullDropdown)}
+              className={`h-full flex items-center px-1 py-1 rounded-sm hover:bg-white/10 cursor-pointer ${isLoadingPull ? 'opacity-20 pointer-events-none' : ''}`}
+            >
+              <ChevronDown size={14} className={`text-slate-500 transition-transform ${showPullDropdown ? 'rotate-180' : ''}`} />
+            </div>
+
+            {showPullDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-56 bg-[#1c2128] border border-[#30363d] rounded-md shadow-xl z-[250] p-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-2 py-1.5 text-[10px] font-bold text-[#768390] uppercase border-b border-[#30363d] mb-1">
+                  Pull Strategy
+                </div>
+                {(['fast_forward_only', 'fast_forward_or_merge', 'rebase'] as const).map(s => (
+                  <div 
+                    key={s}
+                    onClick={() => handlePull(s)}
+                    className={`px-3 py-2 rounded flex flex-col hover:bg-[#30363d] cursor-pointer ${pullStrategy === s ? 'bg-blue-500/10' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                       <span className={`text-[12px] font-medium ${pullStrategy === s ? 'text-blue-400' : 'text-[#adbac7]'}`}>
+                         {s === 'fast_forward_only' ? 'Fast-Forward Only' : s === 'fast_forward_or_merge' ? 'Merge (FF or Merge)' : 'Rebase ⚠️'}
+                       </span>
+                       {pullStrategy === s && <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />}
+                    </div>
+                    <span className="text-[10px] text-[#768390]">
+                      {s === 'fast_forward_only' ? 'Fails if branches have diverged' : s === 'fast_forward_or_merge' ? 'Merges if FF is not possible' : 'Rebases local commits on remote'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <ToolbarButton 
             icon={<ArrowUp size={18} />} 
             label="Push" 
