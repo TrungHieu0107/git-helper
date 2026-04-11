@@ -1,9 +1,25 @@
+use std::sync::Mutex;
+use std::collections::HashMap;
+use git2::Oid;
+
 pub mod commands;
 pub mod git;
+
+pub struct RefCache {
+    pub repo_path: String,
+    pub refs: HashMap<Oid, Vec<String>>,
+}
+
+pub struct AppState {
+    pub ref_cache: Mutex<Option<RefCache>>,
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(AppState {
+            ref_cache: Mutex::new(None),
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
