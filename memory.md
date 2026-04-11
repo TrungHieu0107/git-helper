@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.7.0
-## Last updated: 2026-04-11 – Implemented Restore File from Version
+## Version: 2.8.0
+## Last updated: 2026-04-12 – Stash Context Menu, UI Refinement, and Bug Fixes.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -60,20 +60,23 @@
 - 2026-04-11 (v2.5.1): Split Copy Path (Repo vs Full).
 - 2026-04-11 (v2.5.2): Fixed Reveal in Explorer on Windows.
 - 2026-04-11 (v2.5.3): Fixed Discard Changes IPC parameter mismatch.
-- 2026-04-11: Applied premium custom scrollbar styling globally across all views in index.css.
+- 2026-04-11 (v2.6.0): Applied premium custom scrollbar styling globally across all views in index.css.
 - 2026-04-11: Fixed `ChevronsRight` ReferenceError in CommitDetailPanel and refined commit message font weight in graph (medium -> normal) and file change weight in Right Panel (semibold -> medium).
 - 2026-04-11 (v2.7.0): Implemented "Restore File from This Version" capability. Built a targeted checkout mechanism in Rust `ops.rs` that fetches historical blobs, handles Windows CRLF conversion/Binary detection, and creates parent directories for deleted paths. Created a centered `RestoreFileAlert` modal in React with smart "Path Mismatch" and "Staged Changes" warnings. Integrated the action into `FileContextMenu` for historical change views.
+- 2026-04-12 (v2.7.1): Full Documentation Sync. Regenerated all 7 documentation files (architecture, spec, user_flow, docs, bug_registry, changelog, and README) to capture the latest technical state of the project.
+- 2026-04-12 (v2.8.0): Stash Context Menu & UI Refinement. Implemented "Pop", "Apply", and "Delete" actions for stash nodes in the commit graph. Upgraded the visual aesthetics with active branch lineage glow, curated color palettes, and polished node rendering. Fixed backend compiler errors and frontend ReferenceErrors encountered during rollout.
 
-# Project Status: Stable (v2.7.0)
-The GitKit application is stable; "Restore File from Version" feature is fully implemented and production-ready.
+# Project Status: Stable (v2.8.0)
+The GitKit application is stable; the technical documentation suite is fully synchronized and exhaustive.
 
 ---
 
-### 2026-04-11 – Feature: Restore File from Version (v2.7.0)
-**Reason**: User requested a feature to restore individual files from historical commits to the working tree, similar to GitKraken.
+### 2026-04-12 – Feature: Stash Context Menu & UI Refinement (v2.8.0)
+**Reason**: User requested "Pop", "Apply", and "Delete" stash actions in the commit graph context menu. Leveraging the opportunity to refine the graph's visual aesthetics.
 **Changes**:
-- **Backend**: Added `restore_file_from_commit` in `ops.rs`. Handles `core.autocrlf`, permission locks, and non-existent files.
-- **Frontend**: Added `confirmRestoreFile` state and `RestoreFileAlert` modal. Updated `FileContextMenu` to pass commit context.
-- **UX**: Smart warnings for staged changes and path mismatches (renamed files).
+- **Backend**: Added `stash_index: Option<usize>` to `CommitNode` and updated `get_log` to populate it.
+- **Frontend**: Integrated stash actions into `CommitContextMenu.tsx`.
+- **UI/UX**: Refined the commit graph with a vibrant color palette, active branch lineage glow effects, and modernized node rendering.
+- **Bug Fixes**: Resolved a backend compiler error (missing field in initializer) and a frontend runtime ReferenceError (missing React imports).
 
-**Status**: Version 2.7.0 (Completed) ✓
+**Status**: Version 2.8.0 (Completed) ✓

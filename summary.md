@@ -1,13 +1,13 @@
 # GitKit Status Summary
-## Version: 2.7.0
-## Last updated: 2026-04-11 – Implemented Restore File from Version
+## Version: 2.8.0
+## Last updated: 2026-04-12 – Stash Context Menu and UI Aesthetics refined.
 ## Project: GitKit
 
-GitKit has reached version 2.7.0 with the implementation of the "Restore File from This Version" feature. This addition brings professional-grade file recovery capabilities to the historical commit view, allowing users to selectively restore files with full support for Windows line endings, binary detection, and path mismatch warnings.
+GitKit has reached version 2.8.0 with the implementation of the "Stash Context Menu" and major aesthetic refinements. Users can now manage stashes (Pop, Apply, Delete) directly from the commit graph with a premium visual experience featuring active lineage glow and polished node rendering.
 
 **Recent Highlights**:
-- **Encoding & Context Menu**: Implementing auto-encoding detection and unified right-click actions in the History view.
-- **Global UI**: Applied premium custom scrollbar styling project-wide for a consistent dark-theme experience.
-- **Discard Fix**: Resolved `missing required key filePath` error by synchronizing frontend parameter naming with Tauri's automatic camelCase conversion.
-- **File History Modal**: Integrated high-performance historical diff viewing.
-- **Stash Lane Isolation**: Optimized commit graph for complex branching and stashing.
+- **Stash Context Menu**: Integrated Pop, Apply, and Delete actions into the graph context menu with index-based backend mapping.
+- **Premium Graph UI**: Added active branch lineage glow effects, curated color palettes, and modernized node rendering.
+- **Bug Fixes**: Resolved backend compiler errors and frontend runtime ReferenceErrors induced during the feature rollout.
+- **CSS Refinement**: Implemented danger hover states for context menu items and smoother glassmorphic transitions.
+- **Stability**: Full documentation sync performed to maintain alignment between spec and implementation.

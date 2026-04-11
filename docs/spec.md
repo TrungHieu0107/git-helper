@@ -1,6 +1,6 @@
 # Feature Specification
-## Version: 1.1.0
-## Last updated: 2026-04-11 – v2.1.0 Feature Sync
+## Version: 2.8.0
+## Last updated: 2026-04-12 – Added Stash Context Menu and UI aesthetic refinements.
 ## Project: GitKit
 
 This document outlines the implemented and planned features of GitKit, along with their technical implementation details.
@@ -29,18 +29,19 @@ This document outlines the implemented and planned features of GitKit, along wit
 - **Status**: Implemented
 - **Details**:
     - **File Status**: Real-time status with rename tracking.
-    - **Committing**: Supports standard commits and amendment.
+    - **Committing**: Supports standard commits and **Amend previous commit**.
     - **Discard Changes**: Advanced per-file discard via `Repository::reset_default` (tracked) or `fs::remove_file` (untracked).
 - **Key Files**: `src-tauri/src/commands/status.rs`, `src-tauri/src/commands/repo/ops.rs`.
 
 ### 4. File History & Operations
-- **Status**: Implemented / Enhancing
+- **Status**: Implemented
 - **Details**:
     - **File Log**: Searchable history for specific paths using `revwalk` and `pathspec`.
     - **Historical Diff**: Integrated diff view for specific commits, isolated from the active working tree.
-    - **Encoding Detection**: [v2.6.0 Planning] Automatic detection of file charsets using BOM and statistical analysis (`chardetng`). Includes a premium UI badge with confidence indicators and manual overrides.
-    - **Context Menu**: Native-feel context menu for common file actions (Open, Reveal, History).
-- **Key Files**: `src-tauri/src/commands/log/mod.rs`, `src/components/FileHistoryModal.tsx`.
+    - **Encoding Detection**: Automatic detection of file charsets using BOM and statistical analysis (`chardetng`). Includes a premium UI badge with confidence indicators and manual overrides.
+    - **Restore File**: Targeted checkout of a single file from a historical commit into the working tree, with CRLF and binary safety.
+    - **Context Menu**: Native-feel context menu for common file actions (Open, Reveal, History, Restore).
+- **Key Files**: `src-tauri/src/commands/log/mod.rs`, `src-tauri/src/commands/repo/ops.rs`.
 
 ### 5. Branch Management
 - **Status**: Implemented
