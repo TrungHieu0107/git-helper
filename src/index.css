@@ -41,10 +41,8 @@
     --accent-hover: #1f2937;
     --accent-active: #1d2d3e;
     
-    /* Dimensions */
-    --sidebar-width: 220px;
-    --right-width: 340px;
-    --row-height: 36px;
+    --row-height: 30px;
+    --text-base: 13px;
     --font-mono: 'JetBrains Mono', monospace;
   }
 }
@@ -56,18 +54,44 @@ body {
   background-color: var(--bg-main);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--text-base);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 10px;
+  border: 2px solid var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4f56;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
 }
 
 /* ── Typography Scale ────────────────────────────────────────────── */
 
 .section-header-text {
-  font-size: 10px;
+  font-size: 7px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   color: var(--text-header);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .branch-name-text {
