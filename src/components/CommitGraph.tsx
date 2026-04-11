@@ -7,8 +7,8 @@ import { CommitRow, WipRow } from './CommitGraph/CommitRow';
 import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
 
 // ── Constants ────────────────────────────────────────────────────────
-const ROW_H = 36;
-const LANE_W = 20;
+const ROW_H = 30;
+const LANE_W = 18;
 const NODE_R = 10;
 const MERGE_DOT_R = 4;
 const LANE_PAD = NODE_R + 8;
@@ -284,7 +284,7 @@ export function CommitGraph() {
   return (
     <main className="flex-1 flex flex-col bg-[#0d1117] h-full overflow-hidden text-sm">
       {/* Header */}
-      <div className="h-9 flex items-center border-b border-[#30363d] bg-[#161b22] sticky top-0 z-30 min-w-max shadow-sm">
+      <div className="h-7 flex items-center border-b border-[#30363d] bg-[#161b22] sticky top-0 z-30 min-w-max shadow-sm">
         <div className="pl-4 section-header-text" style={{ width: cw.label }}>BRANCH / TAG</div>
         <ResizeHandle onMouseDown={onMouseDown('label')} />
         <div className="pl-2 section-header-text" style={{ width: gw }}>GRAPH</div>

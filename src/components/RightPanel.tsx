@@ -415,7 +415,7 @@ export function RightPanel() {
           </div>
 
           {/* Commit Area */}
-          <div className="border-t border-[#30363d] bg-[#161b22] flex flex-col shrink-0 p-4 gap-4 shadow-2xl z-10 relative">
+          <div className="border-t border-[#30363d] bg-[#161b22] flex flex-col shrink-0 p-3 gap-3 shadow-2xl z-10 relative">
              <div className="flex items-center justify-between">
                  <div className="flex items-center gap-2">
                     <div className="w-1.5 h-6 bg-[#3fb950] rounded-sm" />
@@ -528,11 +528,11 @@ function FileRow({ name, status, onAction, actionLabel, onClick, highlight = '' 
   return (
     <div 
       onClick={onClick}
-      className={`flex items-center justify-between h-[26px] px-2 hover:bg-[#1f2937] rounded-md cursor-pointer group transition-all duration-150 mx-1`}
+      className={`flex items-center justify-between h-[22px] px-2 hover:bg-[#1f2937] rounded-md cursor-pointer group transition-all duration-150 mx-1`}
     >
         <div className="flex items-center gap-2 overflow-hidden min-w-0">
            <StatusIcon status={status} />
-           <div className="flex items-baseline text-[12px] font-mono min-w-0 overflow-hidden" title={name}>
+           <div className="flex items-baseline text-[13px] font-mono min-w-0 overflow-hidden" title={name}>
               <span className="text-[#e6edf3] font-medium shrink-0">
                 <HighlightText text={fileName} query={highlight} />
               </span>

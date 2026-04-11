@@ -79,7 +79,7 @@ export function TopToolbar() {
   };
 
   return (
-    <div className="h-[48px] w-full bg-[#1c2128] border-b border-[#30363d] flex items-center px-4 shrink-0 justify-between select-none shadow-md">
+    <div className="h-[46px] w-full bg-[#1c2128] border-b border-[#30363d] flex items-center px-6 shrink-0 justify-between select-none shadow-md">
       
       {/* Left: Repo Selector Dropdown */}
       <div className="flex-1 flex items-center min-w-0">
@@ -87,24 +87,24 @@ export function TopToolbar() {
       </div>
 
       {/* Middle: Git Actions (Centered) */}
-      <div className="flex-[2] flex items-center justify-center space-x-7">
+      <div className="flex-[2] flex items-center justify-center space-x-5">
         
         {/* Undo / Redo */}
-        <div className="flex items-center gap-6">
-          <ToolbarButton icon={<Undo size={20} />} label="Undo" onClick={undoLastCommit} />
-          <ToolbarButton icon={<Redo size={20} />} label="Redo" disabled />
+        <div className="flex items-center gap-4">
+          <ToolbarButton icon={<Undo size={16} />} label="Undo" onClick={undoLastCommit} />
+          <ToolbarButton icon={<Redo size={16} />} label="Redo" disabled />
         </div>
 
         <div className="w-px h-6 bg-[#30363d] mx-2" />
         
         {/* Fetch / Pull / Push */}
-        <div className="flex items-center gap-6 text-[#58a6ff]">
-          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={20} />} label="Fetch" />
+        <div className="flex items-center gap-4 text-[#58a6ff]">
+          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={16} />} label="Fetch" />
           
           {/* Split Pull Button */}
           <div className="relative flex items-center" ref={pullDropdownRef}>
             <ToolbarButton 
-              icon={<ArrowDown size={20} />} 
+              icon={<ArrowDown size={16} />} 
               label="Pull" 
               onClick={() => handlePull()} 
               loading={isLoadingPull} 
@@ -147,7 +147,7 @@ export function TopToolbar() {
           {/* Split Push Button */}
           <div className="relative flex items-center" ref={pushDropdownRef}>
             <ToolbarButton 
-              icon={<ArrowUp size={20} className={lastCommitWasAmend ? "text-[#e3b341] drop-shadow-[0_0_8px_rgba(227,179,65,0.3)]" : ""} />} 
+              icon={<ArrowUp size={16} className={lastCommitWasAmend ? "text-[#e3b341] drop-shadow-[0_0_8px_rgba(227,179,65,0.3)]" : ""} />} 
               label={lastCommitWasAmend ? "Force Push" : "Push"} 
               onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
               loading={isLoadingPush} 
@@ -201,25 +201,25 @@ export function TopToolbar() {
         <div className="w-px h-6 bg-[#30363d] mx-2" />
 
         {/* Branch / Stash / Pop */}
-        <div className="flex items-center gap-6 text-[#e6edf3]">
+        <div className="flex items-center gap-4 text-[#e6edf3]">
           <ToolbarButton 
-            icon={<GitBranch size={20} />} 
+            icon={<GitBranch size={16} />} 
             label="Branch" 
             onClick={() => setShowCreateBranch(true)} 
           />
           <ToolbarButton 
-            icon={<Archive size={20} />} 
+            icon={<Archive size={16} />} 
             label="Stash" 
             onClick={() => useAppStore.setState({ showCreateStash: true })} 
           />
-          <ToolbarButton icon={<Navigation size={20} />} label="Pop" onClick={() => popStash(0)} />
+          <ToolbarButton icon={<Navigation size={16} />} label="Pop" onClick={() => popStash(0)} />
         </div>
 
         <div className="w-px h-6 bg-[#30363d] mx-2" />
 
         {/* Terminal */}
         <div className="flex items-center">
-          <ToolbarButton icon={<Terminal size={20} />} label="Terminal" onClick={openTerminal} />
+          <ToolbarButton icon={<Terminal size={16} />} label="Terminal" onClick={openTerminal} />
         </div>
         
       </div>
@@ -291,21 +291,17 @@ function RepoSelector() {
     <div className="relative" ref={dropdownRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-3 py-1.5 hover:bg-[#1f2937] rounded-lg cursor-pointer group transition-all min-w-0 border border-transparent hover:border-[#30363d]"
+        className="flex items-center gap-3 px-3 py-1 hover:bg-[#1f2937] rounded-lg cursor-pointer group transition-all min-w-0 border border-transparent hover:border-[#30363d]"
       >
-        <div className="w-7 h-7 bg-[#388bfd] rounded-md flex items-center justify-center text-white font-black text-sm shrink-0 shadow-lg">
+        <div className="w-5.5 h-5.5 bg-[#388bfd] rounded-md flex items-center justify-center text-white font-black text-[10px] shrink-0 shadow-lg">
           {repoInfo?.name[0]?.toUpperCase() || 'G'}
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[14px] font-bold text-[#e6edf3] truncate tracking-tight">
+            <span className="text-[13px] font-bold text-[#e6edf3] truncate tracking-tight">
               {repoInfo?.name || 'GitKit'}
             </span>
             <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-[#6e7681] font-medium">
-             <GitBranch size={10} className="text-[#3fb950]" />
-             <span className="truncate">{activeBranch || 'detaching...'}</span>
           </div>
         </div>
       </div>
@@ -382,10 +378,10 @@ function ToolbarButton({
     <div 
       onClick={() => !isDisabled && onClick?.()}
       title={title}
-      className={`flex flex-col items-center justify-center cursor-pointer group relative transition-all duration-200 hover:scale-105 ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''} ${className || ''}`}
+      className={`flex flex-col items-center justify-center cursor-pointer group relative transition-all duration-200 hover:scale-[1.03] ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''} ${className || ''}`}
     >
-       <div className={`p-2 rounded-lg transition-all ${!isDisabled ? 'group-hover:bg-white/5 group-hover:shadow-inner' : ''} ${!isDisabled ? 'text-[#e6edf3]' : 'text-[#6e7681]'}`}>
-         {loading ? <Loader2 size={20} className="animate-spin text-[#388bfd]" /> : icon}
+       <div className={`py-1 px-2 rounded-lg transition-all ${!isDisabled ? 'group-hover:bg-white/5 group-hover:shadow-inner' : ''} ${!isDisabled ? 'text-[#e6edf3]' : 'text-[#6e7681]'}`}>
+         {loading ? <Loader2 size={16} className="animate-spin text-[#388bfd]" /> : icon}
        </div>
        
        {count > 0 && (
@@ -394,7 +390,7 @@ function ToolbarButton({
          </div>
        )}
 
-       <span className="text-[10px] font-bold text-[#6e7681] mt-0.5 uppercase tracking-tighter group-hover:text-[#e6edf3] transition-colors">{label}</span>
+       <span className="text-[9px] font-bold text-[#6e7681] mt-0.5 uppercase tracking-tighter group-hover:text-[#e6edf3] transition-colors">{label}</span>
     </div>
   );
 }

@@ -252,7 +252,7 @@ export function Sidebar() {
             <div className={`flex flex-col min-h-0 pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
                <SectionHeader title="LOCAL" count="" open={localOpen} setOpen={setLocalOpen} />
                {localOpen && (
-                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar-hidden bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
                     {filteredLocalTree.length === 0 ? (
                       <div className="text-xs text-[#5c6370] italic px-2 py-2">No branches found</div>
                     ) : (
@@ -271,7 +271,7 @@ export function Sidebar() {
             <div className={`flex flex-col min-h-0 pt-3 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
                <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                {remoteOpen && (
-                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar-hidden bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1">
                    {filteredRemoteTree.size === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No remotes</div>
                    ) : (
@@ -302,7 +302,7 @@ export function Sidebar() {
             <div className={`flex flex-col min-h-0 pt-3 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
                <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
                {stashOpen && (
-                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar-hidden bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1 px-1 gap-1.5">
+                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/50 rounded-lg border border-[#30363d] py-1 px-1 gap-1.5">
                    {filteredStashes.length === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2">No stashes</div>
                    ) : (
@@ -508,10 +508,10 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
                         await safeSwitchBranch(fullRef);
                     }
                 }}
-                className={`flex items-center group h-[28px] px-1.5 mx-1 rounded-md transition-all cursor-pointer whitespace-nowrap
+                className={`flex items-center group h-[24px] px-1.5 mx-1 rounded-md transition-all cursor-pointer whitespace-nowrap
                     ${isHead ? 'bg-[#1d3a5f] border-l-2 border-[#388bfd]' : 'hover:bg-[#1f2937] border-l-2 border-transparent'}
                 `}
-                style={{ paddingLeft: `${Math.max(1.5, level * 4 + 1.5)}px` }}
+                style={{ paddingLeft: `${Math.max(6, level * 20.5 + 6)}px` }}
             >
                 <div className="flex items-center gap-2 overflow-hidden flex-1 group">
                     {hasChildren ? (
@@ -565,7 +565,7 @@ function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchConte
 
 function SectionHeader({ title, count, open, setOpen }: { title: string; count: number | string; open: boolean; setOpen: (b: boolean) => void }) {
   return (
-    <div onClick={() => setOpen(!open)} className="flex items-center group cursor-pointer h-7 px-2">
+    <div onClick={() => setOpen(!open)} className="flex items-center group cursor-pointer h-6 px-2">
       <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 mr-1.5 ${open ? '' : '-rotate-90'}`} />
       <span className="section-header-text whitespace-nowrap mr-3">{title}</span>
       <hr className="flex-1 border-[#30363d]" />

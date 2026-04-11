@@ -4,7 +4,7 @@ import { CommitNode, useAppStore } from '../../store';
 import { selectCommitDetail, safeSwitchBranch } from '../../lib/repo';
 
 // ── Constants ────────────────────────────────────────────────────────
-const ROW_H = 36;
+const ROW_H = 30;
 
 const COLORS = [
   '#00d4ff', '#a855f7', '#ef4444', '#f97316', 
@@ -186,10 +186,10 @@ export function CommitRow({
         {n.node_type === 'stash' ? (
           <div className="flex items-center gap-2">
              <span className="bg-[#251e0b] text-[#e3b341] border border-[#e3b341]/30 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 shadow-sm">STASH</span>
-             <span className="truncate text-[#e3b341] text-[13px] italic opacity-90">{n.message}</span>
+             <span className="truncate text-[#e3b341] text-[12px] italic opacity-90">{n.message}</span>
           </div>
         ) : (
-          <span className="truncate text-[#e6edf3] text-[13px] font-medium">{n.message}</span>
+          <span className="truncate text-[#e6edf3] text-[12px] font-medium">{n.message}</span>
         )}
       </div>
       <div 
@@ -202,10 +202,7 @@ export function CommitRow({
           {copied ? <Check size={12} className="text-[#3fb950]" /> : <Copy size={12} className="text-[#6e7681]" />}
         </button>
       </div>
-      <div className="pl-4 flex items-center gap-2 pr-4" style={{ width: cw.author }}>
-         <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-inner" style={{ backgroundColor: `hsl(${authorHue}, 40%, 35%)` }}>
-            {authorInitial}
-         </div>
+      <div className="pl-4 flex items-center pr-4" style={{ width: cw.author }}>
          <span className="text-[12px] text-[#8b949e] truncate font-medium group-hover/row:text-[#e6edf3] transition-colors">{authorFirstName}</span>
       </div>
     </div>
@@ -256,8 +253,8 @@ export function WipRow({
           <span className="text-[10px] text-[#f2cc60]">+{status?.unstaged_count ?? unstaged.length} unstaged</span>
         </div>
       </div>
-      <div className="pl-3 font-mono text-xs text-[#8b949e]/60" style={{ width: cw.hash }}>—</div>
-      <div className="pl-3 text-xs text-[#8b949e]/60 truncate" style={{ width: cw.author }}>Working Tree</div>
+      <div className="pl-3 font-mono text-[12px] text-[#8b949e]/60" style={{ width: cw.hash }}>—</div>
+      <div className="pl-3 text-[12px] text-[#8b949e]/60 truncate" style={{ width: cw.author }}>Working Tree</div>
     </div>
   );
 }
