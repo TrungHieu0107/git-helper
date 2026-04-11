@@ -1,6 +1,115 @@
 use git2::{Repository, RepositoryState, build::CheckoutBuilder};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::process::Command;
+use std::path::Path;
+
+#[tauri::command]
+pub fn open_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/c", "start", "", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn reveal_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer.exe")
+            .arg(format!("/select,\"{}\"", path))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .args(["-R", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // Try dbus-send for Nautilus/others, fallback to xdg-open on parent
+        let dbus_res = Command::new("dbus-send")
+            .args([
+                "--session",
+                "--dest=org.freedesktop.FileManager1",
+                "--type=method_call",
+                "/org/freedesktop/FileManager1",
+                "org.freedesktop.FileManager1.ShowItems",
+                &format!("array:string:\"file://{}\"", path),
+                "string:\"\"",
+            ])
+            .spawn();
+        
+        if dbus_res.is_err() {
+            if let Some(parent) = Path::new(&path).parent() {
+                Command::new("xdg-open")
+                    .arg(parent.to_string_lossy().to_string())
+                    .spawn()
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn discard_file_changes(repo_path: String, file_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let path = Path::new(&file_path);
+
+    // Check if file is tracked
+    let statuses = repo.statuses(None).map_err(|e| e.to_string())?;
+    let entry = statuses.iter().find(|e| e.path() == Some(&file_path));
+    
+    let is_untracked = entry.map(|e| e.status().contains(git2::Status::WT_NEW)).unwrap_or(false);
+
+    if is_untracked {
+        let full_path = Path::new(&repo_path).join(path);
+        if full_path.exists() {
+            if full_path.is_dir() {
+                std::fs::remove_dir_all(full_path).map_err(|e| e.to_string())?;
+            } else {
+                std::fs::remove_file(full_path).map_err(|e| e.to_string())?;
+            }
+        }
+    } else {
+        // Tracked file: revert to HEAD
+        let head = repo.head().map_err(|e| e.to_string())?;
+        let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
+        
+        // 1. Unstage if staged
+        let _ = repo.reset_default(Some(commit.as_object()), &[file_path.as_str()]);
+
+        // 2. Checkout from HEAD to workdir
+        let mut checkout_builder = CheckoutBuilder::new();
+        checkout_builder.path(path).force();
+        repo.checkout_head(Some(&mut checkout_builder))
+            .map_err(|e| format!("Failed to checkout: {}", e))?;
+    }
+
+    Ok(())
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CheckoutOptions {
