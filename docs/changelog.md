@@ -1,3 +1,9 @@
+## [2.7.0] - 2026-04-11
+### Added
+- **Restore File (v2.7.0)**: Professional-grade file recovery from historical commits with Windows CRLF conversion and binary file safety.
+- **Push Workflow**: Safe push with automatic upstream resolution and `--force-with-lease` support for amended commits.
+- **Conflict Status**: Enhanced working tree status mapping to distinguish specific conflict types (AA, UU, etc.) for resolution.
+
 ## [2.6.0] - 2026-04-11
 ### Added
 - **Auto Encoding Detection**: Robust backend pipeline using Mozilla's `chardetng` and BOM detection to correctly handle international charsets (Shift_JIS, GBK, etc.).

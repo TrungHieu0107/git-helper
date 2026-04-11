@@ -1,6 +1,6 @@
 # Bug Registry & Known Issues
-## Version: 1.2.0
-## Last updated: 2026-04-11 – UI Bug Fix Sync
+## Version: 2.7.0
+## Last updated: 2026-04-11 – v2.7.0 Error & Fix Sync
 ## Project: GitKit
 
 This document tracks identified bugs, logic gaps, and planned improvements in the codebase.
@@ -20,7 +20,7 @@ This document tracks identified bugs, logic gaps, and planned improvements in th
 
 | ID | Title | Status | Fixed In | Description |
 |---|---|---|---|---|
-| TODO-001| Conflict Mapping | Partial | - | `status.rs` returns `conflicted` but doesn't distinguish between types (AA, UU, etc.) in the status list. |
+| TODO-001| Conflict Mapping | **Resolved** | v2.7.0 | `status.rs` now correctly identifies and surfaces conflict states (`AA`, `UU`, etc.) in the status list for the ConflictEditorView. |
 | TODO-002| Pull Strategies | **Resolved** | v2.1.0 | Full support for Fast-Forward Only, Merge, and Rebase pull strategies with UI selection and persistence. |
 | TODO-003| Detached HEAD | Partial | - | Basic support for detached HEAD checkouts implemented, but "Reattach" or "Create Branch from HEAD" workflow is missing. |
 
@@ -31,6 +31,8 @@ This document tracks identified bugs, logic gaps, and planned improvements in th
 | GAP-001 | Submodule Tracking | Open | `get_status` does not recurse into submodules or show their dirty states. |
 | GAP-002 | Binary Diffs | Open | `diff.rs` detects binary files but doesn't provide a visual comparison (e.g., image hex view). |
 | GAP-003 | Commit Search logic | Partial| UI has a search input, but backend `revwalk` filtering for large logs is pending. |
+| GAP-004 | Restore Collision | Low | `restore_file_from_commit` overwrites local changes without a "Diff-before-restore" view. Mitigation: Added a "Staged Changes" warning in the UI. |
+| GAP-005 | Encoding Drift | Low | If a file's encoding changes between commits, the automatic detection may use the current workdir encoding for historical blobs if not explicitly re-evaluated. |
 
 ## Logic Gaps identified in analysis
 

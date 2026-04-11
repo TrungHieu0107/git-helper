@@ -3,8 +3,10 @@
 GitKit is a premium, high-performance Git client built with Tauri 2, Rust, and React. It provides a visual, intuitive interface for managing Git repositories with a focus on graph density, fast workflows, and robust state management.
 
 ## Key Features
-- **High-Fidelity Commit Graph**: Densely packed topological graph with Manhattan routing and curved pathways.
+- **High-Fidelity Commit Graph**: Densely packed topological graph with Manhattan routing and curved pathways. Virtualized for 10k+ rows.
 - **Advanced Branching**: Safe branch switching with conflict detection and automatic remote tracking.
+- **Restore File (v2.7.0)**: Targeted checkout of historical file versions with binary safety and CRLF conversion.
+- **Auto Encoding Detection**: Statistical and BOM-based charset detection using `chardetng` and `encoding_rs`.
 - **Multi-Strategy Pull**: Support for Fast-Forward, Merge, and Rebase strategies with persistent preferences.
 - **Cherry-Pick Workflow**: Interactive cherry-picking with a built-in conflict resolution editor.
 - **Modular Architecture**: Domain-scoped Rust commands and sliced Zustand state management for maximum scalability.
@@ -23,8 +25,8 @@ The project is fully documented in the `docs/` directory:
 
 ## Getting Started
 1. Install dependencies: `npm install`
-2. Run in dev mode: `npm run tauri dev`
+2. Run tool for development: `npm run tauri dev`
 3. Build production version: `npm run tauri build`
 
 ---
-*Version: 2.1.0 Stable*
+*Version: 2.7.0 Stable*

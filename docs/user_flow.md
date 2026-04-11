@@ -1,6 +1,6 @@
 # User Flow & Interaction Map
-## Version: 1.1.0
-## Last updated: 2026-04-11 – v2.1.0 Flow Sync
+## Version: 2.7.0
+## Last updated: 2026-04-11 – v2.7.0 Restore File & Push Sync
 ## Project: GitKit
 
 This document maps user actions in the UI to their corresponding Tauri commands and state updates.
@@ -38,12 +38,30 @@ sequenceDiagram
     Toolbar->>U: Show Strategy Menu
     U->>Toolbar: Select Strategy (FF/Merge/Rebase)
     Toolbar->>T: Invoke pull_remote(remote, branch, strategy)
-    T->>G: Fetch + Execute Strategy
+    G-->>T: Fetch + Execute Strategy
     G-->>T: Success / Conflict
     T-->>Toolbar: Pull Result
 ```
 
-## 3. Cherry-Pick Workflow
+## 3. Push Workflow (Safe Push)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant Toolbar as TopToolbar
+    participant T as Tauri (remote:push_current_branch)
+    participant G as git2/cli (Rust)
+
+    U->>Toolbar: Click Push
+    Toolbar->>T: Invoke push_current_branch(forceWithLease?)
+    T->>G: Resolve Upstream + Push
+    G-->>T: Success / Rejected (Non-FF)
+    T-->>Toolbar: Returns Result
+    U->>Toolbar: (If Rejected) Open Upstream Dialog
+    Toolbar->>T: Invoke push_branch_to_remote(remote, branch)
+```
+
+## 4. Cherry-Pick Workflow
 
 ```mermaid
 flowchart TD
@@ -92,6 +110,30 @@ sequenceDiagram
     T-->>H: Returns Historical Diff
 ```
 
+## 6. Restore File from Version
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as CommitDetailPanel
+    participant M as FileContextMenu
+    participant A as RestoreFileAlert
+    participant T as Tauri (repo:restore_file_from_commit)
+    participant G as git2 (Rust)
+
+    U->>C: Right-Click File in Commit
+    C->>M: Show Context Menu (with metadata)
+    U->>M: Click "Restore File from This Version"
+    M->>A: Open Alert (setConfirmRestoreFile)
+    A->>U: Show Metadata + Safety Warnings
+    U->>A: Click "Restore File"
+    A->>T: Invoke restore_file_from_commit(path, commitOid)
+    T->>G: Blob lookup + Write to Workdir
+    G-->>T: Success
+    T-->>A: Restore Result
+    A->>U: Show Toast + Refresh Status
+```
+
 ## 7. Auto Encoding Detection & Override
 
 ```mermaid
@@ -118,9 +160,11 @@ sequenceDiagram
 |---|---|---|---|
 | Open Folder | `open_repo` | `activeRepoPath`, `repoInfo` | `WelcomeScreen` |
 | Pull (FF/Merge/Rebase)| `pull_remote` | `repoStatus`, `commitLog` | `TopToolbar` |
+| Push | `push_current_branch` | `repoStatus`, `commitLog` | `TopToolbar` |
 | Cherry-pick | `cherry_pick_commit` | `cherryPickState` | `CommitContextMenu` |
 | Resolve Conflict | `resolve_conflict_file`| `cherryPickState` | `ConflictEditorView` |
 | Open File History | `get_file_log` | `showFileHistoryModal` | `FileContextMenu` |
+| Restore File | `restore_file_from_commit`| `repoStatus` | `RestoreFileAlert` |
 | Discard File | `discard_file_changes` | `repoStatus` | `FileContextMenu` |
 | Stage File | `stage_file` | `stagedFiles`, `unstagedFiles` | `RightPanel` |
 | Override Encoding | `get_file_contents` | (local component state) | `EncodingBadge` |

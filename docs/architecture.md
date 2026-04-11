@@ -1,6 +1,6 @@
 # Architecture Overview
-## Version: 1.2.0
-## Last updated: 2026-04-11 – v2.1.0 Modular Architecture Sync
+## Version: 2.7.0
+## Last updated: 2026-04-11 – v2.7.0 Restore File & Persistence Sync
 ## Project: GitKit
 
 GitKit is a high-performance Git client built with Tauri 2, Rust, and React. It follows a domain-scoped, modular architecture with a clear separation between Git logic (Rust) and the user interface (React).
@@ -9,8 +9,8 @@ GitKit is a high-performance Git client built with Tauri 2, Rust, and React. It 
 
 ### Core
 - **Framework**: [Tauri 2](https://tauri.app/) (v2.x)
-- **Backend**: [Rust](https://www.rust-lang.org/) (2021 edition) - Modular domain-scoped commands.
-- **Frontend**: [React 19](https://react.dev/) + TypeScript + [Vite 7](https://vitejs.dev/) - Sliced state management.
+- **Backend**: [Rust](https://www.rust-lang.org/) (2021 edition) - Domain-scoped commands (git2 + serde).
+- **Frontend**: [React 19](https://react.dev/) + TypeScript + [Vite 7](https://vitejs.dev/) - Sliced state management (Zustand).
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 
 ### Key Libraries
@@ -78,14 +78,15 @@ Commands are organized into modules in `src-tauri/src/commands/`.
 
 | Domain | Command | Responsibility |
 |---|---|---|
-| **Repo** | `open_repo`, `get_repo_status`, `checkout_branch`, `safe_checkout` | Metadata, counts, and safe branch switching logic. |
-| **Branch**| `list_branches`, `create_branch`, `validate_branch_name` | Branch lifecycle management. |
-| **Stash** | `list_stashes`, `create_stash`, `apply_stash`, `pop_stash`, `drop_stash`, `stash_save_advanced` | Stash management and conflict handling. |
-| **Log** | `get_log` | Commit history with lane routing. |
-| **Diff** | `get_diff`, `get_file_contents`, `create_commit` | Patch generation and commit creation. |
-| **Remote**| `fetch_all_remotes`, `pull_remote`, `push_remote` | Network operations with strategy support. |
-| **Status**| `get_status` | Working tree status with rename tracking. |
-| **CherryPick**| `get_cherry_pick_state`, `cherry_pick_commit`, `cherry_pick_abort` | Cherry-pick workflow and conflict resolution. |
+| **Repo** | `open_repo`, `get_repo_status`, `checkout_branch`, `safe_checkout`, `restore_file_from_commit` | Metadata, counts, safe branch switching, and targeted file restoration. |
+| **Branch**| `list_branches`, `create_branch`, `validate_branch_name` | Branch lifecycle and validation. |
+| **Stash** | `list_stashes`, `create_stash`, `apply_stash`, `pop_stash`, `drop_stash`, `stash_save_advanced` | Stash management and advanced selective stashing. |
+| **Log** | `get_log`, `get_file_log` | Commit history with lane routing and file-specific logs. |
+| **Diff** | `get_diff`, `get_file_contents`, `create_commit`, `get_commit_detail` | Patch generation, encoding detection, and commit creation. |
+| **Remote**| `fetch_all_remotes`, `pull_remote`, `push_remote`, `push_current_branch` | Network operations with strategy support. |
+| **Status**| `get_status`, `stage_file`, `unstage_file`, `discard_all` | Working tree status and staging operations. |
+| **CherryPick**| `get_cherry_pick_state`, `cherry_pick_commit`, `cherry_pick_abort` | Cherry-pick workflow and conflict resolution data. |
+| **Meta** | `get_recent_repos`, `get_app_state`, `save_app_state`, `open_terminal` | Configuration persistence and system integrations. |
 
 ## State Management (Zustand Slices)
 

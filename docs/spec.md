@@ -54,6 +54,7 @@ This document outlines the implemented and planned features of GitKit, along wit
 - **Status**: Implemented
 - **Details**:
     - **Pull Strategies**: Supports `Fast-Forward Only`, `Merge`, and `Rebase` strategies.
+    - **Push Workflow**: Robust push with automatic upstream resolution and `--force-with-lease` support for amended commits.
     - **Persistent Preference**: Remembers the user's preferred pull strategy across sessions.
     - **Atomic Fetching**: Pull operations perform a fetch internally to ensure consistency.
 - **Key Files**: `src-tauri/src/commands/remote/`, `src/components/TopToolbar.tsx`.

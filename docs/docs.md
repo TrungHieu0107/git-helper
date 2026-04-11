@@ -1,6 +1,6 @@
 # Developer Documentation
-## Version: 1.1.0
-## Last updated: 2026-04-11 – v2.1.0 Reference Sync
+## Version: 2.7.0
+## Last updated: 2026-04-11 – v2.7.0 Reference Sync
 ## Project: GitKit
 
 This document provides developer-focused information on how to work with the GitKit codebase and explains core implementation patterns.
@@ -27,10 +27,11 @@ npm run tauri build
 ## 2. Core Patterns
 
 ### Side-by-Side Diffing
-The app uses Monaco Editor to render high-fidelity diffs.
+The app uses Monaco Editor and a custom **Encoding Detection Pipeline** to render accurate diffs.
 - `get_file_contents` (Rust) retrieves raw file buffers.
-- `encoding_rs` is used to decode buffers into UTF-8, handling legacy encodings like Windows-1258 or Shift-JIS.
-- Files are compared using Monaco's `DiffEditor` component.
+- **Auto-Detection**: `chardetng` (statistical) and BOM-checking identify the character set.
+- **Decoding**: `encoding_rs` converts buffers to UTF-8 for the frontend.
+- **Manual Override**: Users can override the detected encoding via the `EncodingBadge` UI, which re-fetches content with a forced charset.
 
 ### Commit Graph Lane Routing
 Graph lanes are calculated in the backend (`src-tauri/src/commands/log/mod.rs`) during commit iteration.
@@ -39,10 +40,11 @@ Graph lanes are calculated in the backend (`src-tauri/src/commands/log/mod.rs`) 
 - Stashes are assigned lanes to the extreme right of active branch lines to avoid visual noise.
 
 ### Safe Branch Switching
-Branch switching uses a two-step "Safe Checkout" pattern:
-1.  **Dry-Run**: `safe_checkout` uses `git checkout --dry-run` or equivalent internal checks to simulate the switch.
-2.  **Resolution**: `resolve_checkout_target` normalizes remote branches (e.g., `origin/main`) to their local tracking counterparts.
-3.  **Checkout**: Only if the dry-run is clean (or after a user-initiated stash) does `checkout_branch` execute the actual switch.
+Branch switching uses a multi-step "Safe Checkout" pattern:
+1.  **Dry-Run**: `safe_checkout` simulates the switch using `checkout_builder` with `Notify` callbacks.
+2.  **Resolution**: Normalizes remote branches (e.g., `origin/main`) to their local tracking counterparts.
+3.  **Conflict Guard**: If conflicts are detected, the UI prompts for a **Force Checkout** (with stash safety) or aborts.
+4.  **Checkout**: Only if the switch is safe or after a user-initiated stash does `checkout_branch` execute.
 
 ### 2.4 File History & History Modal
 File history is fetched using `git2`'s `revwalk` combined with `DiffOptions::pathspec` filtering.
@@ -51,10 +53,14 @@ File history is fetched using `git2`'s `revwalk` combined with `DiffOptions::pat
 - **History Modal**: A full-screen overlay that isolates the diff view from the main working tree state. It reuses the `MainDiffView` component with explicit `path` and `commitOid` props.
 
 ### 2.5 File Operations
-- **System Editor**: Uses `std::process::Command` to open files in the default system-registered editor (`open` on macOS, `cmd /c start` on Windows, `xdg-open` on Linux).
+- **System Editor**: Uses `std::process::Command` to open files via the platform-specific shell (`cmd /c start`, `open`, `xdg-open`).
 - **Safe Discard**:
     - **Untracked files**: Deleted from disk using `fs::remove_file`.
-    - **Tracked files**: Reset from HEAD (`repo.reset_default`) and then checked out to synchronize the working tree.
+    - **Tracked files**: Reset from HEAD (`repo.reset_default`) and checked out to sync the workdir.
+- **Targeted Restore**:
+    - `restore_file_from_commit` (v2.7.0) fetches a historical blob via `commit.tree()` and `tree.get_path()`.
+    - **Windows CRLF**: If `core.autocrlf` is active, it automatically performs LF -> CRLF conversion.
+    - **Binary Guard**: Heuristically detects binary files to prevent corruption during restoration.
 
 ## 3. Persistence Layer (`app_state.json`)
 
