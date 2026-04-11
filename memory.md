@@ -1,5 +1,5 @@
 # GitManager App Memory
-## Version: 2.3.4
+## Version: 2.4.4
 ## Last updated: 2026-04-11 – Completed GitKit visual overhaul Phase 1 (Sidebar, CommitGraph, RightPanel, Toolbar)
 
 ## Project: GitKit
@@ -105,17 +105,19 @@
     - `TopToolbar.tsx`: Grouped actions with vertical separators and refined icon buttons. Added Active Branch indicator to RepoSelector.
   - **Status**: Completed Phase 1 UI/UX redesign.
 
-# Project Status: Stable (v2.3.4)
-The GitKit application is stable and has completed the first phase of its comprehensive UI/UX redesign, featuring a modernized design system and refined component architecture.
+- 2026-04-11 (v2.3.5): 
+  - **Feature**: Modularized Sidebar stashes into src/components/Sidebar/Stashes.tsx.
+  - **Fix**: Resolved JSX syntax error in Sidebar.tsx and cleaned up legacy code.
+  - **Refinement**: Applied premium redesign styling to modular components.
 
-## [v2.3.5] - 2026-04-11
-- **Feature**: Modularized Sidebar stashes into src/components/Sidebar/Stashes.tsx.
-- **Fix**: Resolved JSX syntax error in Sidebar.tsx and cleaned up legacy code.
-- **Refinement**: Applied premium redesign styling to modular components.
+- 2026-04-11 (v2.3.6): 
+  - **Fix**: Resolved ReferenceError in TopToolbar.tsx by properly destructuring activeBranch in the RepoSelector component.
+  - **Rules of Hooks Violation**: Resolved a critical runtime error in `CommitGraph.tsx` where `useState` was being called inside a `map` loop.
+  - **CommitGraph Modularization**: Extracted row rendering logic into dedicated `CommitRow` and `WipRow` components in `src/components/CommitGraph/`.
+  - **Logic Isolation**: Isolated the "Copy Hash" state for each commit row, ensuring stable and independent state handling.
 
+- 2026-04-11 (v2.4.4):
+  - **Refinement**: Further reduced sidebar and section headers to **7px** to create an extremely sharp, high-density visual contrast between headers and content.
 
-## [v2.3.6] - 2026-04-11
-- **Fix**: Resolved ReferenceError in TopToolbar.tsx by properly destructuring activeBranch in the RepoSelector component.
-- **Rules of Hooks Violation**: Resolved a critical runtime error in `CommitGraph.tsx` where `useState` was being called inside a `map` loop.
-- **CommitGraph Modularization**: Extracted row rendering logic into dedicated `CommitRow` and `WipRow` components in `src/components/CommitGraph/`.
-- **Logic Isolation**: Isolated the "Copy Hash" state for each commit row, ensuring stable and independent state handling.
+# Project Status: Stable (v2.3.8)
+The GitKit application is stable and has completed the first phase of its comprehensive UI/UX redesign, featuring a modernized design system, standardized typography, and a compact, high-density layout.
