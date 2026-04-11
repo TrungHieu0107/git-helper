@@ -1,10 +1,10 @@
 # GitKit Status Summary
-## Version: 2.3.6
-## Status: Stable - Modularization Phase Started
+## Version: 2.3.7
+## Status: Stable - Modularization Phase Progressing
 
-Phase 2 of the GitKit evolution has begun: **Modularization**. Following the Phase 1 UI/UX redesign, we are now decomposing monolithic components for better maintainability. The Sidebar has been modularized, resolving a critical build blocker and standardizing component patterns.
+The GitKit evolution continues into Phase 2: **Modularization**. We have successfully modularized both the Sidebar and the CommitGraph, resolving critical runtime errors and significantly improving code stability.
 
 **Recent Highlights**:
-- **Build Blocker Resolved**: Fixed JSX syntax error and cleaned up legacy code in `Sidebar.tsx`.
-- **Sidebar Modularization**: Extracted Stashes logic and shared utilities into dedicated files.
-- **Design System Fidelity**: Ensured all section headers and stash items follow the premium redesign tokens.
+- **Critical Fix**: Resolved "Rules of Hooks" violation in `CommitGraph.tsx`.
+- **CommitGraph Modularization**: Extracted row logic into `CommitRow` and `WipRow` components.
+- **Improved UX**: Isolated states for item-level interactions (e.g., hash copying) ensure a seamless performance even with large repositories.

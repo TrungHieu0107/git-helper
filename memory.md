@@ -116,4 +116,6 @@ The GitKit application is stable and has completed the first phase of its compre
 
 ## [v2.3.6] - 2026-04-11
 - **Fix**: Resolved ReferenceError in TopToolbar.tsx by properly destructuring activeBranch in the RepoSelector component.
-
+- **Rules of Hooks Violation**: Resolved a critical runtime error in `CommitGraph.tsx` where `useState` was being called inside a `map` loop.
+- **CommitGraph Modularization**: Extracted row rendering logic into dedicated `CommitRow` and `WipRow` components in `src/components/CommitGraph/`.
+- **Logic Isolation**: Isolated the "Copy Hash" state for each commit row, ensuring stable and independent state handling.
