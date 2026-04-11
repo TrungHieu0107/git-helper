@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileCode, FolderSearch, Plus, Minus, RotateCcw, History, Copy, X } from 'lucide-react';
-import { openInEditor, showInExplorer, stageFile, unstageFile, discardFileChanges } from '../lib/repo';
+import { FileCode, FolderSearch, Plus, Minus, RotateCcw, History, Copy, X, Undo2 } from 'lucide-react';
+import { openInEditor, showInExplorer, stageFile, unstageFile, discardFileChanges, refreshActiveRepoStatus } from '../lib/repo';
 import { toast } from '../lib/toast';
 import { useAppStore } from '../store';
 
@@ -10,12 +10,25 @@ export interface FileContextMenuProps {
   isStaged: boolean;
   position: { x: number; y: number };
   onClose: () => void;
+  hideGitActions?: boolean;
+  commitOid?: string;
+  shortOid?: string;
+  commitMessage?: string;
 }
 
-export function FileContextMenu({ path, isStaged, position, onClose }: FileContextMenuProps) {
+export function FileContextMenu({ 
+  path, 
+  isStaged, 
+  position, 
+  onClose, 
+  hideGitActions = false,
+  commitOid,
+  shortOid,
+  commitMessage 
+}: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState(position);
-  const { setFileHistory, activeRepoPath } = useAppStore();
+  const { setFileHistory, activeRepoPath, setConfirmRestoreFile } = useAppStore();
 
   // Adjust position to stay within viewport
   useEffect(() => {
@@ -88,22 +101,40 @@ export function FileContextMenu({ path, isStaged, position, onClose }: FileConte
       label: 'Show in Explorer',
       action: () => { showInExplorer(path); onClose(); }
     },
-    { id: 'sep-1', separator: true },
+    { id: 'sep-1', separator: true, hide: hideGitActions },
     {
       id: 'stage-unstage',
       icon: isStaged ? <Minus size={14} /> : <Plus size={14} />,
       label: isStaged ? 'Unstage File' : 'Stage File',
       color: isStaged ? 'text-[#f85149]' : 'text-[#3fb950]',
-      action: () => { isStaged ? unstageFile(path) : stageFile(path); onClose(); }
+      action: () => { isStaged ? unstageFile(path) : stageFile(path); onClose(); },
+      hide: hideGitActions
     },
     ...(!isStaged ? [{
       id: 'discard',
       icon: <RotateCcw size={14} />,
       label: 'Discard Changes',
       color: 'text-[#f85149]',
-      action: handleDiscard
+      action: handleDiscard,
+      hide: hideGitActions
     }] : []),
     { id: 'sep-2', separator: true },
+    ...(commitOid ? [{
+      id: 'restore',
+      icon: <Undo2 size={14} />,
+      label: 'Restore File from This Version',
+      action: async () => {
+        if (!shortOid || !commitMessage) return;
+        onClose();
+        await refreshActiveRepoStatus();
+        setConfirmRestoreFile({
+          path,
+          commitOid,
+          shortOid,
+          commitMessage,
+        });
+      }
+    }, { id: 'sep-restore', separator: true }] : []),
     {
       id: 'history',
       icon: <History size={14} />,
@@ -122,7 +153,7 @@ export function FileContextMenu({ path, isStaged, position, onClose }: FileConte
       label: 'Copy Full Path',
       action: handleCopyFullPath
     }
-  ];
+  ].filter(item => !('hide' in item) || !item.hide);
 
   return createPortal(
     <div

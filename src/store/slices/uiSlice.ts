@@ -19,6 +19,14 @@ export interface SelectedDiff {
   commitOid?: string;
 }
 
+export interface RestoreFileConfirmation {
+  path: string;
+  commitOid: string;
+  shortOid: string;
+  commitMessage: string;
+  currentPath?: string;
+}
+
 export type CheckoutError = 
   | { type: 'Conflict', data: { files: string[] } }
   | { type: 'DirtyState', data: { state: string } }
@@ -45,6 +53,8 @@ export interface UISlice {
   showSetUpstreamDialog: boolean;
   lastCommitWasAmend: boolean;
 
+  confirmRestoreFile: RestoreFileConfirmation | null;
+
   forceCheckoutTarget: string | null;
   forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
@@ -64,6 +74,7 @@ export interface UISlice {
   setIsLoadingPush: (loading: boolean) => void;
   setShowSetUpstreamDialog: (show: boolean) => void;
   setLastCommitWasAmend: (wasAmend: boolean) => void;
+  setConfirmRestoreFile: (conf: RestoreFileConfirmation | null) => void;
 
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
@@ -87,6 +98,8 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   showSetUpstreamDialog: false,
   lastCommitWasAmend: false,
 
+  confirmRestoreFile: null,
+
   forceCheckoutTarget: null,
   forceCheckoutPhase: 'idle',
 
@@ -106,6 +119,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setIsLoadingPush: (loading) => set(() => ({ isLoadingPush: loading })),
   setShowSetUpstreamDialog: (show) => set(() => ({ showSetUpstreamDialog: show })),
   setLastCommitWasAmend: (wasAmend) => set(() => ({ lastCommitWasAmend: wasAmend })),
+  setConfirmRestoreFile: (conf) => set(() => ({ confirmRestoreFile: conf })),
 
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   setFileHistory: (path) => set(() => ({ fileHistoryPath: path, showFileHistoryModal: !!path })),

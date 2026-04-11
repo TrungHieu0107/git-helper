@@ -1,7 +1,21 @@
 import { useState, useMemo } from "react";
 import { useAppStore, CommitDetail } from "../store";
-import { GitCommit, Clock, GitBranch, Edit2, Plus, Minus, ArrowRight, Eye, Folder, ChevronRight, ChevronDown, ChevronsRight } from "lucide-react";
 import { selectFileDiff } from "../lib/repo";
+import { FileContextMenu } from "./FileContextMenu";
+import { 
+  GitCommit, 
+  Clock, 
+  GitBranch, 
+  Edit2, 
+  Plus, 
+  Minus, 
+  ArrowRight, 
+  Eye, 
+  Folder, 
+  ChevronRight, 
+  ChevronDown, 
+  ChevronsRight 
+} from "lucide-react";
 
 interface CommitDetailPanelProps {
   onCollapse?: () => void;
@@ -77,6 +91,14 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
   const loading = useAppStore(s => s.isLoadingCommitDetail);
   const [viewMode, setViewMode] = useState<'path' | 'tree'>('path');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['']));
+  const [contextMenu, setContextMenu] = useState<{ 
+    path: string; 
+    x: number; 
+    y: number; 
+    commitOid?: string;
+    shortOid?: string;
+    commitMessage?: string;
+  } | null>(null);
 
   const treeData = useMemo(() => {
     if (!detail) return null;
@@ -131,6 +153,19 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
               className="flex items-center gap-1.5 py-1 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
               onClick={() => child.isFolder ? toggleFolder(child.fullPath) : selectFileDiff(child.fullPath, false, detail.oid)}
+              onContextMenu={(e) => {
+                if (!child.isFolder) {
+                  e.preventDefault();
+                  setContextMenu({ 
+                    path: child.fullPath, 
+                    x: e.clientX, 
+                    y: e.clientY,
+                    commitOid: detail.oid,
+                    shortOid: detail.short_oid,
+                    commitMessage: detail.message
+                  });
+                }
+              }}
             >
               {child.isFolder ? (
                 <>
@@ -280,6 +315,17 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                 <div 
                   key={i}
                   onClick={() => selectFileDiff(f.path, false, detail.oid)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ 
+                      path: f.path, 
+                      x: e.clientX, 
+                      y: e.clientY,
+                      commitOid: detail.oid,
+                      shortOid: detail.short_oid,
+                      commitMessage: detail.message
+                    });
+                  }}
                   className="flex items-center gap-2 py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
                 >
                   {statusIcon(f.status)}
@@ -300,8 +346,20 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
             )}
           </div>
         </div>
-
       </div>
+
+      {contextMenu && (
+        <FileContextMenu 
+          path={contextMenu.path}
+          isStaged={false}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          commitOid={contextMenu.commitOid}
+          shortOid={contextMenu.shortOid}
+          commitMessage={contextMenu.commitMessage}
+          onClose={() => setContextMenu(null)}
+          hideGitActions={true}
+        />
+      )}
     </div>
   );
 }
