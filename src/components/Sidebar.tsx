@@ -277,15 +277,10 @@ export function Sidebar() {
                    ) : (
                      Array.from(filteredRemoteTree.entries()).map(([remote, tree]) => (
                        <div key={remote}>
-                         <div className="flex items-center gap-2 py-1 pl-1">
-                            <GitBranch size={12} className="text-[#5c6370]" />
-                            <span className="text-[#a0a6b1] font-medium">
-                              <Highlight text={remote} query={filter} />
-                            </span>
-                         </div>
-                          <div className="pl-4">
+
+                          <div>
                              {tree.map(node => (
-                               <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={1} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remote} />
+                               <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remote} />
                              ))}
                           </div>
                        </div>
