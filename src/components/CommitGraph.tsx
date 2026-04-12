@@ -276,10 +276,8 @@ export function CommitGraph() {
     }
   }, [virtualItems, totalRows, hasMoreCommits, isLoadingMore]);
 
-  useEffect(() => {
-    if (commitLog?.length)
-      console.log('GRAPH DEBUG:', commitLog.slice(0, 5).map(c => ({ oid: c.short_oid, lane: c.lane, edges: c.edges, parents: c.parents.map(p => p.slice(0, 7)) })));
-  }, [commitLog]);
+
+
 
   return (
     <main className="flex-1 flex flex-col bg-[#0d1117] h-full overflow-hidden text-sm">

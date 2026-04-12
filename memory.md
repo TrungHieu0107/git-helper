@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.8.0
-## Last updated: 2026-04-12 – Stash Context Menu, UI Refinement, and Bug Fixes.
+## Version: 2.8.1
+## Last updated: 2026-04-12 – Fixed commit graph pagination (infinite scroll) type mismatch.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -66,10 +66,24 @@
 - 2026-04-12 (v2.7.1): Full Documentation Sync. Regenerated all 7 documentation files (architecture, spec, user_flow, docs, bug_registry, changelog, and README) to capture the latest technical state of the project.
 - 2026-04-12 (v2.8.0): Stash Context Menu & UI Refinement. Implemented "Pop", "Apply", and "Delete" actions for stash nodes in the commit graph. Upgraded the visual aesthetics with active branch lineage glow, curated color palettes, and polished node rendering. Fixed backend compiler errors and frontend ReferenceErrors encountered during rollout.
 
-# Project Status: Stable (v2.8.0)
+# Project Status: Stable (v2.8.1)
 The GitKit application is stable; the technical documentation suite is fully synchronized and exhaustive.
 
 ---
+
+### 2026-04-12 – Bugfix: Commit Graph Pagination Type Mismatch (v2.8.1)
+**Reason**: When scrolling to the bottom of the commit graph, older commits failed to load despite existing in the repository.
+**Root Cause**: Backend `get_log` returns `LogResponse { nodes, has_more, commit_count }` but frontend was casting it as `CommitNode[]`. This caused:
+1. `log.length` to be undefined (object, not array), making `hasMoreCommits: log.length === 200` always false
+2. `[...state.commitLog, ...log]` failed to spread a non-array object
+3. Pagination `offset` used `commitLog.length` which includes stash nodes, but backend `revwalk.skip(offset)` counts only real commits
+**Fix**:
+- Added `LogResponse` interface to `logSlice.ts`
+- Added `commitOffset` field to store for tracking real commit count (excluding stashes)
+- Updated `loadRepo()` and `loadMoreCommits()` to use `LogResponse` type and extract `.nodes`, `.has_more`, `.commit_count`
+- Removed stale debug `console.log` from `CommitGraph.tsx`
+
+**Status**: Version 2.8.1 (Completed) ✓
 
 ### 2026-04-12 – Feature: Stash Context Menu & UI Refinement (v2.8.0)
 **Reason**: User requested "Pop", "Apply", and "Delete" stash actions in the commit graph context menu. Leveraging the opportunity to refine the graph's visual aesthetics.
