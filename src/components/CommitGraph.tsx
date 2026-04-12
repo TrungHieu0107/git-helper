@@ -70,17 +70,20 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
   const oidMap = new Map<string, number>();
   commits.forEach((c, i) => oidMap.set(c.oid, i));
 
-  // WIP → first commit
-  if (wip && commits.length > 0 && minIdx <= 0) {
-    const x1 = lx(0), y1 = ly(0), x2 = lx(commits[0].lane), y2 = ly(off);
+  // WIP → first commit (skipping stashes)
+  const firstCommitIdx = commits.findIndex(c => c.node_type === 'commit');
+  if (wip && firstCommitIdx !== -1 && minIdx <= 0) {
+    const target = commits[firstCommitIdx];
+    const targetRow = firstCommitIdx + off;
+    const x1 = lx(0), y1 = ly(0), x2 = lx(target.lane), y2 = ly(targetRow);
     out.push({ 
       path: roundedPath(x1, y1, x2, y2, 'branch-off'), 
-      colorIdx: commits[0].color_idx, 
+      colorIdx: target.color_idx, 
       childOid: 'WIP', 
       isMerge: false, 
       dashed: true,
       r1: 0,
-      r2: off
+      r2: targetRow
     });
   }
 
