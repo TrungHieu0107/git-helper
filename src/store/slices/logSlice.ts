@@ -23,6 +23,12 @@ export interface CommitNode {
   stash_index?: number;
 }
 
+export interface LogResponse {
+  nodes: CommitNode[];
+  has_more: boolean;
+  commit_count: number;
+}
+
 export interface CommitFileChange {
   path: string;
   old_path: string | null;
@@ -43,6 +49,7 @@ export interface CommitDetail {
 
 export interface LogSlice {
   commitLog: CommitNode[];
+  commitOffset: number; // tracks actual commit count (excluding stashes) for pagination
   hasMoreCommits: boolean;
   isLoadingMore: boolean;
   commitSearchInput: string;
@@ -63,6 +70,7 @@ export interface LogSlice {
 
 export const createLogSlice: StateCreator<AppStore, [], [], LogSlice> = (set) => ({
   commitLog: [],
+  commitOffset: 0,
   hasMoreCommits: true,
   isLoadingMore: false,
   commitSearchInput: '',
