@@ -28,6 +28,13 @@ pub struct CommitNode {
 }
 
 #[derive(Serialize)]
+pub struct LogResponse {
+    pub nodes: Vec<CommitNode>,
+    pub has_more: bool,
+    pub commit_count: usize,  // actual commit count (excluding stashes) for pagination offset
+}
+
+#[derive(Serialize)]
 pub struct FileCommit {
     pub oid: String,
     pub short_oid: String,
@@ -106,7 +113,7 @@ pub fn get_log(
     limit: usize, 
     offset: usize,
     refresh: Option<bool>
-) -> Result<Vec<CommitNode>, String> {
+) -> Result<LogResponse, String> {
     let mut repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
 
@@ -171,6 +178,8 @@ pub fn get_log(
     // ── Optimized Batch Detail Extraction ─────────────────────────────
     // Collect OIDs first so we can process them in parallel
     let oids: Vec<Oid> = revwalk.skip(offset).take(limit).filter_map(|r| r.ok()).collect();
+    let commit_count = oids.len();
+    let has_more = commit_count == limit;
 
     // Map OIDs to metadata in parallel
     let commit_metadata: HashMap<Oid, (Vec<Oid>, String, String, i64, String, String)> = oids.par_iter().map(|&oid| {
@@ -356,7 +365,11 @@ pub fn get_log(
         });
     }
 
-    Ok(result_nodes)
+    Ok(LogResponse {
+        nodes: result_nodes,
+        has_more,
+        commit_count,
+    })
 }
 
 fn rebuild_refs_map(repo: &Repository) -> Result<HashMap<Oid, Vec<String>>, String> {
