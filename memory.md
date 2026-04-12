@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.8.1
-## Last updated: 2026-04-12 – Fixed commit graph pagination (infinite scroll) type mismatch.
+## Version: 2.8.4
+## Last updated: 2026-04-12 – Correcting WIP node connection in commit graph.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -66,8 +66,35 @@
 - 2026-04-12 (v2.7.1): Full Documentation Sync. Regenerated all 7 documentation files (architecture, spec, user_flow, docs, bug_registry, changelog, and README) to capture the latest technical state of the project.
 - 2026-04-12 (v2.8.0): Stash Context Menu & UI Refinement. Implemented "Pop", "Apply", and "Delete" actions for stash nodes in the commit graph. Upgraded the visual aesthetics with active branch lineage glow, curated color palettes, and polished node rendering. Fixed backend compiler errors and frontend ReferenceErrors encountered during rollout.
 
-# Project Status: Stable (v2.8.1)
-The GitKit application is stable; the technical documentation suite is fully synchronized and exhaustive.
+### 2026-04-12 – UI Adjustment: Sidebar Title Size (v2.8.2)
+**Reason**: User requested to increase the size of the sidebar titles by 2px.
+**Changes**:
+- Updated `src/index.css`: Increased `.section-header-text` font-size from `7px` to `9px`. This affects the "LOCAL", "REMOTE", and "STASHES" section headers.
+- Updated `src/components/Sidebar.tsx`: Increased the active branch title font size from `14px` to `16px` for better prominence.
+- This ensures both the main navigational identity and section markers are more readable.
+
+**Status**: Version 2.8.2 (Completed) ✓
+
+### 2026-04-12 – UI Cleanup: Simplified Remote View (v2.8.3)
+**Reason**: User requested to remove the explicit remote name header (e.g., "origin") to flatten the remote branch list.
+**Changes**:
+- Updated `src/components/Sidebar.tsx`: Removed the redundant remote name div containing the `GitBranch` icon and `Highlight` label.
+- Un-indented remote branch items by removing the `pl-4` container and resetting `level` to `0` in `BranchTreeItem`.
+- This creates a cleaner, more streamlined remote branches list while maintaining the `remotePrefix` logic for Git operations.
+
+**Status**: Version 2.8.3 (Completed) ✓
+
+### 2026-04-12 – UI Fix: WIP Connection (v2.8.4)
+**Reason**: WIP node was incorrectly connecting to stash nodes if stashes were at the top of the log.
+**Changes**:
+- Updated `CommitGraph.tsx`: Modified `buildEdges` to find the first node with `node_type === 'commit'` using `commits.findIndex()`.
+- Dynamically calculated `targetRow` based on the first commit's index, ensuring the connection line bypasses any initial stash nodes.
+- Updated `r2` and `colorIdx` to correspond to the found commit.
+
+**Status**: Version 2.8.4 (Completed) ✓
+
+# Project Status: Stable (v2.8.4)
+The GitKit application is stable; version 2.8.4 resolves the WIP connection visual bug.
 
 ---
 

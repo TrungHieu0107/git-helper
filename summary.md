@@ -1,12 +1,11 @@
-# GitKit Status Summary
-## Version: 2.8.1
-## Last updated: 2026-04-12 – Fixed commit graph infinite scroll pagination.
+# GitKit Project Summary
+## Version: 2.8.4
+## Last updated: 2026-04-12 – Fixed WIP connection logic.
 ## Project: GitKit
 
-GitKit has reached version 2.8.1 with a critical pagination bugfix. The commit graph now correctly loads older commits when scrolling to the bottom by properly consuming the backend's `LogResponse` type (instead of treating it as a flat array) and tracking real commit counts (excluding stashes) for accurate revwalk offset pagination.
+GitKit is a high-performance, premium Git management application. The current stable version is v2.8.4, which resolves a visual bug where the WIP node incorrectly connected to stash nodes.
 
 **Recent Highlights**:
-- **Pagination Fix (v2.8.1)**: Resolved type mismatch between backend `LogResponse` and frontend `CommitNode[]` casting, added `commitOffset` for stash-safe pagination.
-- **Stash Context Menu (v2.8.0)**: Integrated Pop, Apply, and Delete actions into the graph context menu with index-based backend mapping.
-- **Premium Graph UI**: Added active branch lineage glow effects, curated color palettes, and modernized node rendering.
-- **Stability**: Full documentation sync performed to maintain alignment between spec and implementation.
+- **WIP Connection Fix (v2.8.4)**: Updated graph logic to ensure the WIP node always connects to the first actual commit, bypassing stashes.
+- **Remote Cleanup (v2.8.3)**: Simplified Sidebar by removing remote headers and flattening branch lists.
+- **Sidebar Typography (v2.8.2)**: Adjusted font sizes for section headers and the active branch selector.
