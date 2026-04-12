@@ -410,7 +410,7 @@ function BranchSelector({ setBranchContextMenu }: { setBranchContextMenu: (ctx: 
       >
         <div className="flex items-center gap-2 min-w-0">
           <GitBranch size={16} className="text-blue-400 shrink-0" />
-          <span className="font-bold text-[#e5e5e6] truncate text-[14px]">
+          <span className="font-bold text-[#e5e5e6] truncate text-[16px]">
             {activeBranch || "Select Branch"}
           </span>
         </div>
