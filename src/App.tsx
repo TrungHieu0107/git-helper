@@ -19,16 +19,18 @@ import { SetUpstreamDialog } from "./components/SetUpstreamDialog";
 import { ToastContainer } from "./components/ToastContainer";
 import { FileHistoryModal } from "./components/FileHistoryModal";
 import { RestoreFileAlert } from "./components/RestoreFileAlert";
+import { ResetCommitDialog } from "./components/ResetCommitDialog";
 
 function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
   const selectedDiff = useAppStore(state => state.selectedDiff);
   const cherryPickState = useAppStore(state => state.cherryPickState);
-  const selectedConflictFile = useAppStore(state => state.selectedConflictFile);
+  const activeConflictFile = useAppStore(state => state.activeConflictFile);
   const conflictVersions = useAppStore(state => state.conflictVersions);
   const showSetUpstreamDialog = useAppStore(state => state.showSetUpstreamDialog);
   const setShowSetUpstreamDialog = useAppStore(state => state.setShowSetUpstreamDialog);
+  const resetToCommitTarget = useAppStore(state => state.resetToCommitTarget);
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ function App() {
           <CherryPickBanner />
           <div className="flex-1 flex overflow-hidden w-full">
              <Sidebar />
-             {cherryPickState === 'conflict' && selectedConflictFile && conflictVersions
+             {activeConflictFile && conflictVersions
                ? <ConflictEditorView />
                : selectedDiff ? <MainDiffView /> : <CommitGraph />}
              <RightPanel />
@@ -96,6 +98,7 @@ function App() {
       <ToastContainer />
       <FileHistoryModal />
       <RestoreFileAlert />
+      {resetToCommitTarget && <ResetCommitDialog />}
     </div>
   );
 }

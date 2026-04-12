@@ -8,6 +8,26 @@ pub struct FileStatus {
     pub old_path: Option<String>,
 }
 
+#[derive(Serialize, Debug, Clone, Copy)]
+pub enum ConflictMode {
+    CherryPick,
+    Merge,
+    Rebase,
+    Standalone,
+}
+
+#[derive(Serialize)]
+pub struct ConflictedFile {
+    pub path: String,
+    pub status: String, // UU, AA, DD, etc.
+}
+
+#[derive(Serialize)]
+pub struct ConflictContext {
+    pub source: ConflictMode,
+    pub files: Vec<ConflictedFile>,
+}
+
 #[tauri::command]
 pub fn get_status(repo_path: String) -> Result<Vec<FileStatus>, String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
@@ -52,6 +72,60 @@ pub fn get_status(repo_path: String) -> Result<Vec<FileStatus>, String> {
     }
 
     Ok(result)
+}
+
+#[tauri::command]
+pub fn get_conflict_context(repo_path: String) -> Result<ConflictContext, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Detect Source
+    let dot_git = repo.path();
+    let source = if dot_git.join("CHERRY_PICK_HEAD").exists() {
+        ConflictMode::CherryPick
+    } else if dot_git.join("MERGE_HEAD").exists() {
+        ConflictMode::Merge
+    } else if dot_git.join("rebase-merge").exists() || dot_git.join("rebase-apply").exists() {
+        ConflictMode::Rebase
+    } else {
+        ConflictMode::Standalone
+    };
+
+    // 2. Identify Conflicted Files
+    // Using index to determine the exact conflict type (ours/theirs/ancestor)
+    let index = repo.index().map_err(|e| e.to_string())?;
+    let mut files = Vec::new();
+    
+    // We iterate over the index to find entries with non-zero stages
+    // Stages: 0=normal, 1=ancestor, 2=ours, 3=theirs
+    let mut conflicted_paths = std::collections::HashSet::new();
+    for entry in index.iter() {
+        let stage = entry.flags >> 12 & 3;
+        if stage > 0 {
+            conflicted_paths.insert(String::from_utf8_lossy(&entry.path).to_string());
+        }
+    }
+
+    for path in conflicted_paths {
+        let p = std::path::Path::new(&path);
+        let stage1 = index.get_path(p, 1).is_some();
+        let stage2 = index.get_path(p, 2).is_some();
+        let stage3 = index.get_path(p, 3).is_some();
+
+        let status_code = match (stage1, stage2, stage3) {
+            (true, true, true) => "UU", // Both modified
+            (false, true, true) => "AA", // Both added
+            (true, false, false) => "DD", // Both deleted
+            (true, true, false) => "UD", // Deleted by them
+            (false, true, false) => "AU", // Added by us
+            (true, false, true) => "DU", // Deleted by us
+            (false, false, true) => "UA", // Added by them
+            _ => "UU", // Fallback
+        };
+
+        files.push(ConflictedFile { path, status: status_code.to_string() });
+    }
+
+    Ok(ConflictContext { source, files })
 }
 
 #[tauri::command]

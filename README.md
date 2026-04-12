@@ -1,32 +1,36 @@
-# GitKit (Git Helper)
+# GitKit
 
-GitKit is a premium, high-performance Git client built with Tauri 2, Rust, and React. It provides a visual, intuitive interface for managing Git repositories with a focus on graph density, fast workflows, and robust state management.
-
-## Key Features
-- **High-Fidelity Commit Graph**: Densely packed topological graph with Manhattan routing and curved pathways. Virtualized for 10k+ rows.
-- **Advanced Branching**: Safe branch switching with conflict detection and automatic remote tracking.
-- **Restore File (v2.7.0)**: Targeted checkout of historical file versions with binary safety and CRLF conversion.
-- **Auto Encoding Detection**: Statistical and BOM-based charset detection using `chardetng` and `encoding_rs`.
-- **Multi-Strategy Pull**: Support for Fast-Forward, Merge, and Rebase strategies with persistent preferences.
-- **Cherry-Pick Workflow**: Interactive cherry-picking with a built-in conflict resolution editor.
-- **Modular Architecture**: Domain-scoped Rust commands and sliced Zustand state management for maximum scalability.
-
-## Tech Stack
-**Tauri 2** + **Rust (git2-rs)** + **React 19** + **Zustand** + **Tailwind CSS v4** + **Monaco Editor**
+A high-performance, premium Git management application built with Tauri 2 and Rust. GitKit provides a beautiful, virtualized commit graph, advanced stashing, and safe branching workflows.
 
 ## Documentation Suite
-The project is fully documented in the `docs/` directory:
-- [Architecture Overview](docs/architecture.md): Tech stack, directory map, and IPC surface.
-- [Feature Specification](docs/spec.md): Technical details of every implemented feature.
-- [User Flow & Interaction Map](docs/user_flow.md): Mermaid diagrams of core workflows.
-- [Developer Documentation](docs/docs.md): Setup instructions and core implementation patterns.
-- [Bug Registry & Known Issues](docs/bug_registry.md): Tracking bugs and logic gaps.
-- [Changelog](docs/changelog.md): Reconstructed version history.
 
-## Getting Started
-1. Install dependencies: `npm install`
-2. Run tool for development: `npm run tauri dev`
-3. Build production version: `npm run tauri build`
+The full technical documentation is organized as follows:
+
+| Document | Purpose |
+|---|---|
+| [Architecture](file:///d:/learn/git-helper/docs/architecture.md) | Tech stack, IPC surface, and state management |
+| [Specification](file:///d:/learn/git-helper/docs/spec.md) | Feature map and technical mechanics |
+| [User Flow](file:///d:/learn/git-helper/docs/user_flow.md) | Mermaid diagrams of key interaction paths |
+| [Developer Docs](file:///d:/learn/git-helper/docs/docs.md) | Setup, build, and implementation rationale |
+| [Bug Registry](file:///d:/learn/git-helper/docs/bug_registry.md) | Tracking of issues and their fixes |
+| [Changelog](file:///d:/learn/git-helper/docs/changelog.md) | Version history and release notes |
+
+## Tech Stack
+
+**Rust (git2, Tauri 2)** + **React 19 (Zustand, Tailwind CSS v4, Monaco Editor)**
+
+## Quick Start
+
+### Development
+```bash
+npm install
+npm run tauri dev
+```
+
+### Build
+```bash
+npm run tauri build
+```
 
 ---
-*Version: 2.7.0 Stable*
+*Developed with precision for advanced Git workflows.*

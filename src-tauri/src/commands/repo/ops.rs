@@ -693,3 +693,142 @@ pub fn restore_file_from_commit(repo_path: String, commit_oid: String, file_path
     
     Ok(())
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ResetMode {
+    Soft,
+    Mixed,
+    Hard,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ResetResult {
+    pub commits_rewound: usize,
+}
+
+#[tauri::command]
+pub fn reset_to_commit(repo_path: String, commit_oid: String, mode: ResetMode) -> Result<ResetResult, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Initial checks
+    if repo.state() != RepositoryState::Clean {
+        return Err("Cannot reset: repository is in a busy state (merge/cherry-pick/rebase).".to_string());
+    }
+    
+    if repo.head_detached().unwrap_or(false) {
+        return Err("Cannot reset branch in detached HEAD state.".to_string());
+    }
+
+    let target_oid = git2::Oid::from_str(&commit_oid).map_err(|e| e.to_string())?;
+    let target_obj = repo.find_object(target_oid, None).map_err(|e| e.to_string())?;
+    
+    // 2. Single-pass Reachability & Distance Check
+    let head = repo.head().map_err(|e| e.to_string())?.peel_to_commit().map_err(|e| e.to_string())?;
+    let mut revwalk = repo.revwalk().map_err(|e| e.to_string())?;
+    revwalk.push(head.id()).map_err(|e| e.to_string())?;
+    
+    let mut reachable = false;
+    let mut commits_rewound = 0;
+    
+    for oid_res in revwalk {
+        let oid = oid_res.map_err(|e| e.to_string())?;
+        if oid == target_oid {
+            reachable = true;
+            break;
+        }
+        commits_rewound += 1;
+    }
+    
+    if !reachable {
+        // If not reachable from HEAD, we can't easily count "rewind" distance.
+        // But we should still allow the reset.
+        commits_rewound = 0;
+    }
+
+    // 3. Execute reset
+    let reset_type = match mode {
+        ResetMode::Soft => git2::ResetType::Soft,
+        ResetMode::Mixed => git2::ResetType::Mixed,
+        ResetMode::Hard => git2::ResetType::Hard,
+    };
+
+    repo.reset(&target_obj, reset_type, None).map_err(|e| e.to_string())?;
+
+    Ok(ResetResult { commits_rewound })
+}
+
+#[tauri::command]
+pub fn merge_abort(repo_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // git merge --abort is essentially cleanup + hard reset to HEAD
+    repo.cleanup_state().map_err(|e| e.to_string())?;
+    let head = repo.head().map_err(|e| e.to_string())?.peel(git2::ObjectType::Commit).map_err(|e| e.to_string())?;
+    repo.reset(&head, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub fn merge_continue(repo_path: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // Read the merge message
+    let merge_msg_path = repo.path().join("MERGE_MSG");
+    let message = if merge_msg_path.exists() {
+        std::fs::read_to_string(merge_msg_path).map_err(|e| e.to_string())?
+    } else {
+        "Merge branch".to_string()
+    };
+
+    // We can't easily use git2 for "merge --continue" because it requires specific index state.
+    // However, since we've already resolved conflicts (in theory), we can just commit.
+    // But using the CLI is safer to ensure all git merge state is cleaned up correctly.
+    let output = Command::new("git")
+        .args(["-C", &repo_path, "commit", "-m", &message, "--no-edit"])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rebase_abort(repo_path: String) -> Result<(), String> {
+    let output = Command::new("git")
+        .args(["-C", &repo_path, "rebase", "--abort"])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rebase_continue(repo_path: String) -> Result<(), String> {
+    // Setting GIT_EDITOR=true ensures the CLI doesn't hang if it wants to prompt for a message
+    let output = Command::new("git")
+        .args(["-C", &repo_path, "rebase", "--continue"])
+        .env("GIT_EDITOR", "true")
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        if stderr.contains("no changes added to commit") || stderr.contains("did you forget to 'git add'?") {
+             // In some cases rebase --continue fails if there are no changes, 
+             // but usually we want to --skip in that case. 
+             // For now, return the error so the user knows.
+             return Err(stderr);
+        }
+        return Err(stderr);
+    }
+
+    Ok(())
+}

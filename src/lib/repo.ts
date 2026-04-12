@@ -91,6 +91,18 @@ export interface FileCommit {
 }
 
 
+export type ResetMode = 'Soft' | 'Mixed' | 'Hard';
+
+export interface ConflictContext {
+  source: ConflictMode;
+  files: { path: string, status: string }[];
+}
+
+export interface ResetResult {
+  commits_rewound: number;
+}
+
+
 export interface StashUnstagedOptions {
   message?: string;
   includeUntracked: boolean;
@@ -765,6 +777,16 @@ export async function refreshActiveRepoStatus() {
       repoStatus 
     });
     
+    // Stale conflict cleanup
+    const activeConflictFile = useAppStore.getState().activeConflictFile;
+    if (activeConflictFile) {
+        const stillConflicted = status.some(f => f.path === activeConflictFile && f.status === 'conflicted');
+        if (!stillConflicted) {
+            useAppStore.getState().closeConflictEditor();
+            toast.success(`Conflict in "${activeConflictFile}" has been resolved.`);
+        }
+    }
+    
     // Also re-check cherry-pick state in case conflicts were resolved
     refreshCherryPickState();
   } catch (e) {
@@ -908,7 +930,6 @@ export async function loadConflictFile(repoPath: string, path: string) {
     });
     useAppStore.setState({
        conflictVersions: versions,
-       selectedConflictFile: path,
        isLoadingConflict: false
     });
   } catch (e) {
@@ -926,9 +947,9 @@ export async function resolveConflictFile(repoPath: string, path: string, resolv
     const newFiles = state.cherryPickConflictFiles.filter(f => f !== path);
     useAppStore.setState({ 
       cherryPickConflictFiles: newFiles,
-      selectedConflictFile: null,
       conflictVersions: null
     });
+    state.closeConflictEditor();
     
     // Also trigger full refresh
     await refreshActiveRepoStatus();
@@ -1068,4 +1089,85 @@ async function join(base: string, part: string): Promise<string> {
   const sep = base.includes('\\') ? '\\' : '/';
   if (base.endsWith(sep)) return base + part;
   return base + sep + part;
+}
+
+export async function resetToCommit(commitOid: string, mode: ResetMode) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  
+  try {
+    const result = await invoke<ResetResult>('reset_to_commit', { repoPath: path, commitOid, mode });
+    useAppStore.getState().setResetToCommitTarget(null);
+    await refreshActiveRepoStatus();
+    const { loadRepo } = await import('./repo'); // Circular ref workaround if needed, or just refresh
+    await loadRepo(path);
+    toast.success(`Reset ${result.commits_rewound} commit(s) successfully (${mode})`);
+  } catch (e) {
+    toast.error(`Reset failed: ${e}`);
+  }
+}
+
+// ── New Conflict Routing Actions ─────────────────────────────────────────────
+
+export async function getConflictContext(): Promise<ConflictContext | null> {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return null;
+  try {
+    return await invoke<ConflictContext>('get_conflict_context', { repoPath: path });
+  } catch (e) {
+    console.error('Failed to get conflict context:', e);
+    return null;
+  }
+}
+
+export async function abortMerge() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('merge_abort', { repoPath: path });
+    await loadRepo(path);
+    useAppStore.getState().closeConflictEditor();
+    toast.success('Merge aborted');
+  } catch (e) {
+    toast.error(`Abort failed: ${e}`);
+  }
+}
+
+export async function continueMerge() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('merge_continue', { repoPath: path });
+    await loadRepo(path);
+    useAppStore.getState().closeConflictEditor();
+    toast.success('Merge continued successfully');
+  } catch (e) {
+    toast.error(`Continue failed: ${e}`);
+  }
+}
+
+export async function abortRebase() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('rebase_abort', { repoPath: path });
+    await loadRepo(path);
+    useAppStore.getState().closeConflictEditor();
+    toast.success('Rebase aborted');
+  } catch (e) {
+    toast.error(`Abort failed: ${e}`);
+  }
+}
+
+export async function continueRebase() {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+  try {
+    await invoke('rebase_continue', { repoPath: path });
+    await loadRepo(path);
+    useAppStore.getState().closeConflictEditor();
+    toast.success('Rebase continued successfully');
+  } catch (e) {
+    toast.error(`Continue failed: ${e}`);
+  }
 }

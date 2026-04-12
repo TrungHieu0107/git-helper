@@ -36,6 +36,8 @@ export type CheckoutError =
 
 export type PullStrategy = 'fast_forward_only' | 'fast_forward_or_merge' | 'rebase';
 
+export type ConflictMode = 'Merge' | 'Rebase' | 'CherryPick' | 'Standalone';
+
 
 export interface UISlice {
   repos: RepoMeta[];
@@ -61,6 +63,12 @@ export interface UISlice {
   showFileHistoryModal: boolean;
   fileHistoryPath: string | null;
 
+  activeConflictFile: string | null;
+  activeConflictMode: ConflictMode | null;
+  
+  resetToCommitTarget: { oid: string, message: string } | null;
+  setResetToCommitTarget: (target: { oid: string, message: string } | null) => void;
+
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
   setSelectedDiff: (diff: SelectedDiff | null) => void;
@@ -80,6 +88,8 @@ export interface UISlice {
   removeToast: (id: string) => void;
   setForceCheckout: (target: string | null, phase: UISlice['forceCheckoutPhase']) => void;
   setFileHistory: (path: string | null) => void;
+  openConflictEditor: (filePath: string, mode: ConflictMode) => void;
+  closeConflictEditor: () => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -106,6 +116,12 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   showFileHistoryModal: false,
   fileHistoryPath: null,
 
+  activeConflictFile: null,
+  activeConflictMode: null,
+
+  resetToCommitTarget: null,
+  setResetToCommitTarget: (target) => set(() => ({ resetToCommitTarget: target })),
+
   setActiveTabId: (id) => set(() => ({ activeTabId: id })),
   setRepos: (repos) => set(() => ({ repos })),
   setSelectedDiff: (diff) => set(() => ({ selectedDiff: diff })),
@@ -123,6 +139,8 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
 
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   setFileHistory: (path) => set(() => ({ fileHistoryPath: path, showFileHistoryModal: !!path })),
+  openConflictEditor: (filePath, mode) => set(() => ({ activeConflictFile: filePath, activeConflictMode: mode })),
+  closeConflictEditor: () => set(() => ({ activeConflictFile: null, activeConflictMode: null, conflictVersions: null })),
   
   addToast: (message, type = 'info', duration = 5000) => {
     const id = Math.random().toString(36).substring(2, 9);

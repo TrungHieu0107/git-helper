@@ -1,102 +1,87 @@
-# Architecture Overview
-## Version: 2.7.0
-## Last updated: 2026-04-11 – v2.7.0 Restore File & Persistence Sync
+# System Architecture
+## Version: 2.9.2
+## Last updated: 2026-04-12 – Documenting modular IPC surface and reset workflow.
 ## Project: GitKit
 
-GitKit is a high-performance Git client built with Tauri 2, Rust, and React. It follows a domain-scoped, modular architecture with a clear separation between Git logic (Rust) and the user interface (React).
+GitKit is a high-performance Git management application built with Tauri 2, combining a robust Rust backend with a reactive React frontend.
 
-## Technology Stack
+## 1. Tech Stack
 
-### Core
-- **Framework**: [Tauri 2](https://tauri.app/) (v2.x)
-- **Backend**: [Rust](https://www.rust-lang.org/) (2021 edition) - Domain-scoped commands (git2 + serde).
-- **Frontend**: [React 19](https://react.dev/) + TypeScript + [Vite 7](https://vitejs.dev/) - Sliced state management (Zustand).
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Core**: [Tauri 2](https://v2.tauri.app/) (Rust backend, WebView frontend)
+- **Backend (Rust)**:
+    - [git2-rs](https://docs.rs/git2/latest/git2/) (libgit2 bindings for most operations)
+    - [rayon](https://docs.rs/rayon/latest/rayon/) (parallel computation for graph layout)
+    - [chardetng](https://docs.rs/chardetng/latest/chardetng/) / [encoding_rs](https://docs.rs/encoding_rs/latest/encoding_rs/) (automatic charset detection and decoding)
+    - [serde](https://serde.rs/) (serialization for IPC)
+- **Frontend (TS/React)**:
+    - [React 19](https://react.dev/)
+    - [Zustand](https://zustand-demo.pmnd.rs/) (sliced state management)
+    - [Tailwind CSS v4](https://tailwindcss.com/) (styling)
+    - [Monaco Editor](https://microsoft.github.io/monaco-editor/) (diff and conflict resolution)
+    - [@tanstack/react-virtual](https://tanstack.com/virtual/v3) (virtual scrolling for large commit logs)
+    - [Lucide React](https://lucide.dev/) (icons)
 
-### Key Libraries
-- **Git Engine**: [git2-rs](https://docs.rs/git2/latest/git2/) (v0.19) - Rust bindings for libgit2.
-- **State Management**: [Zustand](https://zustand-demo.pmnd.rs/) (v5.x) - Sliced store architecture for performance and modularity.
-- **Virtualization**: [@tanstack/react-virtual](https://tanstack.com/virtual/latest) (v3.x) - For high-performance commit logs.
-- **Code Editor**: [@monaco-editor/react](https://github.com/suren-atoyan/monaco-react) (v4.7) - For diff views and conflict resolution.
-- **Icons**: [Lucide React](https://lucide.dev/) (v1.x)
-- **Encoding**: `encoding_rs` & `chardetng` - For robust automatic text encoding detection and multi-encoding support.
-
-## Directory Structure
+## 2. Directory Structure
 
 ```text
-├── docs/                   # Documentation files
-├── src/                    # Frontend source (React)
-│   ├── assets/             # Images and styles
-│   ├── components/         # Modular isolated UI units (CommitGraph, RightPanel, etc.)
-│   ├── lib/                # Shared utilities (repo.ts, toast.ts, conflictParser.ts)
-│   ├── store/              # Zustand store definition
-│   │   ├── slices/         # Domain-scoped state slices (repo, log, stash, ui, cherryPick)
-│   │   └── index.ts        # Combined store entry point
-│   ├── App.tsx             # Main layout and event listeners
-│   └── main.tsx            # React entry point
-├── src-tauri/              # Backend source (Rust)
-│   ├── src/
-│   │   ├── commands/       # Domain-scoped Tauri IPC command modules
-│   │   │   ├── repo/       # Repository meta, operations, and safe-checkout logic
-│   │   │   ├── branch/     # Branch management (listing, creation)
-│   │   │   ├── stash/      # Stash lifecycle and advanced stashing
-│   │   │   ├── log/        # Commit history and graph topological routing
-│   │   │   ├── diff/       # Differential patch generation and blob reading
-│   │   │   ├── remote/     # Network operations (fetch, pull, push)
-│   │   │   ├── cherry_pick.rs # Cherry-pick state machine and resolution
-│   │   │   └── status.rs   # Working tree status and rename tracking
-│   │   ├── git/            # Low-level Git operations (git2 wrappers)
-│   │   │   ├── encoding.rs # Automatic encoding detection pipeline (BOM, statistical)
-│   │   ├── lib.rs          # Tauri initialization and modular registration
-│   │   └── main.rs         # Entry point
-│   ├── tauri.conf.json     # Tauri configuration
-│   └── Cargo.toml          # Rust dependencies
-└── package.json            # Frontend dependencies and scripts
+/
+├── .agents/                # AI Assistant workflows and skills
+├── docs/                   # Full documentation suite
+├── src/                    # Frontend source code
+│   ├── components/         # UI components (Atomic design)
+│   ├── lib/                # Utility logic, API wrappers, Git interactors
+│   ├── store/              # Zustand store with domain slices
+│   │   └── slices/         # domain logic (repo, log, ui, cherry-pick)
+│   ├── App.tsx             # Application shell and modal host
+│   └── index.css           # Global styles and Tailwind v4 input
+├── src-tauri/              # Backend source code
+│   ├── src/                # Rust source
+│   │   ├── commands/       # Tauri IPC command modules (domain-scoped)
+│   │   │   ├── repo/       # Repository operations (open, reset, checkout)
+│   │   │   ├── log/        # Commit log and graph layout
+│   │   │   ├── stash/      # Stash management
+│   │   │   ├── diff/       # Code diffing and commit detail retrieval
+│   │   │   ├── branch/     # Branch listing and validation
+│   │   │   ├── remote/     # Fetch, Pull, Push, and remote tracking
+│   │   │   └── cherry_pick/# Cherry-pick and conflict resolution
+│   │   └── lib.rs          # Tauri command registration
+│   └── tauri.conf.json     # Tauri configuration
+└── memory/                 # Persistent AI context and API references
 ```
 
-## Data Flow
+## 3. IPC / API Surface
 
-GitKit uses a unidirectional data flow from the Git repository (local disk) to the UI.
+Summarized command list from `src-tauri/src/lib.rs`.
 
-```mermaid
-graph LR
-    Disk[(Git Repo)] -- git2 --> Rust[Rust Logic]
-    Rust -- Serialize --> TauriCLI[Tauri IPC]
-    TauriCLI -- Invoke --> Zustand[Zustand Slices]
-    Zustand -- State --> React[React Component]
-    React -- Action --> TauriCLI
-```
+| Category | Command | Params | Purpose |
+|---|---|---|---|
+| **Repo** | `open_repo` | `path: String` | Validates and opens a Git repository |
+| | `reset_to_commit` | `path, oid, mode` | Resets current HEAD to target commit |
+| | `safe_checkout` | `path, branch` | Dry-run checkout with conflict detection |
+| | `restore_file_from_commit` | `repo, oid, file` | Check out a single file from history |
+| **Log** | `get_log` | `path, limit, offset` | Fetches commit history with graph layout |
+| | `get_file_log` | `path, file` | Fetches commit history for a specific file |
+| **Staging**| `get_status` | `path` | Fetches working tree and index status |
+| | `create_commit` | `path, msg, amend` | Creates a new commit or amends HEAD |
+| **Diff** | `get_diff` | `path, file, staged` | Fetches diff for a file in working tree |
+| | `get_file_contents`| `path, file, oid` | Fetched historical file contents |
+| **Remote** | `pull_remote` | `path, remote, strategy` | Pulls branch with FF/Merge/Rebase |
+| | `push_remote` | `path, rem, head, lease` | Pushes branch to remote |
+| **Cherry-Pick** | `cherry_pick_commit` | `path, oid` | Initiates cherry-pick workflow |
 
-1.  **State Sync**: UI actions trigger Tauri commands.
-2.  **Rust Execution**: Commands use `git2` to interact with the repository. They are organized into domain-specific modules.
-3.  **Frontend Update**: Commands return serialized JSON, which the frontend uses to update the relevant **Zustand Slices**.
-4.  **Re-render**: React components subscribe to specific state slices to minimize unnecessary re-renders.
+## 4. State Management (Zustand)
 
-## Tauri IPC Commands
+The store is divided into modular slices:
 
-Commands are organized into modules in `src-tauri/src/commands/`.
+- **`repoSlice`**: Active repository path, branch name, `RepoInfo` (HEAD hash, name), and `RepoStatus` (ahead/behind counts).
+- **`logSlice`**: The `commitLog` array containing `CommitNode` objects with pre-calculated graph lanes and edges.
+- **`uiSlice`**: Orchestrates UI visibility (modals, dialogs, active tab, loading states). Hosts `resetToCommitTarget`.
+- **`cherryPickSlice`**: Tracks state of active cherry-pick operations, including conflict files and progress.
+- **`stashSlice`**: Manages stash listing and visibility.
 
-| Domain | Command | Responsibility |
-|---|---|---|
-| **Repo** | `open_repo`, `get_repo_status`, `checkout_branch`, `safe_checkout`, `restore_file_from_commit` | Metadata, counts, safe branch switching, and targeted file restoration. |
-| **Branch**| `list_branches`, `create_branch`, `validate_branch_name` | Branch lifecycle and validation. |
-| **Stash** | `list_stashes`, `create_stash`, `apply_stash`, `pop_stash`, `drop_stash`, `stash_save_advanced` | Stash management and advanced selective stashing. |
-| **Log** | `get_log`, `get_file_log` | Commit history with lane routing and file-specific logs. |
-| **Diff** | `get_diff`, `get_file_contents`, `create_commit`, `get_commit_detail` | Patch generation, encoding detection, and commit creation. |
-| **Remote**| `fetch_all_remotes`, `pull_remote`, `push_remote`, `push_current_branch` | Network operations with strategy support. |
-| **Status**| `get_status`, `stage_file`, `unstage_file`, `discard_all` | Working tree status and staging operations. |
-| **CherryPick**| `get_cherry_pick_state`, `cherry_pick_commit`, `cherry_pick_abort` | Cherry-pick workflow and conflict resolution data. |
-| **Meta** | `get_recent_repos`, `get_app_state`, `save_app_state`, `open_terminal` | Configuration persistence and system integrations. |
+## 5. Key Architectural Decisions
 
-## State Management (Zustand Slices)
-
-The store is split into domains to keep the global state manageable:
-
-- **`RepoSlice`**: `activeRepoPath`, `repoStatus`, file lists (staged/unstaged/untracked).
-- **`LogSlice`**: `commitLog`, `selectedCommitDetail`, pagination state.
-- **`StashSlice`**: Stash entries and persistent stashing preferences.
-- **`UISlice`**: Tabs, navigation, toasts, and modal states.
-- **`CherryPickSlice`**: Active cherry-pick operation state and conflict resolution data.
-
-> [!TIP] Integration:
-> All slices are recomposed into a unified `AppStore` in `src/store/index.ts`, allowing components to use a single hook `useAppStore` while maintaining internal modularity.
+1. **Topological Graph Layout in Rust**: Path calculation and lane assignment for the commit graph are performed in Rust during `get_log`. The UI receives exactly where to draw lines and circles, ensuring performance for 10k+ nodes.
+2. **Manhattan Routing**: The graph uses strict vertical and horizontal segments with rounded corners (SVG arcs), providing a premium GitKraken-like look.
+3. **Encoding Pipeline**: All file reads go through a charset detection layer (`chardetng`) to handle international encodings correctly in the Monaco editor.
+4. **Modal Hosting in App.tsx**: All global dialogs (Reset, CheckoutAlert, RestreFileAlert) are hosted at the root to avoid nesting issues and simplify z-index management.
