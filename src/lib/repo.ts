@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useAppStore, RepoInfo, RepoStatus, BranchInfo, CommitNode, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult, PullStrategy } from '../store';
+import { useAppStore, RepoInfo, RepoStatus, BranchInfo, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult, PullStrategy, LogResponse } from '../store';
 import { toast } from './toast';
 
 // ── Branch Validation Types ──────────────────────────────────────────────────
@@ -228,11 +228,11 @@ export async function loadRepo(path: string) {
   
   try {
     // Parallel fetch for all repo data to reduce latency
-    const [info, status, branches, log, backendStashes, fileStatuses] = await Promise.all([
+    const [info, status, branches, logResponse, backendStashes, fileStatuses] = await Promise.all([
       invoke<RepoInfo>('open_repo', { path }),
       invoke<RepoStatus>('get_repo_status', { path }),
       invoke<BranchInfo[]>('list_branches', { repoPath: path }),
-      invoke<CommitNode[]>('get_log', { repoPath: path, limit: 200, offset: 0, refresh: true }),
+      invoke<LogResponse>('get_log', { repoPath: path, limit: 200, offset: 0, refresh: true }),
       invoke<any[]>('list_stashes', { repoPath: path }),
       invoke<FileStatus[]>('get_status', { repoPath: path })
     ]);
@@ -258,12 +258,13 @@ export async function loadRepo(path: string) {
       repoInfo: info,
       repoStatus: status,
       branches,
-      commitLog: log,
+      commitLog: logResponse.nodes,
+      commitOffset: logResponse.commit_count,
       stashes,
       stagedFiles,
       unstagedFiles,
       repos: updatedRepos,
-      hasMoreCommits: log.length === 200,
+      hasMoreCommits: logResponse.has_more,
       
       // Reset selections on refresh/load to avoid stale views
       selectedCommitDetail: null,
@@ -292,17 +293,18 @@ export async function loadMoreCommits() {
   useAppStore.setState({ isLoadingMore: true });
   
   try {
-    const currentLen = state.commitLog.length;
-    const log = await invoke<CommitNode[]>('get_log', { 
+    // Use commitOffset (actual commit count, excluding stashes) for correct revwalk pagination
+    const logResponse = await invoke<LogResponse>('get_log', { 
       repoPath: state.activeRepoPath, 
       limit: 200, 
-      offset: currentLen,
+      offset: state.commitOffset,
       refresh: false
     });
     
     useAppStore.setState({ 
-      commitLog: [...state.commitLog, ...log],
-      hasMoreCommits: log.length === 200
+      commitLog: [...state.commitLog, ...logResponse.nodes],
+      commitOffset: state.commitOffset + logResponse.commit_count,
+      hasMoreCommits: logResponse.has_more
     });
   } catch (e) {
     console.error('Failed to load more commits:', e);
