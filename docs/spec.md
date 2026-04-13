@@ -1,5 +1,5 @@
 # Feature Specification
-## Version: 2.9.2
+## Version: 2.10.1
 ## Last updated: 2026-04-12 – Added Git Reset workflow details.
 ## Project: GitKit
 

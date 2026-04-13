@@ -308,7 +308,7 @@ export function CommitGraph() {
         >
           {/* ═══ SVG Graph Layer ═══ */}
           <svg 
-            className="absolute pointer-events-none z-[5]"
+            className="absolute pointer-events-none z-[10]"
             style={{ 
               left: cw.label + 5, 
               top: 0 

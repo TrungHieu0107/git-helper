@@ -1,11 +1,19 @@
 # Changelog
-## Version: 2.10.0
-## Last updated: 2026-04-12 – Conflict File Routing implementation.
+## Version: 2.10.1
+## Last updated: 2026-04-12 – Fixed Branch Dropdown hover interaction.
 ## Project: GitKit
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.10.1] - 2026-04-12
+### Fixed
+- **Branch Dropdown & Graph Visibility (Optimal Fix)**: Resolved the conflict between dropdown accessibility and graph node visibility.
+  - Implemented an **Optimal Layering Strategy**: Elevated the SVG graph layer to `z-10` while keeping rows at their natural stacking level.
+  - Resolved "Disappearing Avatars": Row highlights now naturally stay behind the graph nodes.
+  - Resolved "Dropdown Accessibility": Implemented a dynamic `z-100` elevation strictly on the branch interaction area, allowing the menu to stay on top of subsequent rows without obscuring the graph.
+  - Preserved the **Hover Bridge** logic for stable menu navigation.
 
 ## [2.10.0] - 2026-04-12
 ### Added

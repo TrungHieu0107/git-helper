@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.10.0
-## Last updated: 2026-04-12 – Unified Conflict Routing implemented.
+## Version: 2.10.1
+## Last updated: 2026-04-12 – Optimal Branch Dropdown and Graph Layering.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -15,3 +15,4 @@
     - **Frontend**: RightPanel intercepts conflicted file clicks (Working Tree only) and routes to `ConflictEditorView`.
     - **UI**: Refactored `ConflictEditorView` to show context-sensitive Abort/Continue buttons and unified state usage.
     - **Sync**: Added auto-cleanup in `refreshActiveRepoStatus` for files resolved in external terminals.
+- 2026-04-12 (v2.10.1): Optimal Branch Dropdown and Graph Layering in the commit graph. Resolved an issue where a 4px gap between the badge and the dropdown caused the menu to close prematurely. Implemented a padding-based touch-area and a transparent pseudo-element "bridge" to ensure stable navigation to the branch list.

@@ -1,5 +1,5 @@
 # User Flow & Interaction Map
-## Version: 2.9.2
+## Version: 2.10.1
 ## Last updated: 2026-04-12 – Documenting Git Reset and File Restore flows.
 ## Project: GitKit
 

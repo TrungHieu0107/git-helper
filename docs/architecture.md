@@ -1,5 +1,5 @@
 # System Architecture
-## Version: 2.9.2
+## Version: 2.10.1
 ## Last updated: 2026-04-12 – Documenting modular IPC surface and reset workflow.
 ## Project: GitKit
 

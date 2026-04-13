@@ -109,7 +109,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
   };
 
   return (
-    <div className={`relative flex items-center gap-1 transition-opacity duration-300 ${!isActive ? 'opacity-50 hover:opacity-100' : ''}`}
+    <div className={`relative flex items-center gap-1 transition-opacity duration-300 ${!isActive ? 'opacity-50 hover:opacity-100' : ''} ${open ? 'z-[100]' : 'z-auto'} hover:z-[100]`}
       onMouseEnter={() => others.length > 0 && setOpen(true)}
       onMouseLeave={() => setOpen(false)}>
       
@@ -123,8 +123,10 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       )}
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 min-w-[200px] bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[50] p-1 flex flex-col gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
-           {others.map(entry => renderBadge(entry, true))}
+        <div className="absolute top-full left-0 pt-1.5 min-w-[200px] z-[50] animate-in fade-in slide-in-from-top-1 duration-150 before:content-[''] before:absolute before:-top-4 before:inset-x-0 before:h-4">
+          <div className="bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl p-1 flex flex-col gap-1">
+            {others.map(entry => renderBadge(entry, true))}
+          </div>
         </div>
       )}
     </div>
