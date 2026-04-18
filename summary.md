@@ -1,11 +1,12 @@
 # GitKit Project Summary
-## Version: 2.11.0
-## Last updated: 2026-04-18 – GitKit Branding & Icon Update.
+## Version: 2.11.1
+## Last updated: 2026-04-18 – Sidebar cleanup (Removed BranchSelector).
 ## Project: GitKit
 
 GitKit is a high-performance, premium Git management application. The current stable version is v2.11.0, featuring full brand standardization and new blurred-background icons.
 
 **Recent Highlights**:
+- **Sidebar Cleanup (v2.11.1)**: Removed the redundant Active Branch selector from the top of the Sidebar to declutter the UI.
 - **GitKit Rebranding & Icons (v2.11.0)**: Standardized application name to "GitKit" across all configuration files and UI components. Integrated a new premium blurred-background logo as the primary application icon.
 - **File History Path Fix (v2.10.7)**: Added automatic normalization of absolute file paths to relative repository paths in the File History Modal. Users can now paste full system paths into the search field.
 - **Cleanup and Build Stability (v2.10.6)**: Resolved all TypeScript errors, missing imports, and unused variables across the project to ensure a 100% clean build.

@@ -218,8 +218,7 @@ export function Sidebar() {
       ) : (
         <>
           <div className="p-3 border-b border-[#181a1f] flex flex-col gap-3 relative">
-            <div className="flex justify-between items-center gap-2">
-               <BranchSelector setBranchContextMenu={setBranchContextMenu} />
+            <div className="flex justify-end items-center">
                <button 
                  onClick={(e) => { e.stopPropagation(); setIsCollapsed(true); }} 
                  className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors shrink-0" 
@@ -337,141 +336,7 @@ export function Sidebar() {
   );
 }
 
-function BranchSelector({ setBranchContextMenu }: { setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void }) {
-  const { activeBranch, branches } = useAppStore();
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const unifiedBranches = useMemo(() => {
-    const map = new Map<string, { name: string; displayName: string; local: boolean; remote: string | null }>();
-    
-    // Process local branches
-    branches.filter((b: any) => b.branch_type === "local").forEach((b: any) => {
-      map.set(b.name, { name: b.name, displayName: b.name, local: true, remote: null });
-    });
-    
-    // Process remote branches
-    branches.filter((b: any) => b.branch_type === "remote").forEach((b: any) => {
-      const parts = b.name.split("/");
-      const remoteName = parts[0];
-      const branchName = parts.slice(1).join("/");
-      
-      if (map.has(branchName)) {
-        map.get(branchName)!.remote = remoteName;
-      } else {
-        map.set(b.name, { 
-          name: b.name, 
-          displayName: branchName, // Hide "origin/"
-          local: false, 
-          remote: remoteName 
-        });
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [branches]);
-
-  const filtered = useMemo(() => {
-    const query = searchTerm.toLowerCase();
-    return unifiedBranches.filter(b => b.displayName.toLowerCase().includes(query));
-  }, [unifiedBranches, searchTerm]);
-
-  useEffect(() => {
-    if (isOpen) {
-      const handleClickOutside = (e: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-          setIsOpen(false);
-        }
-      };
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [isOpen]);
-
-  const handleSelect = async (branch: { name: string; displayName: string; local: boolean; remote: string | null }) => {
-    setIsOpen(false);
-    setSearchTerm("");
-    if (activeBranch === branch.name) return;
-
-    await safeSwitchBranch(branch.name);
-  };
-
-  return (
-    <div className="relative flex-1 min-w-0" ref={dropdownRef}>
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between cursor-pointer hover:bg-[#2c313a] px-2 py-1.5 rounded-md transition-colors group min-w-0"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <GitBranch size={16} className="text-blue-400 shrink-0" />
-          <span className="font-bold text-[#e5e5e6] truncate text-[16px]">
-            {activeBranch || "Select Branch"}
-          </span>
-        </div>
-        <ChevronDown size={14} className={`text-[#5c6370] transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
-      </div>
-
-      {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-[320px] bg-[#21262d] border border-[#3e4451] rounded-lg shadow-2xl z-[200] overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="p-2 border-b border-[#30363d] bg-[#161b22]/50">
-            <div className="flex items-center gap-2 bg-[#0d1117] border border-[#30363d] rounded px-2 py-1">
-              <Search size={12} className="text-[#5c6370]" />
-              <input 
-                autoFocus
-                type="text"
-                placeholder="Switch to branch..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="bg-transparent border-none text-[12px] w-full outline-none text-gray-200 placeholder-[#484f58]"
-              />
-            </div>
-          </div>
-
-          <div className="max-h-[350px] overflow-y-auto custom-scrollbar p-1">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-6 text-center text-xs text-gray-500 italic">No matches found</div>
-            ) : (
-              filtered.map(branch => {
-                const isSelected = activeBranch === branch.name;
-                return (
-                  <div 
-                    key={branch.name}
-                    onClick={() => handleSelect(branch)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: branch.name });
-                    }}
-                    className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-all group ${isSelected ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-[#30363d] text-gray-300 hover:text-white'}`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                       <GitBranch size={12} className={isSelected ? 'text-blue-400' : 'text-gray-500 group-hover:text-gray-300'} />
-                       <span className="text-[13px] font-medium truncate">{branch.displayName}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {branch.local && <div title="Local branch" className="text-[9px] bg-[#30363d] px-1 rounded text-gray-400 font-bold">L</div>}
-                      {branch.remote && <div title={`Remote: ${branch.remote}`} className="text-[9px] bg-sky-500/10 px-1 rounded text-sky-400/80 font-bold shrink-0">R</div>}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          
-          <div className="p-2 border-t border-[#30363d] bg-[#161b22]/50">
-            <button 
-              onClick={() => { setIsOpen(false); }}
-              className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-[12px] font-medium text-gray-400 hover:text-white hover:bg-[#30363d] transition-colors"
-            >
-              <Plus size={14} className="text-blue-400" />
-              New branch...
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function BranchTreeItem({ node, activeBranch, level, filter = "", setBranchContextMenu, remotePrefix }: { node: BranchNode; activeBranch: string | null; level: number, filter?: string, setBranchContextMenu: (ctx: { x: number, y: number, branch: string } | null) => void, remotePrefix?: string }) {
     const [expanded, setExpanded] = useState(true);

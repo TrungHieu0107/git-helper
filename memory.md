@@ -23,3 +23,6 @@
     - Standardized application name to "GitKit" in `package.json`, `tauri.conf.json`, and `index.html`.
     - Generated and integrated a premium "blurred background" logo.
     - Updated window title and build identifiers for consistency.
+- 2026-04-18 (v2.11.1): Sidebar UI cleanup.
+    - Removed the redundant `BranchSelector` component and its usage from the top of the Sidebar.
+    - Adjusted the Sidebar header layout to retain only the search filter and collapse button.
