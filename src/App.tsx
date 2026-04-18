@@ -25,7 +25,6 @@ function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
   const selectedDiff = useAppStore(state => state.selectedDiff);
-  const cherryPickState = useAppStore(state => state.cherryPickState);
   const activeConflictFile = useAppStore(state => state.activeConflictFile);
   const conflictVersions = useAppStore(state => state.conflictVersions);
   const showSetUpstreamDialog = useAppStore(state => state.showSetUpstreamDialog);

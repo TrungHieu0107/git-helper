@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { invoke } from '@tauri-apps/api/core';
 import { DiffEditor } from "@monaco-editor/react";
-import { X, Columns, AlignLeft, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
+import { X, Columns, AlignLeft, ArrowUp, ArrowDown } from "lucide-react";
 import { EncodingBadge } from "./EncodingBadge";
 import { useAppStore } from "../store";
 
@@ -13,12 +13,7 @@ export interface MainDiffViewProps {
   onClose?: () => void;
 }
 
-const ENCODINGS = [
-  { label: 'Unicode', value: 'utf-8' },
-  { label: 'Japanese', value: 'shift_jis' },
-  { label: 'Vietnamese', value: 'windows-1258' },
-  { label: 'Simplified Chinese', value: 'gbk' },
-];
+
 
 export function MainDiffView(props: MainDiffViewProps) {
   const store = useAppStore();

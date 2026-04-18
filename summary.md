@@ -1,11 +1,13 @@
 # GitKit Project Summary
-## Version: 2.10.4
-## Last updated: 2026-04-18 – Fixed branch dropdown max width.
+## Version: 2.10.6
+## Last updated: 2026-04-18 – Cleanup and build fixes completed.
 ## Project: GitKit
 
-GitKit is a high-performance, premium Git management application. The current stable version is v2.10.4, which features dynamic bounded widths for branch dropdown interfaces.
+GitKit is a high-performance, premium Git management application. The current stable version is v2.10.6, which includes a major code cleanup and build stability fixes.
 
 **Recent Highlights**:
+- **Cleanup and Build Stability (v2.10.6)**: Resolved all TypeScript errors, missing imports, and unused variables across the project to ensure a 100% clean build.
+- **Double Click Checkout (v2.10.5)**: Changed the interactive branch badges in the commit graph and sidebar to require a double-click to checkout a target branch. Single clicks are safely ignored to prevent accidental switches.
 - **Dynamic Branch Dropdown (v2.10.4)**: Configured the commit row branch dropdown interface to enforce `labelWidth` bounds alongside graceful text truncation when multiple verbose tags exist.
 - **Graph Layering Fix (v2.10.3)**: Layered Commit Graph Rendering Architecture. Hover and selected states are now drawn behind the global SVG paths while structurally retaining dynamic z-indexes for branch dropdowns, solving graphical overlaps.
 - **Branch Dropdown Overlap (v2.10.2)**: Fixed Branch Dropdown overlap layering. Added dynamic z-indexes on `CommitRow` containers to prevent react-virtualized list rendering order from blocking hover events and clicks in branch dropdown menus when multiple branches sit on the same commit point.

@@ -246,19 +246,19 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
 
       {/* Menu items */}
       <div className="py-1">
-        {finalItems.map((item) =>
-          'separator' in item ? (
+        {finalItems.map((item: any) =>
+          item.separator ? (
             <div key={item.id} className="my-1 border-t border-[#21262d]" />
           ) : (
             <button
               key={item.id}
               onClick={item.action}
-              className={`commit-context-menu-item ${'disabled' in item && item.disabled ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
-              disabled={'disabled' in item && item.disabled}
+              className={`commit-context-menu-item ${item.disabled ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
+              disabled={!!item.disabled}
             >
               <span className={`shrink-0 ${item.color}`}>{item.icon}</span>
               <span className="flex-1 text-left">{item.label}</span>
-              {'shortcut' in item && item.shortcut && (
+              {item.shortcut && (
                 <span className="text-[10px] font-mono text-[#484f58] ml-2">{item.shortcut}</span>
               )}
             </button>

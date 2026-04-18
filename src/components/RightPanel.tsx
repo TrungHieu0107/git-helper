@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useAppStore, FileStatus, StashEntry } from "../store";
-import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X, Layers, CloudSync, Plus, GripVertical, Check, Copy, Pencil, Minus } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { useAppStore, FileStatus } from "../store";
+import { ArrowRight, AlertTriangle, ChevronDown, Folder, GitCommit, ChevronsRight, ChevronsLeft, Trash, Search, X, Plus, Pencil, Minus } from "lucide-react";
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../lib/repo";
 import { toast } from "../lib/toast";
 import { CommitDetailPanel } from "./CommitDetailPanel";
@@ -40,7 +41,7 @@ function buildTree(files: FileStatus[]): TreeNode {
 }
 
 export function RightPanel() {
-  const { stagedFiles, unstagedFiles, activeBranch, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath } = useAppStore();
+  const { stagedFiles, unstagedFiles, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath } = useAppStore();
   const [message, setMessage] = useState('');
   const charsLeft = 72 - message.length;
   const [description, setDescription] = useState('');

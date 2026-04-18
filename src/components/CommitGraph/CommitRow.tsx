@@ -12,11 +12,7 @@ const COLORS = [
 ];
 const color = (i: number) => COLORS[i % COLORS.length];
 
-const hue = (s: string) => { 
-  let h = 0; 
-  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); 
-  return Math.abs(h) % 360; 
-};
+
 
 // ── BranchLabels Component ───────────────────────────────────────────
 function BranchLabels({ refs, colorIdx, isActive, labelWidth }: { refs: string[], colorIdx: number, isActive: boolean, labelWidth: number }) {
@@ -92,7 +88,8 @@ function BranchLabels({ refs, colorIdx, isActive, labelWidth }: { refs: string[]
 
     return (
       <span key={name} 
-        onClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name)}
+        onDoubleClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name)}
+        onClick={(e) => e.stopPropagation()}
         className={`${baseClass} ${bg}`}
         style={{ ...style, maxWidth: isDropdown ? '100%' : '130px' }}>
         {isHead ? name : (

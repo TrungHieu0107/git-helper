@@ -1,9 +1,11 @@
+import { useState, useRef, useEffect } from "react";
 import { 
   resolveConflictFile, 
   abortMerge, continueMerge, 
   abortRebase, continueRebase, 
   abortCherryPick, continueCherryPick 
 } from "../lib/repo";
+import { useAppStore } from "../store";
 import { Editor, useMonaco } from "@monaco-editor/react";
 import { X, CheckCircle, ArrowRight, ArrowLeft, Ban, Play } from "lucide-react";
 import { parseConflictMarkers, ParsedConflict } from "../lib/conflictParser";
@@ -154,7 +156,7 @@ export function ConflictEditorView() {
   
   const handleMount = (editor: any, ref: any) => {
     ref.current = editor;
-    setMountedEditors(prev => prev + 1);
+    setMountedEditors((prev: number) => prev + 1);
   };
 
   // Determine Monaco language heuristically from extension

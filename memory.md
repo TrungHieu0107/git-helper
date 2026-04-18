@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.10.4
-## Last updated: 2026-04-18 - Fixed branch dropdown max width.
+## Version: 2.10.6
+## Last updated: 2026-04-18 - Cleanup and build stability.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -19,3 +19,9 @@
 - 2026-04-18 (v2.10.2): Fixed Branch Dropdown layer overlap. Resolved an issue where the branch dropdown would disappear or ignore clicks if an adjacent `CommitRow` stacked above it in the DOM. Applied a dynamic z-index to hovered rules in `CommitRow` (`z-[60]` for hovered, `z-[50]` for selected, `z-[20]` for regular) to properly elevate the interaction layer above the react-virtualized list rendering order.
 - 2026-04-18 (v2.10.3): Layered Graph Rendering Architecture. Resolved an issue where introducing HTML row `z-index` values caused row hover/selection background colors to visually obscure the topological `M ... A` SVG route lines. Uncoupled background colors from `CommitRow` into a dedicated Background Layer (`z-[5]`) drawn underneath the global SVG Graph Layer (`z-[10]`), while retaining structural branch content (and functional active dropdown elements) in a transparent Content Layer overlay at (`z-[20]`-`z-[60]`).
 - 2026-04-18 (v2.10.4): Dynamic Branch Dropdown Width limit. Modified `BranchLabels` to inherit the dynamic label column width (`cw.label`) from the ResizableColumns interface. Configured the dropdown container with `w-max` bounded by `maxWidth: labelWidth`, alongside `min-w-0` on badges to guarantee graceful text truncation when multiple verbose branch tags populate the dropdown.
+- 2026-04-18 (v2.10.5): Changed Branch Checkout Interaction. Updated branch badges in `CommitGraph` to require a `double-click` to trigger a checkout (`safeSwitchBranch`) to prevent accidental checkouts while navigating. Single clicks are intercepted via `e.stopPropagation()` to avoid arbitrarily selecting the underlying row. Applied similar double-click logic to the `Sidebar` branch tree.
+- 2026-04-18 (v2.10.6): Major code cleanup and build stability.
+    - Fixed missing type/library imports in `repo.ts`, `ConflictEditorView.tsx`, `RightPanel.tsx`.
+    - Resolved strict type errors and missing React hooks in `ConflictEditorView.tsx`.
+    - Removed dozens of unused icons and variables across the project to ensure a clean `tsc` build.
+    - Successfully verified a clean production build via `npm run build`.

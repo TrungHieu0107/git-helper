@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, FileClock, History, User, Calendar, FolderOpen, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Search, FileClock, History, User, Calendar, FolderOpen, Loader2 } from 'lucide-react';
 import { getFileLog, FileCommit } from '../lib/repo';
 import { MainDiffView } from './MainDiffView';
 import { useAppStore } from '../store';
@@ -12,7 +12,6 @@ export function FileHistoryModal() {
   const [selectedOid, setSelectedOid] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [pathInput, setPathInput] = useState(fileHistoryPath || '');
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (showFileHistoryModal && fileHistoryPath) {
@@ -24,7 +23,6 @@ export function FileHistoryModal() {
   const loadHistory = async (path: string) => {
     if (!path) return;
     setIsLoading(true);
-    setError(null);
     try {
       const log = await getFileLog(path);
       setCommits(log);
@@ -34,7 +32,7 @@ export function FileHistoryModal() {
         setSelectedOid(null);
       }
     } catch (e) {
-      setError(String(e));
+      console.error(String(e));
     } finally {
       setIsLoading(false);
     }
