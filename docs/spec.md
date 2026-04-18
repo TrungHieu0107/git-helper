@@ -1,78 +1,76 @@
 # Feature Specification
-## Version: 2.8.0
-## Last updated: 2026-04-12 – Added Stash Context Menu and UI aesthetic refinements.
+## Version: 2.10.1
+## Last updated: 2026-04-12 – Added Git Reset workflow details.
 ## Project: GitKit
 
-This document outlines the implemented and planned features of GitKit, along with their technical implementation details.
+This document outlines the implemented features of GitKit, detailing their technical mechanics and edge case handling.
 
 ## Core Feature Areas
 
 ### 1. Repository Management
-- **Status**: Implemented
-- **Details**:
-    - **Open Repository**: Validates folder as a Git repo using `Repository::discover`.
-    - **Recent Repositories**: Persists a list of the 10 most recently opened repositories.
-    - **Session Persistence**: Saves and restores open tabs and active repository orientation across restarts using `app_state.json`.
-    - **Auto-Refresh**: Automatically re-fetches status and repo info when the application window gains focus.
-- **Key Files**: `src-tauri/src/commands/repo/`, `src/lib/repo.ts`.
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **Discovery**: Uses `git2::Repository::discover` to locate the `.git` directory.
+    - **Auto-Refresh**: Listens for window focus events to trigger `refreshActiveRepoStatus()`.
+    - **Persistence**: Saves active workspace state (open tabs, last repo) to `app_state.json`.
 
 ### 2. Commit Graph
-- **Status**: Implemented
-- **Details**:
-    - **Topological Sorting**: Uses `revwalk` with `TOPOLOGICAL` and `TIME` sorting.
-    - **Lane Assignment**: Dynamic lane routing logic with parent-child linkage.
-    - **Stash Integration**: Stashes are injected into the graph with dedicated lanes positioned outside the main branch graph to prevent visual overlap.
-    - **SVG Rendering**: High-fidelity SVG segments supporting curved pathways and Manhattan routing.
-- **Key Files**: `src-tauri/src/commands/log/`, `src/components/CommitGraph.tsx`.
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **Layout Engine**: Rust-based engine performs topological sorting and calculates lane occupancy for Manhattan routing.
+    - **Virtualization**: Uses `@tanstack/react-virtual` to render only visible nodes, supporting repositories with 10k+ commits.
+    - **Active Lineage**: Highlights parent-child relationships for the current branch using `Revwalk`.
 
-### 3. Staging & Committing
-- **Status**: Implemented
-- **Details**:
-    - **File Status**: Real-time status with rename tracking.
-    - **Committing**: Supports standard commits and **Amend previous commit**.
-    - **Discard Changes**: Advanced per-file discard via `Repository::reset_default` (tracked) or `fs::remove_file` (untracked).
-- **Key Files**: `src-tauri/src/commands/status.rs`, `src-tauri/src/commands/repo/ops.rs`.
+### 3. Git Reset (new in v2.9.0)
+- **Status**: `[Implemented]`
+- **Modes**:
+    - `--soft`: Moves HEAD, preserves index (staged) and working tree.
+    - `--mixed`: Moves HEAD, resets index, preserves working tree (unstaged).
+    - `--hard`: Moves HEAD, resets index and working tree (destructive).
+- **Guards**:
+    - **Detached HEAD**: Explicitly blocked to prevent history loss.
+    - **Hard Reset Warning**: UI triggers a destructive action banner if the repository is dirty.
+    - **Reachability**: (Fixed in v2.9.2) Allows resetting to any valid commit, but provides distance info only if reachable from HEAD.
 
-### 4. File History & Operations
-- **Status**: Implemented
-- **Details**:
-    - **File Log**: Searchable history for specific paths using `revwalk` and `pathspec`.
-    - **Historical Diff**: Integrated diff view for specific commits, isolated from the active working tree.
-    - **Encoding Detection**: Automatic detection of file charsets using BOM and statistical analysis (`chardetng`). Includes a premium UI badge with confidence indicators and manual overrides.
-    - **Restore File**: Targeted checkout of a single file from a historical commit into the working tree, with CRLF and binary safety.
-    - **Context Menu**: Native-feel context menu for common file actions (Open, Reveal, History, Restore).
-- **Key Files**: `src-tauri/src/commands/log/mod.rs`, `src-tauri/src/commands/repo/ops.rs`.
+### 4. Branch Management
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **Safe Checkout**: Performs a dry-run checkout to detect conflicts before moving HEAD.
+    - **Remote Tracking**: Automatically maps remote refs to local tracking branches on checkout.
 
-### 5. Branch Management
-- **Status**: Implemented
-- **Details**:
-    - **Safe Checkout**: Dry-run checks with conflict detection.
-    - **Remote Tracking**: Automatically creates local tracking branches from remote refs with upstream configuration.
-    - **Local Ref Resolution**: Seamlessly converts remote branch names to effective local names for checkouts.
-- **Key Files**: `src-tauri/src/commands/repo/ops.rs`, `src/components/Sidebar.tsx`.
+### 5. File History & Operations
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **File Log**: Traverses commit history filtered by pathspec.
+    - **Restore File**: Selective checkout of a file blob from a historical commit, handling parent directory creation and CRLF conversion.
+    - **Encoding Pipeline**: Automatic charset detection using BOM and `chardetng` statistical models.
 
-### 5. Remote Operations (Pull/Push)
-- **Status**: Implemented
-- **Details**:
-    - **Pull Strategies**: Supports `Fast-Forward Only`, `Merge`, and `Rebase` strategies.
-    - **Push Workflow**: Robust push with automatic upstream resolution and `--force-with-lease` support for amended commits.
-    - **Persistent Preference**: Remembers the user's preferred pull strategy across sessions.
-    - **Atomic Fetching**: Pull operations perform a fetch internally to ensure consistency.
-- **Key Files**: `src-tauri/src/commands/remote/`, `src/components/TopToolbar.tsx`.
+### 6. Remote Operations
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **Pull Strategies**: Supports `Fast-Forward Only`, `Merge`, and `Rebase`.
+    - **Safe Push**: Implements `--force-with-lease` for amended commits and automatic upstream resolution.
 
-### 6. Cherry-Pick
-- **Status**: Implemented
-- **Details**:
-    - **Workflow**: Step-by-step cherry-pick with Abort, Continue, and Commit actions.
-    - **Conflict Resolution**: Integrated conflict editor using Monaco to resolve marker-based conflicts (`AA`, `UU`).
-- **Key Files**: `src-tauri/src/commands/cherry_pick.rs`, `src/components/ConflictEditorView.tsx`.
+### 7. Conflict Routing & Editor (updated in v2.10.0)
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **Source Detection**: Backend scans `.git` metadata to identify conflict sources (Merge, Rebase, Cherry-Pick, or Standalone).
+    - **Routing**: Right Panel intercepts clicks on conflicted files (except `DD`) to open the Conflict Editor.
+    - **Editor**: Mode-aware Monaco view with context-sensitive actions:
+        - **Merge**: Abort/Continue (reads `.git/MERGE_MSG`).
+        - **Rebase**: Abort/Continue (with `GIT_EDITOR` bypass).
+        - **Cherry-Pick**: Abort/Continue/Commit.
+    - **State Cleanup**: `refreshActiveRepoStatus` automatically closes the editor if the conflict is resolved externally.
 
-## Known Limitations & TODOs
+### 8. Stash Management
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **Advanced Save**: Supports "Unstaged Only" stashing and custom messages.
+    - **Lifecycle**: Pop, Apply, and Drop operations with graph integration.
 
-- **Submodules**: Not currently handled in status or log.
-- **LFS**: Not explicitly supported.
-- **Interactive Rebase**: Planned for future versions.
-- **Visual Merge Tool**: Basic conflict editor implemented; more advanced 3-way merge is planned.
+## Handled Edge Cases
 
-> [!IMPORTANT] Implementation Detail:
-> The app uses a hybrid approach for Git operations: `git2-rs` for data retrieval and internal logic, while delegating to the Git CLI for high-complexity porcelain commands like `git clean` and `git rebase` to ensure production-grade reliability.
+- **Dirty Tree during Reset**: Hard reset is guarded by a confirmation dialog.
+- **Detached HEAD Safety**: Reset is blocked to prevent accidental state loss.
+- **Binary Files during Restore**: Detection logic prevents trying to decode binary blobs as text.
+- **Long Pathnames on Windows**: Path normalization ensures compatibility with system reveal commands.

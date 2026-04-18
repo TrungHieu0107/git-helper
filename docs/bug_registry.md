@@ -1,44 +1,45 @@
-# Bug Registry & Known Issues
-## Version: 2.7.0
-## Last updated: 2026-04-11 – v2.7.0 Error & Fix Sync
+# Bug Registry
+## Version: 2.10.1
+## Last updated: 2026-04-12 – Documenting Branch Dropdown hover fix.
 ## Project: GitKit
 
-This document tracks identified bugs, logic gaps, and planned improvements in the codebase.
-
-## High Severity
-
-| ID | Title | Status | Fixed In | Description |
+| ID | Title | Severity | Status | Fixed In |
 |---|---|---|---|---|
-| BUG-001 | Possible Stash Drop Failure | Open | - | In `commands/stash/mod.rs`, if `stash_apply` succeeds but `stash_drop` fails, the stash is duplicated. |
-| BUG-002 | Remote Checkout Fix | **Resolved** | v2.1.0 | Clicking remote branch tags in the commit graph now correctly resolves tracking branches and handles diverged commits safely. |
-| BUG-003 | CreateBranchDialog Clipping | **Resolved** | v2.3.2 | "Source Branch" dropdown was obscured by the dialog's `overflow: hidden` property. Fixed by changing to `overflow: visible`. |
-| BUG-004 | Reveal in Explorer fail | **Resolved** | v2.5.2 | `explorer /select` failed on Windows due to redundant inner quotes and mixed slashes. Fixed in `reveal_file`. |
-| BUG-005 | Discard Changes IPC Error| **Resolved** | v2.5.3 | Missing `filePath` error in `discard_file_changes` due to snake_case vs camelCase mismatch in Tauri IPC. |
+| BUG-001 | Graph Discontinuity on Stash | Low | Fixed | v2.8.4 |
+| BUG-002 | Windows CRLF Mismatch on Restore | Medium | Fixed | v2.7.0 |
+| BUG-003 | Detached HEAD Checkout Warning | Medium | Fixed | v2.6.5 |
+| BUG-004 | Race Condition on Git Status Refresh | High | Fixed | v2.8.0 |
+| BUG-005 | Monaco Editor Selection Offset | Low | Fixed | v2.5.0 |
+| BUG-006 | Cherry-pick Dialog Prop Drifting | Medium | Fixed | v2.8.2 |
+| BUG-007 | Reset Option Always Disabled | High | Fixed | v2.9.1 |
+| BUG-008 | Reset Reachability Restriction | High | Fixed | v2.9.2 |
+| BUG-009 | Branch Dropdown Hover Gap | Low | Fixed | v2.10.1 |
 
+---
 
-## Medium Severity
+## Detailed Entries
 
-| ID | Title | Status | Fixed In | Description |
-|---|---|---|---|---|
-| TODO-001| Conflict Mapping | **Resolved** | v2.7.0 | `status.rs` now correctly identifies and surfaces conflict states (`AA`, `UU`, etc.) in the status list for the ConflictEditorView. |
-| TODO-002| Pull Strategies | **Resolved** | v2.1.0 | Full support for Fast-Forward Only, Merge, and Rebase pull strategies with UI selection and persistence. |
-| TODO-003| Detached HEAD | Partial | - | Basic support for detached HEAD checkouts implemented, but "Reattach" or "Create Branch from HEAD" workflow is missing. |
+### BUG-007: Reset Option Always Disabled
+- **Status**: `Fixed`
+- **Symptom**: The "Reset to this commit..." context menu item was greyed out for all commits.
+- **Root Cause**: Typo in `CommitContextMenu.tsx`. Logic checked `cherryPickState.status !== 'idle'`, but `cherryPickState` in the store is a raw string, not an object. Resulted in `undefined !== 'idle'` always true.
+- **Fix**: Corrected property access to `cherryPickState !== 'idle'` and converted logic to use reactive hooks.
 
-## Feature Gaps & TODOs
+### BUG-008: Reset Reachability Restriction
+| BUG-009 | Branch Dropdown Hover Gap | Low | Fixed | v2.10.1 |
+- **Status**: `Fixed`
+- **Symptom**: "Reset failed: Target commit is not reachable from HEAD" error when trying to reset to a side branch or jumping forward.
+- **Root Cause**: Backend implementation used `revwalk` from HEAD to validate target. If target was not an ancestor, it threw an error.
+- **Fix**: Relaxed restriction in `ops.rs`. Reset now proceeds regardless of reachability; `commits_rewound` is simply set to `0` if target is not reachable from HEAD.
 
-| ID | Title | Status | Description |
-|---|---|---|---|
-| GAP-001 | Submodule Tracking | Open | `get_status` does not recurse into submodules or show their dirty states. |
-| GAP-002 | Binary Diffs | Open | `diff.rs` detects binary files but doesn't provide a visual comparison (e.g., image hex view). |
-| GAP-003 | Commit Search logic | Partial| UI has a search input, but backend `revwalk` filtering for large logs is pending. |
-| GAP-004 | Restore Collision | Low | `restore_file_from_commit` overwrites local changes without a "Diff-before-restore" view. Mitigation: Added a "Staged Changes" warning in the UI. |
-| GAP-005 | Encoding Drift | Low | If a file's encoding changes between commits, the automatic detection may use the current workdir encoding for historical blobs if not explicitly re-evaluated. |
+### BUG-001: Graph Discontinuity on Stash
+- **Status**: `Fixed`
+- **Symptom**: The WIP node would connect to stashes instead of the real HEAD.
+- **Root Cause**: Stashes were treated as commits in the sorting algorithm.
+- **Fix**: Added `node_type` field and filtered stashes during lane assignment.
 
-## Logic Gaps identified in analysis
-
-- **`status.rs`**: `FileStatus` includes `old_path` but rename tracking is currently limited to the filename change in the entry, not a unified rename-delta.
-- **`stash/mod.rs`**: `apply_stash` uses a manual conflict check after the operation because `libgit2` does not always return an error on conflict during stash apply.
-- **`cherry_pick.rs`**: The conflict editor assumes standard Git markers (`<<<<<<<`). Non-standard markers or binary conflicts may cause resolution errors.
-
-> [!CAUTION] UI Limitation:
-> The app maintains a single operational store for the active repository. Rapidly switching between repository tabs may cause transient UI inconsistencies if background refreshes overlap.
+### BUG-009: Branch Dropdown Hover Gap
+- **Status**: `Fixed`
+- **Symptom**: When hovering from a branch badge to the expanded "others" list, the menu would flicker and disappear.
+- **Root Cause**: A 4px margin (`mt-1`) on the absolute dropdown created a gap where the mouse was neither over the badge nor the menu content. Move-out triggered `onMouseLeave`.
+- **Fix**: Removed `mt-1`, added `pt-1.5` for internal spacing, and implemented a `before:` pseudo-element bridge extending upwards into the badge area.

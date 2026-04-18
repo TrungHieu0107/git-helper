@@ -64,3 +64,8 @@
 - **Status**: Active
 
 <!-- Antigravity -->
+
+### 2026-04-12 — Hover Bridge for Branch Dropdowns
+- **Decision**: Removed the 4px margin and implemented a transparent pseudo-element "bridge" (`before:`) connecting the branch badge to the dropdown menu.
+- **Reason**: To solve a common UI bug where the dropdown closes prematurely when the mouse moves through the visual gap. This ensures the user remains "hovering" over the parent container while navigating between the trigger and the list.
+- **Status**: Active

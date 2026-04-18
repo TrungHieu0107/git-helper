@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useAppStore, FileStatus, StashEntry } from "../store";
-import { ArrowRight, AlertTriangle, Sparkles, ChevronDown, ChevronRight, Folder, GitCommit, ChevronRight as ChevronRightIcon, ChevronsRight, ChevronsLeft, Trash, Search, X, Layers, CloudSync, Plus, GripVertical, Check, Copy, Pencil, Minus } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { useAppStore, FileStatus } from "../store";
+import { ArrowRight, AlertTriangle, ChevronDown, Folder, GitCommit, ChevronsRight, ChevronsLeft, Trash, Search, X, Plus, Pencil, Minus } from "lucide-react";
 import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../lib/repo";
 import { toast } from "../lib/toast";
 import { CommitDetailPanel } from "./CommitDetailPanel";
@@ -40,7 +41,7 @@ function buildTree(files: FileStatus[]): TreeNode {
 }
 
 export function RightPanel() {
-  const { stagedFiles, unstagedFiles, activeBranch, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath } = useAppStore();
+  const { stagedFiles, unstagedFiles, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath } = useAppStore();
   const [message, setMessage] = useState('');
   const charsLeft = 72 - message.length;
   const [description, setDescription] = useState('');
@@ -145,6 +146,29 @@ export function RightPanel() {
     document.body.style.cursor = 'row-resize';
   };
 
+  const handleFileClick = async (path: string, isStaged: boolean) => {
+    const files = isStaged ? stagedFiles : unstagedFiles;
+    const file = files.find(f => f.path === path);
+    
+    if (file?.status === 'conflicted') {
+      const context = await invoke<any>('get_conflict_context', { repoPath: activeRepoPath });
+      if (context) {
+        const fileInContext = context.files.find((f: any) => f.path === path);
+        if (fileInContext?.status === 'DD') {
+          toast.info("File was deleted on both sides. Use 'Discard' to remove it or 'Stage' to keep the deletion.");
+          return;
+        }
+        
+        // Load content and open editor
+        await loadConflictFile(activeRepoPath!, path);
+        useAppStore.getState().openConflictEditor(path, context.source);
+        return;
+      }
+    }
+    
+    selectFileDiff(path, isStaged);
+  };
+
   const handleCommit = async () => {
     const fullMessage = description ? `${message}\n\n${description}` : message;
     const success = await commitRepo(fullMessage, amend);
@@ -194,7 +218,7 @@ export function RightPanel() {
             <div 
               className="flex items-center justify-between h-[26px] hover:bg-[#1f2937] rounded-md cursor-pointer group mx-1"
               style={{ paddingLeft: `${depth * 12 + 8}px` }}
-              onClick={() => child.isFolder ? toggleFolder(child.fullPath) : onClick(child.fullPath)}
+              onClick={() => child.isFolder ? toggleFolder(child.fullPath) : handleFileClick(child.fullPath, actionLabel === "Unstage")}
             >
               <div className="flex items-center gap-2 overflow-hidden">
                 {child.isFolder ? (
@@ -364,7 +388,7 @@ export function RightPanel() {
                               status={f.status} 
                               onAction={() => stageFile(f.path)}
                               actionLabel="Stage"
-                              onClick={() => selectFileDiff(f.path, false)}
+                              onClick={() => handleFileClick(f.path, false)}
                               onContextMenu={(e) => handleFileContextMenu(e, f.path, false)}
                               highlight={fileFilter}
                               isCompact={width < 450}
@@ -414,7 +438,7 @@ export function RightPanel() {
                             status={f.status} 
                             onAction={() => unstageFile(f.path)}
                             actionLabel="Unstage"
-                            onClick={() => selectFileDiff(f.path, true)}
+                            onClick={() => handleFileClick(f.path, true)}
                             onContextMenu={(e) => handleFileContextMenu(e, f.path, true)}
                             highlight={fileFilter}
                             isCompact={width < 450}

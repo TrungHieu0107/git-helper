@@ -1,13 +1,26 @@
-import { useRef, useEffect, useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { 
+  resolveConflictFile, 
+  abortMerge, continueMerge, 
+  abortRebase, continueRebase, 
+  abortCherryPick, continueCherryPick 
+} from "../lib/repo";
 import { useAppStore } from "../store";
-import { resolveConflictFile } from "../lib/repo";
 import { Editor, useMonaco } from "@monaco-editor/react";
-import { X, CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { X, CheckCircle, ArrowRight, ArrowLeft, Ban, Play } from "lucide-react";
 import { parseConflictMarkers, ParsedConflict } from "../lib/conflictParser";
 import { buildOursDecorations, buildTheirsDecorations, buildResultDecorations } from "../lib/monacoDecorations";
 
 export function ConflictEditorView() {
-  const { activeRepoPath, selectedConflictFile, conflictVersions, isLoadingConflict, cherryPickConflictedOid } = useAppStore();
+  const { 
+    activeRepoPath, 
+    activeConflictFile, 
+    activeConflictMode, 
+    conflictVersions, 
+    isLoadingConflict, 
+    cherryPickConflictedOid,
+    closeConflictEditor
+  } = useAppStore();
   
   const oursEditorRef = useRef<any>(null);
   const theirsEditorRef = useRef<any>(null);
@@ -24,7 +37,7 @@ export function ConflictEditorView() {
   useEffect(() => {
     return () => {
     };
-  }, [selectedConflictFile]);
+  }, [activeConflictFile]);
 
   useEffect(() => {
     if (conflictVersions?.raw) {
@@ -101,16 +114,32 @@ export function ConflictEditorView() {
     }
   }, [mountedEditors, parsed]);
 
-  if (!selectedConflictFile || !conflictVersions || !activeRepoPath) return null;
+  if (!activeConflictFile || !conflictVersions || !activeRepoPath) return null;
 
   const closeView = () => {
-    useAppStore.setState({ selectedConflictFile: null, conflictVersions: null });
+    closeConflictEditor();
   };
 
   const handleResolve = () => {
-    if (!resultEditorRef.current) return;
+    if (!resultEditorRef.current || !activeConflictFile) return;
     const resolvedContent = resultEditorRef.current.getValue();
-    resolveConflictFile(activeRepoPath, selectedConflictFile, resolvedContent);
+    resolveConflictFile(activeRepoPath!, activeConflictFile, resolvedContent);
+  };
+
+  const handleAbort = () => {
+    switch (activeConflictMode) {
+      case 'Merge': abortMerge(); break;
+      case 'Rebase': abortRebase(); break;
+      case 'CherryPick': abortCherryPick(); break;
+    }
+  };
+
+  const handleContinue = () => {
+    switch (activeConflictMode) {
+      case 'Merge': continueMerge(); break;
+      case 'Rebase': continueRebase(); break;
+      case 'CherryPick': continueCherryPick(); break;
+    }
   };
 
   const useOurs = () => {
@@ -127,11 +156,11 @@ export function ConflictEditorView() {
   
   const handleMount = (editor: any, ref: any) => {
     ref.current = editor;
-    setMountedEditors(prev => prev + 1);
+    setMountedEditors((prev: number) => prev + 1);
   };
 
   // Determine Monaco language heuristically from extension
-  const extension = selectedConflictFile.split('.').pop()?.toLowerCase();
+  const extension = activeConflictFile?.split('.').pop()?.toLowerCase();
   const getLanguage = (ext: string | undefined) => {
       switch(ext) {
           case 'ts': case 'tsx': return 'typescript';
@@ -169,15 +198,19 @@ export function ConflictEditorView() {
       {/* Premium Glassmorphic Toolbar */}
       <div className="h-[48px] px-4 shrink-0 flex items-center justify-between border-b border-[#30363d]/50 bg-[#161b22]/80 backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
              <span className="text-[13px] font-mono text-[#e6edf3] font-semibold truncate drop-shadow-sm">
-               {selectedConflictFile}
+               {activeConflictFile}
              </span>
-             <span className="text-[10px] text-[#8b949e]">merging conflict</span>
+             <span className="text-[10px] text-[#8b949e] uppercase tracking-tighter">
+                {activeConflictMode?.toLowerCase()} conflict
+             </span>
           </div>
-          <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#d29922]/20 to-[#f85149]/20 text-[#d29922] border border-[#d29922]/30 uppercase tracking-widest shadow-[0_0_8px_rgba(210,153,34,0.15)] flex items-center gap-1.5">
+          <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#d29922]/20 to-[#f85149]/20 text-[#d29922] border border-[#d29922]/30 uppercase tracking-widest shadow-[0_0_8px_rgba(210,153,34,0.15)] flex items-center gap-1.5 shrink-0">
             <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full animate-pulse"></div>
-            3-Way Conflict
+            {activeConflictMode === 'Merge' ? 'Merge Conflict' : 
+             activeConflictMode === 'Rebase' ? 'Rebase Conflict' : 
+             activeConflictMode === 'CherryPick' ? 'Cherry-Pick Conflict' : 'Unmerged Conflict'}
           </span>
         </div>
 
@@ -204,13 +237,33 @@ export function ConflictEditorView() {
           >
             <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></div>
             <CheckCircle size={14} className="relative z-10 drop-shadow-md" /> 
-            <span className="relative z-10 drop-shadow-md">Mark as Resolved</span>
+            <span className="relative z-10 drop-shadow-md">Mark Resolved</span>
           </button>
+
+          {activeConflictMode !== 'Standalone' && (
+            <>
+               <div className="w-px h-5 bg-[#30363d] mx-1"></div>
+               <button 
+                onClick={handleContinue}
+                title={`Continue ${activeConflictMode}`}
+                className="p-1.5 text-[#3fb950] hover:bg-[#3fb950]/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-[#3fb950]/30"
+              >
+                  <Play size={16} fill="currentColor" />
+              </button>
+              <button 
+                onClick={handleAbort}
+                title={`Abort ${activeConflictMode}`}
+                className="p-1.5 text-[#f85149] hover:bg-[#f85149]/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-[#f85149]/30"
+              >
+                  <Ban size={16} />
+              </button>
+            </>
+          )}
 
           <button 
             onClick={closeView} 
             className="ml-2 text-[#8b949e] hover:text-white hover:bg-[#30363d]/80 transition-all duration-200 p-1.5 rounded-md active:scale-95"
-            title="Close editor without saving"
+            title="Close editor"
           >
             <X size={16} />
           </button>

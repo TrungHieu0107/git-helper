@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight, Search, Circle, CircleDot, CloudSync, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, Trash2, ChevronsDown, RotateCcw, Cloud, Layers, X } from "lucide-react";
+import { ChevronDown, Search, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, RotateCcw, Cloud, X } from "lucide-react";
 import { useAppStore, StashEntry } from "../store";
-import { safeSwitchBranch, applyStash, popStash } from "../lib/repo";
+import { safeSwitchBranch } from "../lib/repo";
 import { Highlight } from "./Sidebar/utils";
 import { StashEntryItem, StashContextMenu } from "./Sidebar/Stashes";
 

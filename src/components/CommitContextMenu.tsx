@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, CloudSync, Trash2, ChevronsDown } from 'lucide-react';
+import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, CloudSync, Trash2, ChevronsDown, RotateCcw } from 'lucide-react';
 import { CommitNode, useAppStore, StashEntry } from '../store';
 import { safeSwitchBranch, selectCommitDetail, applyStash, popStash } from '../lib/repo';
 import { toast } from '../lib/toast';
@@ -26,6 +26,9 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
   const [showCherryPick, setShowCherryPick] = useState(false);
   const [menuPos, setMenuPos] = useState(position);
   
+  const repoInfo = useAppStore(s => s.repoInfo);
+  const cherryPickState = useAppStore(s => s.cherryPickState);
+
   const isStash = commit.node_type === 'stash';
 
   // Adjust position to keep menu on-screen
@@ -143,6 +146,17 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       color: 'text-[#d29922]',
       action: () => setShowCherryPick(true),
     },
+    {
+      id: 'reset-here',
+      icon: <RotateCcw size={14} />,
+      label: 'Reset to this commit...',
+      color: 'text-purple-400',
+      action: () => {
+        useAppStore.getState().setResetToCommitTarget({ oid: commit.oid, message: commit.message });
+        onClose();
+      },
+      disabled: isStash || commit.oid === repoInfo?.head_oid || cherryPickState !== 'idle'
+    },
     { id: 'sep-0', separator: true },
     {
       id: 'create-branch',
@@ -232,18 +246,19 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
 
       {/* Menu items */}
       <div className="py-1">
-        {finalItems.map((item) =>
-          'separator' in item ? (
+        {finalItems.map((item: any) =>
+          item.separator ? (
             <div key={item.id} className="my-1 border-t border-[#21262d]" />
           ) : (
             <button
               key={item.id}
               onClick={item.action}
-              className="commit-context-menu-item"
+              className={`commit-context-menu-item ${item.disabled ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
+              disabled={!!item.disabled}
             >
               <span className={`shrink-0 ${item.color}`}>{item.icon}</span>
               <span className="flex-1 text-left">{item.label}</span>
-              {'shortcut' in item && item.shortcut && (
+              {item.shortcut && (
                 <span className="text-[10px] font-mono text-[#484f58] ml-2">{item.shortcut}</span>
               )}
             </button>

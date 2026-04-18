@@ -22,4 +22,5 @@
 | `pull_remote` | `repoPath, remote, strategy: PullStrategy` | `Result<PullResult, String>` | Upgraded |
 | `save_app_state` | `state: AppStateData` | `Result<(), String>` | Implemented |
 | `get_app_state` | - | `Result<AppStateData, String>` | Implemented |
+| `reset_to_commit` | `repoPath: String, commitOid: String, mode: ResetMode` | `Result<ResetResult, String>` | Implemented |
 

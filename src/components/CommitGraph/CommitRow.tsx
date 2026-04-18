@@ -12,14 +12,10 @@ const COLORS = [
 ];
 const color = (i: number) => COLORS[i % COLORS.length];
 
-const hue = (s: string) => { 
-  let h = 0; 
-  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); 
-  return Math.abs(h) % 360; 
-};
+
 
 // ── BranchLabels Component ───────────────────────────────────────────
-function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: number, isActive: boolean }) {
+function BranchLabels({ refs, colorIdx, isActive, labelWidth }: { refs: string[], colorIdx: number, isActive: boolean, labelWidth: number }) {
   const [open, setOpen] = useState(false);
   const activeBranch = useAppStore(s => s.activeBranch);
   
@@ -68,7 +64,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
     const isActiveBranch = name === activeBranch && !isRemoteOnly && !isTag;
     const clr = color(colorIdx);
     
-    let baseClass = "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap truncate cursor-pointer select-none border transition-all shadow-sm";
+    let baseClass = "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap min-w-0 cursor-pointer select-none border transition-all shadow-sm";
     let bg = "";
     let style = {};
 
@@ -92,9 +88,10 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
 
     return (
       <span key={name} 
-        onClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name)}
-        className={`${baseClass} ${bg} ${isDropdown ? 'max-w-none' : 'max-w-[130px]'}`}
-        style={style}>
+        onDoubleClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name)}
+        onClick={(e) => e.stopPropagation()}
+        className={`${baseClass} ${bg}`}
+        style={{ ...style, maxWidth: isDropdown ? '100%' : '130px' }}>
         {isHead ? name : (
           <>
             <span className="truncate">{name}</span>
@@ -109,7 +106,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
   };
 
   return (
-    <div className={`relative flex items-center gap-1 transition-opacity duration-300 ${!isActive ? 'opacity-50 hover:opacity-100' : ''}`}
+    <div className={`relative flex items-center gap-1 transition-opacity duration-300 ${!isActive ? 'opacity-50 hover:opacity-100' : ''} ${open ? 'z-[100]' : 'z-auto'} hover:z-[100]`}
       onMouseEnter={() => others.length > 0 && setOpen(true)}
       onMouseLeave={() => setOpen(false)}>
       
@@ -123,8 +120,10 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       )}
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 min-w-[200px] bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[50] p-1 flex flex-col gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
-           {others.map(entry => renderBadge(entry, true))}
+        <div className="absolute top-full left-0 pt-1.5 z-[50] w-max animate-in fade-in slide-in-from-top-1 duration-150 before:content-[''] before:absolute before:-top-4 before:inset-x-0 before:h-4" style={{ maxWidth: labelWidth }}>
+          <div className="bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl p-1 flex flex-col gap-1 w-full">
+            {others.map(entry => renderBadge(entry, true))}
+          </div>
         </div>
       )}
     </div>
@@ -165,7 +164,7 @@ export function CommitRow({
     <div 
       key={n.oid}
       className={`absolute left-0 w-full flex items-center cursor-pointer transition-all duration-150 group/row
-        ${hov === row ? 'bg-[#1f2937]' : ''} ${sel === row ? 'bg-[#1d2d3e] border-l-2 border-[#388bfd]' : 'border-l-2 border-transparent'}`}
+        ${hov === row ? 'z-[60] border-l-2 border-transparent' : sel === row ? 'z-[50] border-l-2 border-[#388bfd]' : 'z-[20] border-l-2 border-transparent'}`}
       style={{ 
         height: ROW_H,
         transform: `translateY(${virtualRow.start}px)`
@@ -179,7 +178,7 @@ export function CommitRow({
       onMouseLeave={() => setHov(null)}
     >
       <div className="pl-2 overflow-visible shrink-0" style={{ width: cw.label }}>
-        <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActiveNode} />
+        <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActiveNode} labelWidth={cw.label} />
       </div>
       <div style={{ width: gw + 5 }} />
       <div className="flex-1 flex items-center pl-4 pr-4 min-w-0">
@@ -230,7 +229,7 @@ export function WipRow({
     <div
       key="WIP"
       className={`absolute left-0 w-full flex items-center cursor-pointer transition-colors
-        ${hov === 0 ? 'bg-[#1e293b]/40' : ''} ${sel === 0 ? 'bg-[#3b82f6]/10' : ''}`}
+        ${hov === 0 ? 'z-[60]' : sel === 0 ? 'z-[50]' : 'z-[20]'}`}
       style={{ 
         height: ROW_H,
         transform: `translateY(${virtualRow.start}px)`

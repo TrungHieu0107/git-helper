@@ -250,7 +250,7 @@ export function TopToolbar() {
 }
 
 function RepoSelector() {
-  const { repoInfo, activeRepoPath, activeBranch } = useAppStore();
+  const { repoInfo, activeRepoPath } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
   const [recent, setRecent] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);

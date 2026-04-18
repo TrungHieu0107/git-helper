@@ -1,86 +1,50 @@
 # Developer Documentation
-## Version: 2.7.0
-## Last updated: 2026-04-11 – v2.7.0 Reference Sync
+## Version: 2.10.1
+## Last updated: 2026-04-12 – Documenting reset distance and encoding logic.
 ## Project: GitKit
 
-This document provides developer-focused information on how to work with the GitKit codebase and explains core implementation patterns.
+This guide explains how to set up, build, and extend the GitKit project, with deep dives into non-obvious design patterns.
 
-## 1. Getting Started
+## 1. Development Environment
 
 ### Prerequisites
-- [Rust](https://rustup.rs/) (v1.75+)
-- [Node.js](https://nodejs.org/) (v20+)
-- [Tauri CLI](https://tauri.app/v1/guides/getting-started/prerequisites)
+- **Node.js**: v20+ (uses Vite 7)
+- **Rust**: 1.75+ (uses git2)
+- **Tauri CLI**: `cargo install tauri-cli`
 
-### Development Commands
+### Setup & Run
 ```bash
-# Install dependencies
+# Install frontend dependencies
 npm install
 
 # Run in development mode
 npm run tauri dev
+```
 
-# Build production bundle
+### Build (Windows)
+```bash
 npm run tauri build
 ```
 
-## 2. Core Patterns
+## 2. Key Design Patterns
 
-### Side-by-Side Diffing
-The app uses Monaco Editor and a custom **Encoding Detection Pipeline** to render accurate diffs.
-- `get_file_contents` (Rust) retrieves raw file buffers.
-- **Auto-Detection**: `chardetng` (statistical) and BOM-checking identify the character set.
-- **Decoding**: `encoding_rs` converts buffers to UTF-8 for the frontend.
-- **Manual Override**: Users can override the detected encoding via the `EncodingBadge` UI, which re-fetches content with a forced charset.
+### 2.1 Commit Graph Layout
+The graph layout is calculated in `src-tauri/src/commands/log/layout.rs`. It assigns a `lane` index to each commit.
+- **Topological Sorting**: Ensures parents are always below children.
+- **Lane Occupation**: A lane becomes available once its "active branch" merges back or terminates, allowing the graph to shrink horizontally.
 
-### Commit Graph Lane Routing
-Graph lanes are calculated in the backend (`src-tauri/src/commands/log/mod.rs`) during commit iteration.
-- Each branch is assigned a unique lane index.
-- Lanes are "recycled" once a branch terminates to keep the graph compact.
-- Stashes are assigned lanes to the extreme right of active branch lines to avoid visual noise.
+### 2.2 Reset Distance Calculation
+- **Backend**: performs a `Revwalk` starting from HEAD. It counts the number of steps until it hits the `target_oid`. If not found (target is on a parallel branch or ahead), it returns `0`.
+- **Frontend**: In `ResetCommitDialog`, we perform a simple index subtraction in the `commitLog` array to give the user a visual "approximate" distance before they click confirm.
 
-### Safe Branch Switching
-Branch switching uses a multi-step "Safe Checkout" pattern:
-1.  **Dry-Run**: `safe_checkout` simulates the switch using `checkout_builder` with `Notify` callbacks.
-2.  **Resolution**: Normalizes remote branches (e.g., `origin/main`) to their local tracking counterparts.
-3.  **Conflict Guard**: If conflicts are detected, the UI prompts for a **Force Checkout** (with stash safety) or aborts.
-4.  **Checkout**: Only if the switch is safe or after a user-initiated stash does `checkout_branch` execute.
+### 2.3 Charset Detection Pipeline
+When opening a file, the `get_file_contents` command:
+1. Checks for a UTF-8/UTF-16 BOM.
+2. If no BOM, feeds the first 8KB into `chardetng`.
+3. Decodes the buffer into a Rust `String` using the detected encoding.
+4. Returns the content + encoding name. This prevents corrupt text when viewing Legacy/Vietnamese/Japanese source files.
 
-### 2.4 File History & History Modal
-File history is fetched using `git2`'s `revwalk` combined with `DiffOptions::pathspec` filtering.
-- **Log Calculation**: Iterates through commits reachable from HEAD, filtering by the specific file path.
-- **Empty Tree Comparison**: For the first commit in a repo's history, the file is compared against an empty tree (created via `treebuilder`) to show all initial content as additions.
-- **History Modal**: A full-screen overlay that isolates the diff view from the main working tree state. It reuses the `MainDiffView` component with explicit `path` and `commitOid` props.
+## 3. Custom Abstractions
 
-### 2.5 File Operations
-- **System Editor**: Uses `std::process::Command` to open files via the platform-specific shell (`cmd /c start`, `open`, `xdg-open`).
-- **Safe Discard**:
-    - **Untracked files**: Deleted from disk using `fs::remove_file`.
-    - **Tracked files**: Reset from HEAD (`repo.reset_default`) and checked out to sync the workdir.
-- **Targeted Restore**:
-    - `restore_file_from_commit` (v2.7.0) fetches a historical blob via `commit.tree()` and `tree.get_path()`.
-    - **Windows CRLF**: If `core.autocrlf` is active, it automatically performs LF -> CRLF conversion.
-    - **Binary Guard**: Heuristically detects binary files to prevent corruption during restoration.
-
-## 3. Persistence Layer (`app_state.json`)
-
-The application persists user sessions in the app-specific data directory.
-- **Location**: `{app_data_dir}/app_state.json` (Managed by Rust `commands/repo/meta.rs`).
-- **Persisted Data**:
-    - Open repository tabs (`RepoTab` array).
-    - Active tab ID.
-    - Stash configuration (mode, include untracked).
-    - Pull strategy preference (`PullStrategy` enum).
-
-## 4. Troubleshooting
-
-### Build Failures
-- **Windows**: Ensure C++ Build Tools and WebView2 runtime are installed. Run `build.bat` for a diagnostic build.
-- **cargo check**: Use this frequently during backend refactors to catch borrow checker issues early.
-
-### Git Errors
-- If a repository fails to open, verify that the current user has read/write permissions for the `.git` folder.
-- The app assumes the `git` CLI is available in the system PATH for specific porcelain operations (clean, rebase).
-
-> [!NOTE] Implementation Decision:
-> We explicitly avoid `git2`'s `rebase` API because it is currently unstable and significantly more complex than the CLI counterpart. For production reliability, we delegate rebase operations to `std::process::Command`.
+- **`useAppStore` ( sliced Zustand)**: The store is modularized to prevent monolithic growth. Components should subscribe to specific slices to avoid unnecessary re-renders.
+- **`Manhattan Routing`**: SVG paths use a custom `roundedPath` utility in `CommitGraph.tsx` to convert stiff 90-degree lines into smooth, premium corners using SVG Arcs (`A`).
