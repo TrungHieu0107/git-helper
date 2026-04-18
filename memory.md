@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.10.6
-## Last updated: 2026-04-18 - Cleanup and build stability.
+## Version: 2.10.7
+## Last updated: 2026-04-18 - File History path normalization fix.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -25,3 +25,6 @@
     - Resolved strict type errors and missing React hooks in `ConflictEditorView.tsx`.
     - Removed dozens of unused icons and variables across the project to ensure a clean `tsc` build.
     - Successfully verified a clean production build via `npm run build`.
+- 2026-04-18 (v2.10.7): Fixed File History Modal absolute path handling.
+    - Added normalization logic in `loadHistory` to convert absolute paths (e.g., pasted from OS) into relative repository paths if they belong to `activeRepoPath`.
+    - Updated UI to reflect the normalized path in the search input field.

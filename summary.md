@@ -1,11 +1,12 @@
 # GitKit Project Summary
-## Version: 2.10.6
-## Last updated: 2026-04-18 – Cleanup and build fixes completed.
+## Version: 2.10.7
+## Last updated: 2026-04-18 – File History path normalization fix.
 ## Project: GitKit
 
 GitKit is a high-performance, premium Git management application. The current stable version is v2.10.6, which includes a major code cleanup and build stability fixes.
 
 **Recent Highlights**:
+- **File History Path Fix (v2.10.7)**: Added automatic normalization of absolute file paths to relative repository paths in the File History Modal. Users can now paste full system paths into the search field.
 - **Cleanup and Build Stability (v2.10.6)**: Resolved all TypeScript errors, missing imports, and unused variables across the project to ensure a 100% clean build.
 - **Double Click Checkout (v2.10.5)**: Changed the interactive branch badges in the commit graph and sidebar to require a double-click to checkout a target branch. Single clicks are safely ignored to prevent accidental switches.
 - **Dynamic Branch Dropdown (v2.10.4)**: Configured the commit row branch dropdown interface to enforce `labelWidth` bounds alongside graceful text truncation when multiple verbose tags exist.

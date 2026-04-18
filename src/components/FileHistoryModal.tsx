@@ -20,8 +20,16 @@ export function FileHistoryModal() {
     }
   }, [showFileHistoryModal, fileHistoryPath]);
 
-  const loadHistory = async (path: string) => {
-    if (!path) return;
+  const loadHistory = async (rawPath: string) => {
+    if (!rawPath) return;
+    
+    // Normalize absolute path to relative if it starts with activeRepoPath
+    let path = rawPath;
+    if (activeRepoPath && path.startsWith(activeRepoPath)) {
+      path = path.substring(activeRepoPath.length).replace(/^[\\\/]/, '').replace(/\\/g, '/');
+      setPathInput(path);
+    }
+
     setIsLoading(true);
     try {
       const log = await getFileLog(path);
