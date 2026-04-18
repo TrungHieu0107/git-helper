@@ -306,6 +306,28 @@ export function CommitGraph() {
           className="relative min-w-max" 
           style={{ height: `${virtualizer.getTotalSize()}px` }}
         >
+          {/* ═══ Background Layer ═══ */}
+          {virtualItems.map((virtualRow) => {
+            const row = virtualRow.index;
+            const isWip = row === 0 && hasWip;
+            const isSel = sel === row;
+            const isHov = hov === row;
+            
+            if (!isSel && !isHov) return null;
+
+            let bgClass = "";
+            if (isHov) bgClass = isWip ? "bg-[#1e293b]/40" : "bg-[#1f2937]";
+            else if (isSel) bgClass = isWip ? "bg-[#3b82f6]/10" : "bg-[#1d2d3e]";
+
+            return (
+              <div 
+                key={`bg-${row}`}
+                className={`absolute left-0 w-full pointer-events-none transition-colors duration-150 z-[5] ${bgClass}`}
+                style={{ height: ROW_H, transform: `translateY(${virtualRow.start}px)` }}
+              />
+            );
+          })}
+
           {/* ═══ SVG Graph Layer ═══ */}
           <svg 
             className="absolute pointer-events-none z-[10]"

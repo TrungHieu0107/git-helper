@@ -1,12 +1,15 @@
 # GitKit Project Summary
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Fixed Branch Dropdown hover interaction.
+## Version: 2.10.4
+## Last updated: 2026-04-18 – Fixed branch dropdown max width.
 ## Project: GitKit
 
-GitKit is a high-performance, premium Git management application. The current stable version is v2.10.1, which improves micro-interactions in the commit graph.
+GitKit is a high-performance, premium Git management application. The current stable version is v2.10.4, which features dynamic bounded widths for branch dropdown interfaces.
 
 **Recent Highlights**:
-- **Branch Dropdown (v2.10.1)**: Optimized Branch interaction and Graph layering. Implemented a dynamic z-level strategy that preserves commit avatar visibility while ensuring dropdown accessibility via targeted elevation of the interaction area.
+- **Dynamic Branch Dropdown (v2.10.4)**: Configured the commit row branch dropdown interface to enforce `labelWidth` bounds alongside graceful text truncation when multiple verbose tags exist.
+- **Graph Layering Fix (v2.10.3)**: Layered Commit Graph Rendering Architecture. Hover and selected states are now drawn behind the global SVG paths while structurally retaining dynamic z-indexes for branch dropdowns, solving graphical overlaps.
+- **Branch Dropdown Overlap (v2.10.2)**: Fixed Branch Dropdown overlap layering. Added dynamic z-indexes on `CommitRow` containers to prevent react-virtualized list rendering order from blocking hover events and clicks in branch dropdown menus when multiple branches sit on the same commit point.
+- **Branch Dropdown Box (v2.10.1)**: Optimized Branch interaction and Graph layering. Implemented a padding-based touch-area to bridge gap issues.
 - **Conflict Routing (v2.10.0)**: Automatic conflict source detection (Merge, Rebase, Cherry-Pick) with context-aware editor routing and mode-specific action buttons. Includes auto-cleanup for externally resolved conflicts.
 - **Git Reset (v2.9.0)**: Added support for right-click reset with Soft, Mixed, and Hard modes. Includes safety checks and destructive warnings.
 

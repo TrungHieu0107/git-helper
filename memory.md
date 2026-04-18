@@ -1,6 +1,6 @@
 # GitManager App Memory
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Optimal Branch Dropdown and Graph Layering.
+## Version: 2.10.4
+## Last updated: 2026-04-18 - Fixed branch dropdown max width.
 ## Project: GitKit
 
 - 2026-04-05: Scaffolded Phase 0 of the GitManager App. Setup Tauri 2 with React + TypeScript template. Installed Tailwind CSS v4, Zustand, and `@tanstack/react-virtual`. Added `git2` and `serde` dependencies for Rust. Created initial 3-column layout shell in React. Initialized document registry.
@@ -16,3 +16,6 @@
     - **UI**: Refactored `ConflictEditorView` to show context-sensitive Abort/Continue buttons and unified state usage.
     - **Sync**: Added auto-cleanup in `refreshActiveRepoStatus` for files resolved in external terminals.
 - 2026-04-12 (v2.10.1): Optimal Branch Dropdown and Graph Layering in the commit graph. Resolved an issue where a 4px gap between the badge and the dropdown caused the menu to close prematurely. Implemented a padding-based touch-area and a transparent pseudo-element "bridge" to ensure stable navigation to the branch list.
+- 2026-04-18 (v2.10.2): Fixed Branch Dropdown layer overlap. Resolved an issue where the branch dropdown would disappear or ignore clicks if an adjacent `CommitRow` stacked above it in the DOM. Applied a dynamic z-index to hovered rules in `CommitRow` (`z-[60]` for hovered, `z-[50]` for selected, `z-[20]` for regular) to properly elevate the interaction layer above the react-virtualized list rendering order.
+- 2026-04-18 (v2.10.3): Layered Graph Rendering Architecture. Resolved an issue where introducing HTML row `z-index` values caused row hover/selection background colors to visually obscure the topological `M ... A` SVG route lines. Uncoupled background colors from `CommitRow` into a dedicated Background Layer (`z-[5]`) drawn underneath the global SVG Graph Layer (`z-[10]`), while retaining structural branch content (and functional active dropdown elements) in a transparent Content Layer overlay at (`z-[20]`-`z-[60]`).
+- 2026-04-18 (v2.10.4): Dynamic Branch Dropdown Width limit. Modified `BranchLabels` to inherit the dynamic label column width (`cw.label`) from the ResizableColumns interface. Configured the dropdown container with `w-max` bounded by `maxWidth: labelWidth`, alongside `min-w-0` on badges to guarantee graceful text truncation when multiple verbose branch tags populate the dropdown.
