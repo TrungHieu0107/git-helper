@@ -2,6 +2,8 @@ use serde::Serialize;
 use git2::{Repository, Signature};
 use crate::git::encoding::{detect_and_decode, DetectionResult};
 
+const MAX_FILE_SIZE: u64 = 5 * 1024 * 1024; // 5 MB
+
 #[derive(Serialize)]
 pub struct CommitFileChange {
     pub path: String,
@@ -180,11 +182,19 @@ pub struct DecodedDiff {
 
 // Helpers removed in favor of crate::git::encoding
 
-fn get_blob_bytes<'a>(repo: &'a Repository, tree: &git2::Tree<'a>, path: &str) -> Option<Vec<u8>> {
-    let entry = tree.get_path(std::path::Path::new(path)).ok()?;
-    let obj = entry.to_object(repo).ok()?;
-    let blob = obj.as_blob()?;
-    Some(blob.content().to_vec())
+fn get_blob_bytes<'a>(repo: &'a Repository, tree: &git2::Tree<'a>, path: &str) -> Result<Option<Vec<u8>>, String> {
+    let entry = match tree.get_path(std::path::Path::new(path)) {
+        Ok(e) => e,
+        Err(_) => return Ok(None),
+    };
+    let obj = entry.to_object(repo).map_err(|e| e.to_string())?;
+    let blob = obj.as_blob().ok_or("Not a blob")?;
+    
+    if blob.size() as u64 > MAX_FILE_SIZE {
+        return Err("FILE_TOO_LARGE".to_string());
+    }
+    
+    Ok(Some(blob.content().to_vec()))
 }
 
 #[tauri::command]
@@ -204,10 +214,10 @@ pub fn get_file_contents(
         let obj = repo.revparse_single(&oid_str).map_err(|e| e.message().to_string())?;
         let commit = obj.peel_to_commit().map_err(|e| e.message().to_string())?;
         let tree = commit.tree().map_err(|e| e.message().to_string())?;
-        new_bytes = get_blob_bytes(&repo, &tree, &path);
+        new_bytes = get_blob_bytes(&repo, &tree, &path)?;
         if let Ok(parent) = commit.parent(0) {
             if let Ok(parent_tree) = parent.tree() {
-                old_bytes = get_blob_bytes(&repo, &parent_tree, &path);
+                old_bytes = get_blob_bytes(&repo, &parent_tree, &path)?;
             }
         }
     } else {
@@ -215,20 +225,30 @@ pub fn get_file_contents(
         let index = repo.index().map_err(|e| e.message().to_string())?;
         if staged {
             if let Some(tree) = head_tree {
-                old_bytes = get_blob_bytes(&repo, &tree, &path);
+                old_bytes = get_blob_bytes(&repo, &tree, &path)?;
             }
             if let Some(entry) = index.get_path(std::path::Path::new(&path), 0) {
                 if let Ok(blob) = repo.find_blob(entry.id) {
+                    if blob.size() as u64 > MAX_FILE_SIZE {
+                        return Err("FILE_TOO_LARGE".to_string());
+                    }
                     new_bytes = Some(blob.content().to_vec());
                 }
             }
         } else {
             if let Some(entry) = index.get_path(std::path::Path::new(&path), 0) {
                 if let Ok(blob) = repo.find_blob(entry.id) {
+                    if blob.size() as u64 > MAX_FILE_SIZE {
+                        return Err("FILE_TOO_LARGE".to_string());
+                    }
                     old_bytes = Some(blob.content().to_vec());
                 }
             }
             let full_file_path = std::path::Path::new(&repo_path).join(&path);
+            let metadata = std::fs::metadata(&full_file_path).map_err(|e| e.to_string())?;
+            if metadata.len() > MAX_FILE_SIZE {
+                return Err("FILE_TOO_LARGE".to_string());
+            }
             if let Ok(bytes) = std::fs::read(&full_file_path) {
                 new_bytes = Some(bytes);
             }

@@ -179,7 +179,11 @@ export function MainDiffView(props: MainDiffViewProps) {
       })
       .catch((err) => {
         if (!isMounted) return;
-        setError(typeof err === 'string' ? err : 'Unknown error');
+        if (err === 'FILE_TOO_LARGE') {
+          setError('File is too large to preview (> 5 MB). Open in external editor.');
+        } else {
+          setError(typeof err === 'string' ? err : 'Unknown error');
+        }
         setIsLoading(false);
       });
 
