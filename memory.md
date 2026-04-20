@@ -1,28 +1,41 @@
-- ... (historical entries omitted for brevity in thought, but included in actual update) ...
-- 2026-04-12 (v2.9.2): Finalized Git Reset feature. Fixed bug where targets were incorrectly flagged as unreachable.
-- 2026-04-12 (v2.10.0): Implemented Unified Conflict Routing.
-    - **Backend**: Added `get_conflict_context` to detect source via `.git` metadata and determine detailed conflict status codes (UU, AA, DD, etc.).
-    - **Backend**: Added `merge_abort/continue` and `rebase_abort/continue` commands. `rebase_continue` uses `GIT_EDITOR=true` to prevent process hangs.
-    - **Frontend**: RightPanel intercepts conflicted file clicks (Working Tree only) and routes to `ConflictEditorView`.
-    - **UI**: Refactored `ConflictEditorView` to show context-sensitive Abort/Continue buttons and unified state usage.
-    - **Sync**: Added auto-cleanup in `refreshActiveRepoStatus` for files resolved in external terminals.
-- 2026-04-12 (v2.10.1): Optimal Branch Dropdown and Graph Layering in the commit graph. Resolved an issue where a 4px gap between the badge and the dropdown caused the menu to close prematurely. Implemented a padding-based touch-area and a transparent pseudo-element "bridge" to ensure stable navigation to the branch list.
-- 2026-04-18 (v2.10.2): Fixed Branch Dropdown layer overlap. Resolved an issue where the branch dropdown would disappear or ignore clicks if an adjacent `CommitRow` stacked above it in the DOM. Applied a dynamic z-index to hovered rules in `CommitRow` (`z-[60]` for hovered, `z-[50]` for selected, `z-[20]` for regular) to properly elevate the interaction layer above the react-virtualized list rendering order.
-- 2026-04-18 (v2.10.3): Layered Graph Rendering Architecture. Resolved an issue where introducing HTML row `z-index` values caused row hover/selection background colors to visually obscure the topological `M ... A` SVG route lines. Uncoupled background colors from `CommitRow` into a dedicated Background Layer (`z-[5]`) drawn underneath the global SVG Graph Layer (`z-[10]`), while retaining structural branch content (and functional active dropdown elements) in a transparent Content Layer overlay at (`z-[20]`-`z-[60]`).
-- 2026-04-18 (v2.10.4): Dynamic Branch Dropdown Width limit. Modified `BranchLabels` to inherit the dynamic label column width (`cw.label`) from the ResizableColumns interface. Configured the dropdown container with `w-max` bounded by `maxWidth: labelWidth`, alongside `min-w-0` on badges to guarantee graceful text truncation when multiple verbose branch tags populate the dropdown.
-- 2026-04-18 (v2.10.5): Changed Branch Checkout Interaction. Updated branch badges in `CommitGraph` to require a `double-click` to trigger a checkout (`safeSwitchBranch`) to prevent accidental checkouts while navigating. Single clicks are intercepted via `e.stopPropagation()` to avoid arbitrarily selecting the underlying row. Applied similar double-click logic to the `Sidebar` branch tree.
-- 2026-04-18 (v2.10.6): Major code cleanup and build stability.
-    - Fixed missing type/library imports in `repo.ts`, `ConflictEditorView.tsx`, `RightPanel.tsx`.
-    - Resolved strict type errors and missing React hooks in `ConflictEditorView.tsx`.
-    - Removed dozens of unused icons and variables across the project to ensure a clean `tsc` build.
-    - Successfully verified a clean production build via `npm run build`.
-- 2026-04-18 (v2.10.7): Fixed File History Modal absolute path handling.
-    - Added normalization logic in `loadHistory` to convert absolute paths (e.g., pasted from OS) into relative repository paths if they belong to `activeRepoPath`.
-    - Updated UI to reflect the normalized path in the search input field.
-- 2026-04-18 (v2.11.0): GitKit Branding & Icon Update.
-    - Standardized application name to "GitKit" in `package.json`, `tauri.conf.json`, and `index.html`.
-    - Generated and integrated a premium "blurred background" logo.
-    - Updated window title and build identifiers for consistency.
-- 2026-04-18 (v2.11.1): Sidebar UI cleanup.
-    - Removed the redundant `BranchSelector` component and its usage from the top of the Sidebar.
-    - Adjusted the Sidebar header layout to retain only the search filter and collapse button.
+# Project Memory: GitKit Performance Optimization
+## Version: 1.1.1
+## Last updated: 2026-04-20 – Completed performance audit fixes and final code refactoring.
+## Project: GitKit
+
+### Performance Audit Fixes (2026-04-20)
+
+#### [PERF-001] Redundant Repository::open in parallel loop
+- **Reason**: Extreme I/O overhead from opening repo handles for every commit in batch.
+- **Fix**: Implemented `THREAD_REPO` using `thread_local!` and `RefCell` in `get_log` (Rust). Repo is now opened once per thread.
+- **Status**: Completed ✓
+
+#### [PERF-002] Unbounded revwalk in get_file_log
+- **Reason**: Synchronous O(N) scan of entire history causing UI freezes.
+- **Fix**: Added pagination (page, page_size) to `get_file_log` in Rust. Updated `getFileLog` in TypeScript and `FileHistoryModal` to handle paginated response.
+- **Status**: Completed ✓
+
+#### [PERF-003] Missing list virtualization in CommitDetailPanel
+- **Reason**: DOM bloat when viewing commits with thousands of files.
+- **Fix**: Implemented virtualization for the Path List view using `@tanstack/react-virtual`.
+- **Status**: Completed ✓
+
+#### [PERF-004] No file size guard before diff decode
+- **Reason**: High memory usage/crashes when loading huge files for diffing.
+- **Fix**: Added `MAX_FILE_SIZE` (5MB) check in `get_file_contents` and `get_blob_bytes` (Rust). Added user-friendly error message in `MainDiffView`.
+- **Status**: Completed ✓
+
+#### [PERF-005] Redundant stash_foreach on every get_log invocation
+- **Reason**: Unnecessary overhead from re-scanning stashes when they haven't changed.
+- **Fix**: Implemented `STASH_CACHE` using `once_cell::sync::Lazy` and `Mutex` in Rust. Only refreshes if `refs/stash` OID changes.
+- **Status**: Completed ✓
+
+#### [PERF-006] Expensive in-memory commit search on large logs
+- **Reason**: Performance degradation when filtering large commit logs on the frontend.
+- **Fix**: Optimized `useMemo` in `CommitGraph.tsx` and added a sticky warning badge for searches > 5,000 commits.
+- **Status**: Completed ✓
+
+#### [REFACTOR] Code Cleanup (2026-04-20)
+- **Reason**: Polish codebase after performance audit fixes.
+- **Fix**: Consolidated imports in `mod.rs`, removed unused `Plus` icon in `Sidebar.tsx`, and verified clean build.
+- **Status**: Completed ✓
