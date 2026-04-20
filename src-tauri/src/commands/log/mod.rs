@@ -1,7 +1,12 @@
 use git2::{Repository, Sort, Oid};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::cell::RefCell;
+use std::sync::Mutex;
 use rayon::prelude::*;
+use once_cell::sync::Lazy;
+
+static STASH_CACHE: Lazy<Mutex<HashMap<String, (Oid, Vec<(Oid, String, usize)>)>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Serialize)]
 pub struct EdgeInfo {
@@ -145,11 +150,30 @@ pub fn get_log(
         .map_err(|e| format!("Failed to open repository: {}", e))?;
 
     // 1. Fetch stashes first (collect OIDs first to avoid nested borrow)
-    let mut stash_metadata = Vec::new();
-    let _ = repo.stash_foreach(|index, message, id| {
-        stash_metadata.push((*id, message.to_string(), index));
-        true
-    });
+    let stash_oid = repo.find_reference("refs/stash").ok().and_then(|r| r.target());
+
+    let stash_metadata = if let Some(stash_oid) = stash_oid {
+        let mut cache = STASH_CACHE.lock().unwrap();
+        let use_cache = if let Some((cached_oid, _)) = cache.get(&repo_path) {
+            cached_oid == &stash_oid
+        } else {
+            false
+        };
+
+        if use_cache {
+            cache.get(&repo_path).unwrap().1.clone()
+        } else {
+            let mut temp_metadata = Vec::new();
+            let _ = repo.stash_foreach(|index, message, id| {
+                temp_metadata.push((*id, message.to_string(), index));
+                true
+            });
+            cache.insert(repo_path.clone(), (stash_oid, temp_metadata.clone()));
+            temp_metadata
+        }
+    } else {
+        Vec::new()
+    };
 
     let mut stashes_by_base: HashMap<Oid, Vec<(Oid, String, i64, usize)>> = HashMap::new();
     for (id, message, index) in stash_metadata {
@@ -209,10 +233,39 @@ pub fn get_log(
     let has_more = commit_count == limit;
 
     // Map OIDs to metadata in parallel
-    let commit_metadata: HashMap<Oid, (Vec<Oid>, String, String, i64, String, String)> = oids.par_iter().map(|&oid| {
-        let repo_thread = Repository::open(&repo_path).ok();
-        if let Some(r) = repo_thread {
-            if let Ok(c) = r.find_commit(oid) {
+    // Optimization: Use thread_local to cache repository handles across items in the same thread
+    thread_local! {
+        static THREAD_REPO: RefCell<Option<(String, Repository)>> = RefCell::new(None);
+    }
+
+    let commit_metadata: HashMap<Oid, (Vec<Oid>, String, String, i64, String, String)> = oids.par_iter().filter_map(|&oid| {
+        THREAD_REPO.with(|cell| {
+            let mut opt = cell.borrow_mut();
+            
+            // Check if we already have a repo for this path in this thread
+            let repo = if let Some((ref path, ref repo)) = *opt {
+                if path == &repo_path {
+                    repo
+                } else {
+                    match Repository::open(&repo_path) {
+                        Ok(r) => {
+                            *opt = Some((repo_path.clone(), r));
+                            &opt.as_ref().unwrap().1
+                        }
+                        Err(_) => return None,
+                    }
+                }
+            } else {
+                match Repository::open(&repo_path) {
+                    Ok(r) => {
+                        *opt = Some((repo_path.clone(), r));
+                        &opt.as_ref().unwrap().1
+                    }
+                    Err(_) => return None,
+                }
+            };
+
+            if let Ok(c) = repo.find_commit(oid) {
                 let parents: Vec<Oid> = c.parent_ids().collect();
                 let author = c.author();
                 let author_name = author.name().unwrap_or("Unknown").to_string();
@@ -225,9 +278,9 @@ pub fn get_log(
                 
                 return Some((oid, (parents, author_name, author_email, timestamp, message, short_oid)));
             }
-        }
-        None
-    }).flatten().collect();
+            None
+        })
+    }).collect();
 
     let mut result_nodes = Vec::new();
     let mut active_lanes: Vec<Option<Oid>> = Vec::new();
@@ -235,7 +288,7 @@ pub fn get_log(
     let mut next_color_idx = 0;
 
     for oid in oids {
-        let (parents_oids, author_name, author_email, timestamp, message, short_oid) = match commit_metadata.get(&oid) {
+        let (parents_oids, author_name, author_email, timestamp, message, short_oid): &(Vec<Oid>, String, String, i64, String, String) = match commit_metadata.get(&oid) {
             Some(m) => m,
             None => continue,
         };
