@@ -205,6 +205,8 @@ export function CommitGraph() {
     );
   }, [commitLog, debouncedSearch]);
 
+  const showSearchWarning = debouncedSearch.trim() !== "" && commitLog.length > 5000;
+
   const hasWip = (status?.staged_count ?? 0) > 0 || (status?.unstaged_count ?? 0) > 0 || staged.length > 0 || unstaged.length > 0;
   const off = hasWip ? 1 : 0;
   const totalRows = (filteredCommits?.length || 0) + off;
@@ -302,6 +304,14 @@ export function CommitGraph() {
         ref={parentRef}
         className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117] relative"
       >
+        {showSearchWarning && (
+          <div className="sticky top-2 right-6 float-right z-[100] px-3 py-1.5 bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300 shadow-xl pointer-events-none">
+            <div className="w-2 h-2 bg-[#d29922] rounded-full animate-pulse shadow-[0_0_8px_rgba(210,153,34,0.5)]" />
+            <span className="text-[11px] font-medium text-[#d29922]">
+              Searching {commitLog.length.toLocaleString()} commits — results may be slow
+            </span>
+          </div>
+        )}
         <div 
           className="relative min-w-max" 
           style={{ height: `${virtualizer.getTotalSize()}px` }}
