@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppStore, CommitDetail } from "../store";
 import { selectFileDiff } from "../lib/repo";
 import { FileContextMenu } from "./FileContextMenu";
@@ -115,6 +116,15 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
     traverse(treeData);
     return paths;
   }, [treeData]);
+  
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: detail?.files.length || 0,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 28,
+    overscan: 10,
+  });
 
   if (!detail && !loading) return null;
 
@@ -309,40 +319,62 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           </div>
 
           {/* File List / Tree */}
-          <div className="flex flex-col">
+          <div className="flex-1 min-h-0">
             {viewMode === 'path' ? (
-              detail.files.map((f: { path: string; status: string }, i: number) => (
+              <div 
+                ref={parentRef}
+                className="h-full overflow-y-auto custom-scrollbar"
+              >
                 <div 
-                  key={i}
-                  onClick={() => selectFileDiff(f.path, false, detail.oid)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setContextMenu({ 
-                      path: f.path, 
-                      x: e.clientX, 
-                      y: e.clientY,
-                      commitOid: detail.oid,
-                      shortOid: detail.short_oid,
-                      commitMessage: detail.message
-                    });
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                    width: '100%',
+                    position: 'relative',
                   }}
-                  className="flex items-center gap-2 py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
                 >
-                  {statusIcon(f.status)}
-                  <div className="flex text-[12px] text-[#e6edf3] font-mono min-w-0 overflow-hidden" title={f.path}>
-                    {f.path.includes('/') ? (
-                        <>
-                          <span className="truncate shrink text-[#8b949e]">{f.path.substring(0, f.path.lastIndexOf('/') + 1)}</span>
-                          <span className="shrink-0">{f.path.substring(f.path.lastIndexOf('/') + 1)}</span>
-                        </>
-                    ) : (
-                        <span className="truncate shrink-0">{f.path}</span>
-                    )}
-                  </div>
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const f = detail.files[virtualRow.index];
+                    return (
+                      <div 
+                        key={virtualRow.index}
+                        onClick={() => selectFileDiff(f.path, false, detail.oid)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({ 
+                            path: f.path, 
+                            x: e.clientX, 
+                            y: e.clientY,
+                            commitOid: detail.oid,
+                            shortOid: detail.short_oid,
+                            commitMessage: detail.message
+                          });
+                        }}
+                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group absolute top-0 left-0 w-full"
+                        style={{ 
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start}px)`
+                        }}
+                      >
+                        {statusIcon(f.status)}
+                        <div className="flex text-[12px] text-[#e6edf3] font-mono min-w-0 overflow-hidden" title={f.path}>
+                          {f.path.includes('/') ? (
+                              <>
+                                <span className="truncate shrink text-[#8b949e]">{f.path.substring(0, f.path.lastIndexOf('/') + 1)}</span>
+                                <span className="shrink-0">{f.path.substring(f.path.lastIndexOf('/') + 1)}</span>
+                              </>
+                          ) : (
+                              <span className="truncate shrink-0">{f.path}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))
+              </div>
             ) : (
-                treeData && renderTree(treeData)
+              <div className="h-full overflow-y-auto custom-scrollbar">
+                {treeData && renderTree(treeData)}
+              </div>
             )}
           </div>
         </div>
