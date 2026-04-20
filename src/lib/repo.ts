@@ -1073,14 +1073,24 @@ export async function restoreFileFromCommit(commitOid: string, filePath: string)
   }
 }
 
-export async function getFileLog(filePath: string): Promise<FileCommit[]> {
+export interface FileLogResponse {
+  commits: FileCommit[];
+  has_more: boolean;
+}
+
+export async function getFileLog(filePath: string, page: number = 0, pageSize: number = 100): Promise<FileLogResponse> {
   const path = useAppStore.getState().activeRepoPath;
-  if (!path) return [];
+  if (!path) return { commits: [], has_more: false };
   try {
-    return await invoke<FileCommit[]>('get_file_log', { repoPath: path, filePath });
+    return await invoke<FileLogResponse>('get_file_log', { 
+      repoPath: path, 
+      filePath,
+      page,
+      pageSize
+    });
   } catch (e) {
     toast.error(`Failed to load history: ${e}`);
-    return [];
+    return { commits: [], has_more: false };
   }
 }
 

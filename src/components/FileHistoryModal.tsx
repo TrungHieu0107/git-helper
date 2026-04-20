@@ -32,10 +32,10 @@ export function FileHistoryModal() {
 
     setIsLoading(true);
     try {
-      const log = await getFileLog(path);
-      setCommits(log);
-      if (log.length > 0) {
-        setSelectedOid(log[0].oid);
+      const { commits: logCommits } = await getFileLog(path);
+      setCommits(logCommits);
+      if (logCommits.length > 0) {
+        setSelectedOid(logCommits[0].oid);
       } else {
         setSelectedOid(null);
       }

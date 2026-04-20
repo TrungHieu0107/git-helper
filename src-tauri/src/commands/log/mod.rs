@@ -44,8 +44,23 @@ pub struct FileCommit {
     pub timestamp: i64,
 }
 
+#[derive(Serialize)]
+pub struct FileLogResponse {
+    pub commits: Vec<FileCommit>,
+    pub has_more: bool,
+}
+
 #[tauri::command]
-pub fn get_file_log(repo_path: String, file_path: String) -> Result<Vec<FileCommit>, String> {
+pub fn get_file_log(
+    repo_path: String, 
+    file_path: String, 
+    page: Option<usize>, 
+    page_size: Option<usize>
+) -> Result<FileLogResponse, String> {
+    let page = page.unwrap_or(0);
+    let page_size = page_size.unwrap_or(100);
+    let skip = page * page_size;
+
     let repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
     
@@ -57,7 +72,10 @@ pub fn get_file_log(repo_path: String, file_path: String) -> Result<Vec<FileComm
     
     let _ = revwalk.push_head();
 
-    let mut result = Vec::new();
+    let mut commits = Vec::new();
+    let mut found_count = 0;
+    let mut has_more = false;
+
     // Initial commit (empty tree) to compare against for root commits
     let empty_tree = {
         let builder = repo.treebuilder(None).map_err(|e| e.to_string())?;
@@ -74,14 +92,12 @@ pub fn get_file_log(repo_path: String, file_path: String) -> Result<Vec<FileComm
         diff_opts.pathspec(&file_path);
 
         if commit.parent_count() == 0 {
-            // First commit: compare against empty tree
             let diff = repo.diff_tree_to_tree(Some(&empty_tree), Some(&commit.tree().map_err(|e| e.to_string())?), Some(&mut diff_opts))
                 .map_err(|e| e.to_string())?;
             if diff.deltas().len() > 0 {
                 changed = true;
             }
         } else {
-            // Compare against first parent (standard for file log)
             let parent = commit.parent(0).map_err(|e| e.to_string())?;
             let diff = repo.diff_tree_to_tree(Some(&parent.tree().map_err(|e| e.to_string())?), Some(&commit.tree().map_err(|e| e.to_string())?), Some(&mut diff_opts))
                 .map_err(|e| e.to_string())?;
@@ -91,19 +107,30 @@ pub fn get_file_log(repo_path: String, file_path: String) -> Result<Vec<FileComm
         }
 
         if changed {
-            let author = commit.author();
-            result.push(FileCommit {
-                oid: oid.to_string(),
-                short_oid: oid.to_string()[0..7].to_string(),
-                message: commit.summary().unwrap_or("").to_string(),
-                author_name: author.name().unwrap_or("Unknown").to_string(),
-                author_email: author.email().unwrap_or("").to_string(),
-                timestamp: commit.time().seconds(),
-            });
+            if found_count >= skip {
+                if commits.len() < page_size {
+                    let author = commit.author();
+                    commits.push(FileCommit {
+                        oid: oid.to_string(),
+                        short_oid: oid.to_string()[0..7].to_string(),
+                        message: commit.summary().unwrap_or("").to_string(),
+                        author_name: author.name().unwrap_or("Unknown").to_string(),
+                        author_email: author.email().unwrap_or("").to_string(),
+                        timestamp: commit.time().seconds(),
+                    });
+                } else {
+                    has_more = true;
+                    break;
+                }
+            }
+            found_count += 1;
         }
     }
 
-    Ok(result)
+    Ok(FileLogResponse {
+        commits,
+        has_more,
+    })
 }
 
 #[tauri::command]
