@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, Search, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, Plus, RotateCcw, Cloud, X } from "lucide-react";
+import { ChevronDown, Search, MoreHorizontal, GitBranch, Folder, ChevronsLeft, ChevronsRight, RotateCcw, Cloud, X } from "lucide-react";
 import { useAppStore, StashEntry } from "../store";
 import { safeSwitchBranch } from "../lib/repo";
 import { Highlight } from "./Sidebar/utils";

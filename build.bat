@@ -31,7 +31,7 @@ node --version
 echo OK: Node.js found.
 
 REM ── Check npm ───────────────────────────
-npm --version >nul 2>&1
+call npm --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo ERROR: npm not found. Reinstall Node.js.
     pause
