@@ -172,7 +172,7 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       label: 'Reset to this commit...',
       color: 'text-purple-400',
       action: () => {
-        useAppStore.getState().setResetToCommitTarget({ oid: commit.oid, message: commit.message });
+        useAppStore.getState().setResetToCommitTarget(commit);
         onClose();
       },
       disabled: isStash || commit.oid === repoInfo?.head_oid || cherryPickState !== 'idle'
