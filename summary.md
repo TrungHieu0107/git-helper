@@ -1,2 +1,2 @@
 # Project Summary
-GitKit is currently in a stable state with a robust, per-block conflict resolution system. The Result pane now offers a "smart" clean view by hiding Git markers while still allowing full interactive resolution. Harmless cancellation errors and unhandled promise rejections during lifecycle events have been suppressed or fixed, ensuring a professional developer console experience.
+GitKit is now in a production-ready stable state. The conflict resolution system is robust, handles various EOL formats, and provides a clean, "smart" Result view by hiding markers. All debug logs and alerts have been removed, and the global error handling has been hardened to prevent console noise from external libraries.

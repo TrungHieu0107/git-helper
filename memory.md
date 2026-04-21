@@ -21,3 +21,6 @@
 - Updated `resolveHunk` to call `refreshHiddenAreas` after each resolution to keep markers hidden for remaining hunks.
 - Adjusted widget positions to appear on the first visible line of conflict content (since markers are hidden).
 - Fixed unhandled promise rejections in `App.tsx` by adding `.catch()` handlers to Tauri event unlisten calls.
+## 2026-04-21 - Production Cleanup & Robustness
+- Removed all debug `console.log` and `alert` statements from `App.tsx` and `ConflictEditorView.tsx`.
+- Added defensive `try/catch` and `typeof` checks for `setHiddenAreas` to prevent crashes in environments where this Monaco internal API might behave unexpectedly.
