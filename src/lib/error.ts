@@ -18,6 +18,11 @@ export class AppError extends Error {
  * Logs the error and notifies the user via toast.
  */
 export function handleError(error: unknown, context?: string) {
+  // Ignore harmless cancellation errors from Monaco/loader
+  if (error && typeof error === 'object' && (error as any).type === 'cancelation') {
+    return;
+  }
+
   // Always log to console first
   console.error(`[Error]${context ? ` in ${context}` : ''}:`, error);
 
