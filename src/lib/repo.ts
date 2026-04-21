@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useAppStore, RepoInfo, RepoStatus, BranchInfo, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult, PullStrategy, LogResponse, ConflictMode } from '../store';
 import { toast } from './toast';
-import { handleError, AppError } from './error';
+import { handleError } from './error';
 
 /**
  * Higher-order function to wrap async operations with global loading and error handling.
@@ -585,12 +585,14 @@ export async function createBranch(name: string, startPoint?: string): Promise<C
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return null;
   
-  return await withLoading(async () => {
-    const result = await invoke<CreateBranchResult>('create_branch', { repoPath: path, name, startPoint });
+  const result = await withLoading(async () => {
+    const res = await invoke<CreateBranchResult>('create_branch', { repoPath: path, name, startPoint });
     await loadRepo(path);
     toast.success(`Created branch "${name}"`);
-    return result;
+    return res;
   }, `Creating branch "${name}"...`, 600);
+
+  return result || null;
 }
 
 export async function validateBranchName(name: string): Promise<BranchValidation> {
@@ -650,16 +652,19 @@ export async function autoStash(branchName: string): Promise<boolean> {
   }
 }
 
-export async function commitRepo(message: string, amend: boolean = false) {
+export async function commitRepo(message: string, amend: boolean = false): Promise<boolean> {
   const path = useAppStore.getState().activeRepoPath;
-  if (!path || !message.trim()) return;
+  if (!path || !message.trim()) return false;
   
-  await withLoading(async () => {
-    const result = await invoke<CommitResult>('create_commit', { repoPath: path, message, amend });
-    useAppStore.getState().setLastCommitWasAmend(result.amended);
+  const result = await withLoading(async () => {
+    const res = await invoke<CommitResult>('create_commit', { repoPath: path, message, amend });
+    useAppStore.getState().setLastCommitWasAmend(res.amended);
     await loadRepo(path);
-    toast.success(result.amended ? "Amended successfully" : "Committed successfully");
+    toast.success(res.amended ? "Amended successfully" : "Committed successfully");
+    return true;
   }, amend ? "Amending commit..." : "Creating commit...", 1000);
+
+  return !!result;
 }
 
 export async function getHeadCommitInfo(): Promise<HeadCommitInfo | null> {
