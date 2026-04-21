@@ -70,8 +70,11 @@ export interface UISlice {
   isProcessing: boolean;
   processingLabel: string | null;
 
-  resetToCommitTarget: string | null;
-  setResetToCommitTarget: (target: string | null) => void;
+  resetToCommitTarget: CommitNode | null;
+  mergeTarget: string | null;
+  setMergeTarget: (branch: string | null) => void;
+
+  setResetToCommitTarget: (target: CommitNode | null) => void;
 
   setIsProcessing: (isProcessing: boolean, label?: string | null) => void;
   setActiveTabId: (id: string) => void;
@@ -127,9 +130,14 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   isProcessing: false,
   processingLabel: null,
 
-  setIsProcessing: (isProcessing, label = null) => set(() => ({ isProcessing, processingLabel: label })),
   resetToCommitTarget: null,
+  mergeTarget: null,
+
+  setIsProcessing: (isProcessing, label = null) => set(() => ({ isProcessing, processingLabel: label })),
+  
   setResetToCommitTarget: (target) => set(() => ({ resetToCommitTarget: target })),
+  
+  setMergeTarget: (branch) => set(() => ({ mergeTarget: branch })),
 
   setActiveTabId: (id) => set(() => ({ activeTabId: id })),
   setRepos: (repos) => set(() => ({ repos })),
