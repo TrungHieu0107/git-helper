@@ -12,3 +12,7 @@
 - Fixed a bug where `resultContent` was missing conflict blocks in the parser.
 - Added automatic status refresh in `repo.ts` after Merge, Cherry-pick, and state detection.
 - Improved widget interaction in `ConflictEditorView.tsx` with forced pointer events and elevated z-index.
+## 2026-04-21 - Cancellation Error Handling (TDD)
+- Identified source of "Unhandled Promise Rejection" as Monaco Editor's loader cancellation.
+- Implemented TDD workflow using `vitest` to verify error suppression.
+- Updated `handleError` in `src/lib/error.ts` to silently ignore objects with `type: 'cancelation'`.

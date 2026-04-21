@@ -1,2 +1,2 @@
 # Project Summary
-GitKit is currently in a stable state with a robust, per-block conflict resolution system. The implementation handles line ending mismatches (LF/CRLF) automatically and ensures synchronization between Git operations and the UI status. Simple confirmation dialogs have been refactored into a premium imperative component.
+GitKit is currently in a stable state with a robust, per-block conflict resolution system. All harmless cancellation errors from external libraries (Monaco Editor) are now suppressed via a centralized error handler, ensuring a clean developer console. The project uses a premium imperative dialog system and handles multi-platform line endings correctly.
