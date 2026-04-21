@@ -1,8 +1,8 @@
-# Claude AI Agent Configuration
+# Antigravity Agent Configuration
 
 ## Overview
 
-This project uses Claude AI as an intelligent development agent with structured workflows, specialized sub-agents, and mandatory coding standards.
+This project uses Antigravity AI as an intelligent development agent with structured workflows, specialized sub-agents, and mandatory coding standards.
 
 ---
 
@@ -36,6 +36,7 @@ Follow this workflow for all feature development:
 | `/debug` | Systematic error diagnosis and root cause analysis |
 | `/simplify` | Reduce complexity without changing behavior |
 | `/fix-issue` | Analyze and fix reported issues |
+| `/commit` | Auto-commit theo Conventional Commits |
 
 ---
 
@@ -56,7 +57,7 @@ Follow this workflow for all feature development:
 
 ## Mandatory Rules
 
-All rules in `.claude/rules/` are **mandatory** and must be followed:
+All rules in `.agents/rules/` are **mandatory** and must be followed:
 
 ### Code Quality
 | Rule | Description |
@@ -133,7 +134,7 @@ Specialized skills for complex operations:
 
 ## Reference Checklists
 
-Quick references in `.claude/references/`:
+Quick references in `.agents/references/`:
 
 | Reference | Use For |
 |-----------|---------|
@@ -147,7 +148,7 @@ Quick references in `.claude/references/`:
 ## Agent Behavior Guidelines
 
 1. **Follow the workflow** — Use `/spec` → `/plan` → `/build` → `/review`
-2. **Apply mandatory rules** — All rules in `.claude/rules/` are non-negotiable
+2. **Apply mandatory rules** — All rules in `.agents/rules/` are non-negotiable
 3. **Test first** — Write failing tests before implementing
 4. **Incremental changes** — Small commits, always buildable
 5. **Explain before acting** — Describe changes before making them

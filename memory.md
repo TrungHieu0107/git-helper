@@ -1,7 +1,15 @@
 # Memory - GitKit
-## Version: 1.1.2
-## Last updated: 2026-04-21 – Final Blank Screen Fix (ErrorBoundary)
+## Version: 1.2.0
+## Last updated: 2026-04-21 – Antigravity .agents/ Configuration Optimization
 ## Project: GitKit
+
+### [2026-04-21] — .agents/ Configuration Optimization for Antigravity
+- **Issue**: `.agents/` config was outdated — hardcoded `claude-opus-4-5` model, all paths referenced `.claude/` instead of `.agents/`, `CLAUDE.md` had stale branding, and `memory/preferences.md` was missing.
+- **Changes**:
+    - `settings.json`: Updated model to `gemini-2.5-flash`, added `fallback_model: claude-opus-4-6`, fixed context_window to 1M, corrected all directory paths from `.claude/` → `.agents/`.
+    - `CLAUDE.md`: Rebranded to "Antigravity Agent Configuration", fixed all `.claude/` path references to `.agents/`, added `/commit` workflow to Supporting Commands.
+    - `memory/preferences.md`: Created with full user preferences (language, UI/UX design, architecture, code style, workflow, tools) derived from 12+ conversation sessions.
+- **Status**: Completed ✓
 
 ### [2026-04-21] — Final Blank Screen Resolution
 - **Issue**: Persistent black screen despite fixing initial startup logic.
