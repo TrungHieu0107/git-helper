@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppStore, FileStatus } from "../../store";
 import { AlertTriangle, ChevronsLeft } from "lucide-react";
-import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo } from "../../lib/repo";
+import { stageFile, unstageFile, stageAll, unstageAll, commitRepo, selectFileDiff, loadConflictFile, getHeadCommitInfo, HeadCommitInfo, discardAllChanges } from "../../lib/repo";
 import { toast } from "../../lib/toast";
+import { confirm } from "../ui/ConfirmDialog";
 import { CommitDetailPanel } from "../CommitDetailPanel";
 import { FileContextMenu } from "../FileContextMenu";
 import { RightPanelHeader } from "./RightPanelHeader";
@@ -173,8 +174,17 @@ export function RightPanel() {
     }
   };
 
-  const handleDiscardAll = () => {
-    useAppStore.setState({ confirmDiscardAll: true });
+  const handleDiscardAll = async () => {
+    const ok = await confirm({
+      title: 'Discard All Changes',
+      message: 'Are you sure you want to discard all unstaged changes? This action cannot be undone.',
+      confirmLabel: 'Discard All',
+      variant: 'danger'
+    });
+    
+    if (ok) {
+      await discardAllChanges();
+    }
   };
 
   const filteredUnstaged = useMemo(() => 

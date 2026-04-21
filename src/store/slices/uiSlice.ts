@@ -46,8 +46,6 @@ export interface UISlice {
   selectedDiff: SelectedDiff | null;
   fileEncoding: string;
   toasts: Toast[];
-  confirmCheckoutTo: string | null;
-  confirmDiscardAll: boolean;
   checkoutError: CheckoutError | null;
   refreshTimestamp: number;
   pullStrategy: PullStrategy;
@@ -81,8 +79,6 @@ export interface UISlice {
   setRepos: (repos: RepoMeta[]) => void;
   setSelectedDiff: (diff: SelectedDiff | null) => void;
   setFileEncoding: (encoding: string) => void;
-  setConfirmCheckoutTo: (branch: string | null) => void;
-  setConfirmDiscardAll: (show: boolean) => void;
   setCheckoutError: (error: CheckoutError | null) => void;
   triggerRefresh: () => void;
   setPullStrategy: (strategy: PullStrategy) => void;
@@ -106,8 +102,6 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   selectedDiff: null,
   fileEncoding: 'utf-8',
   toasts: [],
-  confirmCheckoutTo: null,
-  confirmDiscardAll: false,
   checkoutError: null,
   refreshTimestamp: 0,
   pullStrategy: 'fast_forward_only',
@@ -143,8 +137,6 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setRepos: (repos) => set(() => ({ repos })),
   setSelectedDiff: (diff) => set(() => ({ selectedDiff: diff })),
   setFileEncoding: (encoding) => set(() => ({ fileEncoding: encoding })),
-  setConfirmCheckoutTo: (branch) => set(() => ({ confirmCheckoutTo: branch })),
-  setConfirmDiscardAll: (show) => set(() => ({ confirmDiscardAll: show })),
   setCheckoutError: (error) => set(() => ({ checkoutError: error })),
   triggerRefresh: () => set(() => ({ refreshTimestamp: Date.now() })),
   setPullStrategy: (strategy) => set(() => ({ pullStrategy: strategy })),

@@ -726,7 +726,7 @@ export async function unstageAll() {
   }, "Unstaging all files...", 600);
 }
 
-export async function discardAll() {
+export async function discardAllChanges() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   await withLoading(async () => {
