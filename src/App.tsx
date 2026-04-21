@@ -13,14 +13,13 @@ import { ConflictEditorView } from "./components/ConflictEditorView";
 import { MergeBanner } from "./components/MergeBanner";
 import { MergeDialog } from "./components/MergeDialog";
 import { CheckoutAlert } from "./components/CheckoutAlert";
-import { DiscardAlert } from "./components/DiscardAlert";
 import { StashAlerts } from "./components/StashAlerts";
 import { ForceCheckoutAlert } from "./components/ForceCheckoutAlert";
 import { SetUpstreamDialog } from "./components/SetUpstreamDialog";
 import { ToastContainer } from "./components/ToastContainer";
 import { FileHistoryModal } from "./components/FileHistoryModal";
-import { RestoreFileAlert } from "./components/RestoreFileAlert";
 import { ResetCommitDialog } from "./components/ResetCommitDialog";
+import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { setupGlobalErrorHandlers } from "./lib/error";
 import { LoadingOverlay } from "./components/ui/Loading";
 
@@ -127,7 +126,6 @@ export function App() {
       {isProcessing && <LoadingOverlay label={processingLabel || undefined} />}
 
       <CheckoutAlert />
-      <DiscardAlert />
       <StashAlerts />
       <ForceCheckoutAlert />
       {showSetUpstreamDialog && (
@@ -140,8 +138,8 @@ export function App() {
         />
       )}
       <ToastContainer />
+      <ConfirmDialog />
       <FileHistoryModal />
-      <RestoreFileAlert />
       {resetToCommitTarget && <ResetCommitDialog />}
       {mergeTarget && <MergeDialog />}
     </div>
