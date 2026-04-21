@@ -1,5 +1,6 @@
 import { StateCreator } from 'zustand';
 import { AppStore } from '../index';
+import { CommitNode } from './logSlice';
 
 export interface RepoMeta {
   path: string;

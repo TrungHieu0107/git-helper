@@ -21,6 +21,7 @@ export interface ConflictVersions {
 
 export interface CherryPickSlice {
   cherryPickState: CherryPickState;
+  conflictSource: 'merge' | 'cherry_pick' | 'rebase' | null;
   cherryPickCommits: CommitNode[];
   cherryPickConflictFiles: string[];
   cherryPickConflictedOid: string | null;
@@ -30,9 +31,9 @@ export interface CherryPickSlice {
   conflictVersions: ConflictVersions | null;
   isLoadingConflict: boolean;
   
-  setCherryPickState: (state: CherryPickState) => void;
+  setCherryPickState: (state: CherryPickState, files?: string[], source?: 'merge' | 'cherry_pick' | 'rebase' | null) => void;
   setCherryPickCommits: (commits: CommitNode[]) => void;
-  setCherryPickConflict: (oid: string | null, files: string[], remaining: string[]) => void;
+  setCherryPickConflict: (oid: string | null, files: string[], remaining: string[], source?: 'merge' | 'cherry_pick' | 'rebase' | null) => void;
   
   setSelectedConflictFile: (path: string | null) => void;
   setConflictVersions: (v: ConflictVersions | null) => void;
@@ -43,6 +44,7 @@ export interface CherryPickSlice {
 
 export const createCherryPickSlice: StateCreator<AppStore, [], [], CherryPickSlice> = (set) => ({
   cherryPickState: 'idle',
+  conflictSource: null,
   cherryPickCommits: [],
   cherryPickConflictFiles: [],
   cherryPickConflictedOid: null,
@@ -52,13 +54,20 @@ export const createCherryPickSlice: StateCreator<AppStore, [], [], CherryPickSli
   conflictVersions: null,
   isLoadingConflict: false,
   
-  setCherryPickState: (state) => set(() => ({ cherryPickState: state })),
+  setCherryPickState: (state, files = [], source = null) => set((s) => ({ 
+    cherryPickState: state,
+    cherryPickConflictFiles: files,
+    selectedConflictFile: files.length > 0 ? files[0] : s.selectedConflictFile,
+    conflictSource: state === 'idle' ? null : (source || s.conflictSource)
+  })),
   setCherryPickCommits: (commits) => set(() => ({ cherryPickCommits: commits })),
-  setCherryPickConflict: (oid, files, remaining) => set(() => ({ 
+  setCherryPickConflict: (oid, files, remaining, source = 'cherry_pick') => set(() => ({ 
       cherryPickState: 'conflict',
+      conflictSource: source,
       cherryPickConflictedOid: oid,
       cherryPickConflictFiles: files,
-      cherryPickRemainingOids: remaining
+      cherryPickRemainingOids: remaining,
+      selectedConflictFile: files.length > 0 ? files[0] : null,
   })),
   
   setSelectedConflictFile: (path) => set(() => ({ selectedConflictFile: path })),
@@ -66,6 +75,7 @@ export const createCherryPickSlice: StateCreator<AppStore, [], [], CherryPickSli
   setIsLoadingConflict: (v) => set(() => ({ isLoadingConflict: v })),
   resetCherryPick: () => set(() => ({ 
       cherryPickState: 'idle', 
+      conflictSource: null,
       cherryPickCommits: [], 
       cherryPickConflictFiles: [],
       cherryPickConflictedOid: null,
