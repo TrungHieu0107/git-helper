@@ -68,8 +68,8 @@ export function App() {
     });
 
     return () => {
-      unlistenDrop.then(f => f());
-      unlistenFocus.then(f => f());
+      unlistenDrop.then(f => f()).catch(() => {});
+      unlistenFocus.then(f => f()).catch(() => {});
       if (focusDebounceRef.current) clearTimeout(focusDebounceRef.current);
     };
   }, []);
