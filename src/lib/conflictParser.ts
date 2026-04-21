@@ -57,13 +57,16 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
           id: `hunk-${hunks.length}`,
           markerStartLine: lineNum, 
           oursLines: [lineNum + 1, lineNum],
+          theirsLines: [0, 0],
           oursContent: "",
-          theirsContent: ""
+          theirsContent: "",
+          fullMarkerText: ""
         };
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
         displayLines.push(`<<<<<<< CONFLICT ${currentHunk.id} >>>>>>>`);
+        displayLines.push(''); // The exactly one empty line
       } else {
         oursLines.push(line);
         theirsLines.push(line);
@@ -80,19 +83,18 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
-        displayLines.push('');
+        // No displayLines push
       } else {
         oursLines.push(line);
         currentHunk.oursContent += (currentHunk.oursContent ? "\n" : "") + line;
         theirsLines.push('');
         resultLines.push('');
-        displayLines.push('');
+        // No displayLines push
       }
     } else if (state === 'in_theirs') {
       currentHunkLines.push(line);
       if (line.startsWith('>>>>>>>')) {
         state = 'normal';
-        currentHunk.theirsLines![1] = lineNum - 1;
         currentHunk.theirsLines![1] = lineNum - 1;
         currentHunk.markerEndLine = lineNum;
         currentHunk.fullMarkerText = currentHunkLines.join('\n');
@@ -119,7 +121,7 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         theirsLines.push(line);
         currentHunk.theirsContent += (currentHunk.theirsContent ? "\n" : "") + line;
         resultLines.push('');
-        displayLines.push('');
+        // No displayLines push
       }
     }
   }

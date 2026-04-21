@@ -57,8 +57,18 @@ export function ConflictEditorView() {
         const editor = resultEditorRef.current;
         editor.setValue(parsed.displayBase); // Use displayBase which is clean of raw git markers
         
+        refreshHiddenAreas();
+        
         setRemainingConflicts(parsed.hunks.length);
         setCurrentHunkIndex(0);
+        
+        // Listen to model changes to keep hidden areas updated if user types (e.g. presses Enter)
+        const disposable = editor.onDidChangeModelContent(() => {
+          refreshHiddenAreas();
+          updateRemainingCount();
+        });
+        
+        return () => disposable.dispose();
       } catch (e) {
         console.warn("Failed to initialize result editor:", e);
       }
@@ -279,7 +289,21 @@ export function ConflictEditorView() {
   };
 
   const refreshHiddenAreas = () => {
-    // No longer needed because we use displayBase which natively hides markers
+    if (!resultEditorRef.current || !monaco) return;
+    const editor = resultEditorRef.current;
+    const model = editor.getModel();
+    if (!model) return;
+
+    const hiddenAreas: any[] = [];
+    const lines = model.getLinesContent();
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith('<<<<<<< CONFLICT') || lines[i].startsWith('>>>>>>> END CONFLICT')) {
+        hiddenAreas.push(new monaco.Range(i + 1, 1, i + 1, 1));
+      }
+    }
+    
+    editor.setHiddenAreas(hiddenAreas);
   };
 
   const useOurs = () => {
