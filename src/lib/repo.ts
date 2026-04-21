@@ -319,7 +319,20 @@ export async function loadRepo(path: string) {
     });
 
     saveCurrentState();
-    refreshCherryPickState();
+    
+    // Sync conflict state with real Git repo state
+    const repoState = await invoke<string>('get_repo_state', { repoPath: path });
+    
+    if (repoState === 'merge' || repoState === 'cherry_pick' || repoState === 'rebase') {
+      const conflictFiles = fileStatuses
+        .filter(f => f.status === 'conflicted')
+        .map(f => f.path);
+      
+      const source = repoState as 'merge' | 'cherry_pick' | 'rebase';
+      useAppStore.getState().setCherryPickState('conflict', conflictFiles, source);
+    } else {
+      useAppStore.getState().setCherryPickState('idle');
+    }
   } catch (e) {
     useAppStore.setState({ 
       repoError: typeof e === 'string' ? e : 'Failed to open repository',
@@ -903,9 +916,9 @@ export async function refreshCherryPickState() {
     const cpState = await invoke<any>('get_cherry_pick_state', { repoPath: path });
     const store = useAppStore.getState();
     if (cpState.is_in_progress) {
-      store.setCherryPickConflict(cpState.conflicted_oid, cpState.conflicted_files, store.cherryPickRemainingOids);
+      store.setCherryPickState('conflict', cpState.conflicted_files, cpState.source);
     } else if (store.cherryPickState === 'conflict') {
-      store.resetCherryPick();
+      store.setCherryPickState('idle');
     }
   } catch(e) {}
 }
@@ -955,7 +968,7 @@ export async function abortCherryPick() {
   if (!path) return;
   await withLoading(async () => {
     await invoke('cherry_pick_abort', { repoPath: path });
-    useAppStore.getState().resetCherryPick();
+    useAppStore.getState().setCherryPickState('idle');
     await loadRepo(path);
     toast.success('Cherry-pick aborted');
   }, "Aborting cherry-pick...", 600);
@@ -973,7 +986,7 @@ export async function continueCherryPick() {
     if (remaining.length > 0) {
       await invokeCherryPick(remaining);
     } else {
-      useAppStore.getState().resetCherryPick();
+      useAppStore.getState().setCherryPickState('idle');
       await loadRepo(path);
     }
   }, "Continuing cherry-pick...", 800);
@@ -986,8 +999,8 @@ export async function invokeCherryPick(oids: string[]) {
   await withLoading(async () => {
     const res = await invoke<any>('cherry_pick_commit', { repoPath: path, oids, mainline: 1 });
     if (res.type === 'Conflict') {
-      useAppStore.getState().setCherryPickConflict(res.conflicted_oid, res.conflicted_files, res.remaining_oids);
-      toast.info('Cherry-pick conflict. Resolve it to continue.');
+      toast.warning("Cherry-pick resulted in conflicts. Please resolve them.");
+      useAppStore.getState().setCherryPickState('conflict', res.conflicted_files, 'cherry_pick');
     } else if (res.type === 'Empty') {
        toast.info(`Commit ${res.skip_oid.substring(0, 7)} is empty and was skipped.`);
        if (res.remaining_oids.length > 0) {
@@ -1101,6 +1114,45 @@ export async function getConflictContext(): Promise<ConflictContext | null> {
   }
 }
 
+// ── Merge Branch ─────────────────────────────────────────────────────────────
+
+type MergeResult =
+  | { type: 'AlreadyUpToDate' }
+  | { type: 'FastForward'; new_oid: string }
+  | { type: 'MergeCommit'; merge_oid: string }
+  | { type: 'Conflict'; conflicted_files: string[] };
+
+export async function mergeBranch(branchName: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  await withLoading(async () => {
+    const result = await invoke<MergeResult>('merge_branch', { repoPath: path, branchName });
+
+    switch (result.type) {
+      case 'AlreadyUpToDate':
+        toast.info(`Already up to date with "${branchName}"`);
+        break;
+      case 'FastForward':
+        toast.success(`Fast-forwarded to ${result.new_oid.substring(0, 7)}`);
+        await loadRepo(path);
+        break;
+      case 'MergeCommit':
+        toast.success(`Merged "${branchName}" successfully`);
+        await loadRepo(path);
+        break;
+      case 'Conflict':
+        toast.warning(`Merge conflict — ${result.conflicted_files.length} file(s) need resolution`);
+        useAppStore.getState().setCherryPickState('conflict', result.conflicted_files, 'merge');
+        await loadRepo(path);
+        break;
+    }
+
+    // Close merge dialog
+    useAppStore.getState().setMergeTarget(null);
+  }, `Merging ${branchName}...`, 1000);
+}
+
 export async function abortMerge() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
@@ -1144,3 +1196,41 @@ export async function continueRebase() {
     toast.success('Rebase continued successfully');
   }, "Continuing rebase...", 800);
 }
+
+/**
+ * Parse branch name from a ref string.
+ * "refs/heads/feature-x" → "feature-x"
+ * "HEAD -> main"         → "main"
+ * "main"                 → "main"
+ * "refs/tags/v1.0"       → null (ignore tags)
+ */
+export function parseBranchFromRef(ref: string): string | null {
+  if (ref === 'HEAD') return null;
+  if (ref.startsWith('refs/tags/')) return null;
+  if (ref.startsWith('refs/remotes/')) return null;
+  if (ref.startsWith('refs/heads/')) return ref.slice('refs/heads/'.length);
+  
+  // Handle "HEAD -> main" format from git log --decorate
+  const headArrow = ref.match(/^HEAD -> (.+)$/);
+  if (headArrow) return headArrow[1];
+  
+  // Raw branch name
+  return ref;
+}
+
+/** 
+ * Find a valid branch name to merge from a commit's refs 
+ */
+export function findMergableBranch(
+  refs: string[],
+  currentBranch: string | null
+): string | null {
+  if (!currentBranch) return null;
+  
+  for (const ref of refs) {
+    const branch = parseBranchFromRef(ref);
+    if (branch && branch !== currentBranch) return branch;
+  }
+  return null;
+}
+
