@@ -63,7 +63,7 @@ export function ConflictEditorView() {
         console.warn("Failed to initialize result editor:", e);
       }
     }
-  }, [parsed, monaco]);
+  }, [parsed, monaco, mountedEditors]);
 
   const updateRemainingCount = () => {
     if (!resultEditorRef.current) return;
@@ -242,10 +242,13 @@ export function ConflictEditorView() {
     // Normalize về \n để xử lý, detect EOL của file
     const eol = currentContent.includes('\r\n') ? '\r\n' : '\n';
     const normalizedContent = currentContent.replace(/\r\n/g, '\n');
-    const normalizedMarker = hunk.displayMarkerText!.replace(/\r\n/g, '\n');
+    const startMarker = `<<<<<<< CONFLICT ${hunk.id} >>>>>>>`;
+    const endMarker = `>>>>>>> END CONFLICT ${hunk.id} >>>>>>>`;
 
-    const markerIndex = normalizedContent.indexOf(normalizedMarker);
-    if (markerIndex === -1) {
+    const startIndex = normalizedContent.indexOf(startMarker);
+    const endIndex = normalizedContent.indexOf(endMarker);
+
+    if (startIndex === -1 || endIndex === -1) {
       toast.error('Could not find conflict block in the result editor. It may have been manually modified.');
       return;
     }
@@ -259,11 +262,11 @@ export function ConflictEditorView() {
     else if (type === 'theirs') newText = hTheirs;
     else newText = hOurs + (hOurs && hTheirs ? "\n" : "") + hTheirs;
 
-    // Ghép lại và restore EOL
+    // Ghép lại và restore EOL (thay thế toàn bộ từ startMarker đến hết endMarker)
     const newNormalized = 
-      normalizedContent.slice(0, markerIndex) + 
+      normalizedContent.slice(0, startIndex) + 
       newText + 
-      normalizedContent.slice(markerIndex + normalizedMarker.length);
+      normalizedContent.slice(endIndex + endMarker.length);
 
     const finalContent = eol === '\r\n' 
       ? newNormalized.replace(/\n/g, '\r\n')
@@ -468,7 +471,7 @@ export function ConflictEditorView() {
                 </div>
              )}
              <Editor
-               defaultValue={parsed?.mergedBase || ""}
+               defaultValue={parsed?.displayBase || ""}
                language={language}
                theme="vs-dark"
                onMount={(editor) => handleMount(editor, resultEditorRef)}

@@ -9,7 +9,6 @@ export interface ConflictHunk {
   oursContent?: string;
   theirsContent?: string;
   fullMarkerText: string;    // The entire block from <<<<<<< to >>>>>>>
-  displayMarkerText: string; // The placeholder block in displayBase
 }
 
 export interface ConflictSegment {
@@ -94,14 +93,9 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
       if (line.startsWith('>>>>>>>')) {
         state = 'normal';
         currentHunk.theirsLines![1] = lineNum - 1;
+        currentHunk.theirsLines![1] = lineNum - 1;
         currentHunk.markerEndLine = lineNum;
         currentHunk.fullMarkerText = currentHunkLines.join('\n');
-        
-        const displayMarkerLines = [`<<<<<<< CONFLICT ${currentHunk.id} >>>>>>>`];
-        for (let j = 0; j < lineNum - currentHunk.markerStartLine; j++) {
-          displayMarkerLines.push('');
-        }
-        currentHunk.displayMarkerText = displayMarkerLines.join('\n');
         
         // fix up empty blocks where start > end
         if (currentHunk.oursLines![0] > currentHunk.oursLines![1]) {
@@ -112,13 +106,14 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         }
         
         hunks.push(currentHunk as ConflictHunk);
-        currentHunk = {};
-        currentHunkLines = [];
         
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
-        displayLines.push('');
+        displayLines.push(`>>>>>>> END CONFLICT ${currentHunk.id} >>>>>>>`);
+        
+        currentHunk = {};
+        currentHunkLines = [];
       } else {
         oursLines.push('');
         theirsLines.push(line);
