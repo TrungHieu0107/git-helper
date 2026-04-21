@@ -20,10 +20,18 @@ import { ToastContainer } from "./components/ToastContainer";
 import { FileHistoryModal } from "./components/FileHistoryModal";
 import { RestoreFileAlert } from "./components/RestoreFileAlert";
 import { ResetCommitDialog } from "./components/ResetCommitDialog";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { setupGlobalErrorHandlers } from "./lib/error";
+import { LoadingOverlay } from "./components/ui/Loading";
 
-function App() {
+// Initialize global error handlers
+setupGlobalErrorHandlers();
+
+export function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
+  const isProcessing = useAppStore(state => state.isProcessing);
+  const processingLabel = useAppStore(state => state.processingLabel);
   const selectedDiff = useAppStore(state => state.selectedDiff);
   const activeConflictFile = useAppStore(state => state.activeConflictFile);
   const conflictVersions = useAppStore(state => state.conflictVersions);
@@ -56,49 +64,53 @@ function App() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#282c34] text-[#a0a6b1] font-sans relative">
-      <TopTabBar />
-      
-      {activeTabId === 'home' ? (
-        <WelcomeScreen />
-      ) : (
-        <>
-          <TopToolbar />
-          <CherryPickBanner />
-          <div className="flex-1 flex overflow-hidden w-full">
-             <Sidebar />
-             {activeConflictFile && conflictVersions
-               ? <ConflictEditorView />
-               : selectedDiff ? <MainDiffView /> : <CommitGraph />}
-             <RightPanel />
+    <ErrorBoundary>
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#282c34] text-[#a0a6b1] font-sans relative">
+        <TopTabBar />
+        
+        {activeTabId === 'home' ? (
+          <WelcomeScreen />
+        ) : (
+          <>
+            <TopToolbar />
+            <CherryPickBanner />
+            <div className="flex-1 flex overflow-hidden w-full">
+               <Sidebar />
+               {activeConflictFile && conflictVersions
+                 ? <ConflictEditorView />
+                 : selectedDiff ? <MainDiffView /> : <CommitGraph />}
+               <RightPanel />
+            </div>
+          </>
+        )}
+        
+        {isLoadingRepo && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 pointer-events-auto">
+             <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
           </div>
-        </>
-      )}
-      
-      {isLoadingRepo && (
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 pointer-events-auto">
-           <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
-        </div>
-      )}
+        )}
 
-      <CheckoutAlert />
-      <DiscardAlert />
-      <StashAlerts />
-      <ForceCheckoutAlert />
-      {showSetUpstreamDialog && (
-        <SetUpstreamDialog 
-          onClose={() => setShowSetUpstreamDialog(false)} 
-          onSuccess={() => {
-            setShowSetUpstreamDialog(false);
-            refreshActiveRepoStatus();
-          }} 
-        />
-      )}
-      <ToastContainer />
-      <FileHistoryModal />
-      <RestoreFileAlert />
-      {resetToCommitTarget && <ResetCommitDialog />}
-    </div>
+        {isProcessing && <LoadingOverlay label={processingLabel || undefined} />}
+
+        <CheckoutAlert />
+        <DiscardAlert />
+        <StashAlerts />
+        <ForceCheckoutAlert />
+        {showSetUpstreamDialog && (
+          <SetUpstreamDialog 
+            onClose={() => setShowSetUpstreamDialog(false)} 
+            onSuccess={() => {
+              setShowSetUpstreamDialog(false);
+              refreshActiveRepoStatus();
+            }} 
+          />
+        )}
+        <ToastContainer />
+        <FileHistoryModal />
+        <RestoreFileAlert />
+        {resetToCommitTarget && <ResetCommitDialog />}
+      </div>
+    </ErrorBoundary>
   );
 }
 

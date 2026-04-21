@@ -4,6 +4,7 @@ import { DiffEditor } from "@monaco-editor/react";
 import { X, Columns, AlignLeft, ArrowUp, ArrowDown } from "lucide-react";
 import { EncodingBadge } from "./EncodingBadge";
 import { useAppStore } from "../store";
+import { Spinner } from "./ui/Loading";
 
 export interface MainDiffViewProps {
   path?: string;
@@ -374,9 +375,8 @@ export function MainDiffView(props: MainDiffViewProps) {
         )}
 
         {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#8b949e] gap-3 bg-[#0d1117] z-[50]">
-             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-             <span className="text-xs">Loading diff...</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-[50]">
+             <Spinner label="Loading diff..." />
           </div>
         )}
 

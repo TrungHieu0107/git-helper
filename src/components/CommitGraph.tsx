@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAppStore, CommitNode } from '../store';
 import { loadMoreCommits } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
-import { CommitRow, WipRow } from './CommitGraph/CommitRow';
+import { CommitRow, WipRow, SkeletonRow } from './CommitGraph/CommitRow';
 import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -209,7 +209,7 @@ export function CommitGraph() {
 
   const hasWip = (status?.staged_count ?? 0) > 0 || (status?.unstaged_count ?? 0) > 0 || staged.length > 0 || unstaged.length > 0;
   const off = hasWip ? 1 : 0;
-  const totalRows = (filteredCommits?.length || 0) + off;
+  const totalRows = (filteredCommits?.length || 0) + off + (isLoadingMore ? 5 : 0);
 
   const maxLane = useMemo(() => {
     if (!filteredCommits?.length) return 0;
@@ -449,7 +449,9 @@ export function CommitGraph() {
               );
             }
 
-            if (!n) return null;
+            if (!n) {
+              return <SkeletonRow key={`skeleton-${row}`} virtualRow={virtualRow} cw={cw} gw={gw} />;
+            }
 
             return (
               <CommitRow 
@@ -469,16 +471,9 @@ export function CommitGraph() {
             );
           })}
 
-          {(!filteredCommits?.length) && (
+          {(!filteredCommits?.length && !isLoadingMore) && (
             <div className="flex items-center justify-center p-8 text-[#8b949e]">
               No commits found.
-            </div>
-          )}
-
-          {isLoadingMore && (
-            <div className="flex items-center justify-center p-4 text-[#8b949e] gap-2" style={{ width: cw.label + gw + 200 }}>
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-xs">Loading more commits...</span>
             </div>
           )}
         </div>

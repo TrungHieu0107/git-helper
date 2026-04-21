@@ -6,6 +6,20 @@ import { SectionHeader } from "./SectionHeader";
 import { StashEntryItem, StashContextMenu } from "./Stashes";
 import { BranchContextMenu } from "./BranchContextMenu";
 import { Button } from "../ui/Button";
+import { Skeleton } from "../ui/Loading";
+
+export function SidebarSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 p-1">
+      {[1, 2, 3, 4, 5].map(i => (
+        <div key={i} className="flex items-center gap-2 px-2 py-1">
+          <Skeleton width={16} height={16} borderRadius="4px" />
+          <Skeleton width={`${Math.floor(Math.random() * 40) + 40}%`} height={14} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function buildBranchTree(branchNames: string[]): BranchNode[] {
     const rootMap = new Map<string, BranchNode>();
@@ -88,6 +102,7 @@ export function Sidebar() {
   const activeBranch = useAppStore(state => state.activeBranch) || "main";
   const stashes = useAppStore(state => state.stashes) || [];
   const branches = useAppStore(state => state.branches) || [];
+  const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
 
   const { localBranches, remoteBranchesTree } = useMemo(() => {
     const locals: string[] = [];
@@ -247,18 +262,20 @@ export function Sidebar() {
 
           <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
             <div className={`flex flex-col min-h-0 pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
-               <SectionHeader title="LOCAL" count={filteredLocalTree.length} open={localOpen} setOpen={setLocalOpen} />
-               {localOpen && (
-                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1">
-                    {filteredLocalTree.length === 0 ? (
-                      <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No branches found</div>
-                    ) : (
-                     filteredLocalTree.map(node => (
-                        <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
+                <SectionHeader title="LOCAL" count={filteredLocalTree.length} open={localOpen} setOpen={setLocalOpen} />
+                {localOpen && (
+                  <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1">
+                     {isLoadingRepo && filteredLocalTree.length === 0 ? (
+                        <SidebarSkeleton />
+                     ) : filteredLocalTree.length === 0 ? (
+                       <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No branches found</div>
+                     ) : (
+                      filteredLocalTree.map(node => (
+                         <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
                       ))
-                    )}
-                 </div>
-               )}
+                     )}
+                  </div>
+                )}
             </div>
 
             {localOpen && remoteOpen && (
@@ -269,7 +286,9 @@ export function Sidebar() {
                <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                {remoteOpen && (
                  <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1">
-                   {filteredRemoteTree.size === 0 ? (
+                   {isLoadingRepo && filteredRemoteTree.size === 0 ? (
+                     <SidebarSkeleton />
+                   ) : filteredRemoteTree.size === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No remotes</div>
                    ) : (
                      Array.from(filteredRemoteTree.entries()).map(([remote, tree]) => (
@@ -292,7 +311,9 @@ export function Sidebar() {
                <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
                {stashOpen && (
                  <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1 px-1 gap-1">
-                   {filteredStashes.length === 0 ? (
+                   {isLoadingRepo && filteredStashes.length === 0 ? (
+                     <SidebarSkeleton />
+                   ) : filteredStashes.length === 0 ? (
                      <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No stashes</div>
                    ) : (
                       filteredStashes.map((s: StashEntry) => (

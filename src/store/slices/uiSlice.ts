@@ -66,9 +66,10 @@ export interface UISlice {
   activeConflictFile: string | null;
   activeConflictMode: ConflictMode | null;
   
-  resetToCommitTarget: { oid: string, message: string } | null;
-  setResetToCommitTarget: (target: { oid: string, message: string } | null) => void;
+  isProcessing: boolean;
+  processingLabel: string | null;
 
+  setIsProcessing: (isProcessing: boolean, label?: string | null) => void;
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
   setSelectedDiff: (diff: SelectedDiff | null) => void;
@@ -119,6 +120,10 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   activeConflictFile: null,
   activeConflictMode: null,
 
+  isProcessing: false,
+  processingLabel: null,
+
+  setIsProcessing: (isProcessing, label = null) => set(() => ({ isProcessing, processingLabel: label })),
   resetToCommitTarget: null,
   setResetToCommitTarget: (target) => set(() => ({ resetToCommitTarget: target })),
 

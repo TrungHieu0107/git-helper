@@ -1,6 +1,38 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from "@tauri-apps/api/core";
 import { useAppStore, RepoInfo, RepoStatus, BranchInfo, FileStatus, CommitDetail, CheckoutError, RepoState, StashApplyResult, PullStrategy, LogResponse, ConflictMode } from '../store';
 import { toast } from './toast';
+import { handleError, AppError } from './error';
+
+/**
+ * Higher-order function to wrap async operations with global loading and error handling.
+ * Ensures a minimum display time of 500ms for a "pro" feel if requested.
+ */
+async function withLoading<T>(
+  operation: () => Promise<T>, 
+  label: string | null = null,
+  minTime: number = 0
+): Promise<T | undefined> {
+  const store = useAppStore.getState();
+  const startTime = Date.now();
+  
+  try {
+    store.setIsProcessing(true, label);
+    const result = await operation();
+    
+    // Artificial delay for better UX if operation is too fast
+    const elapsed = Date.now() - startTime;
+    if (elapsed < minTime) {
+      await new Promise(resolve => setTimeout(resolve, minTime - elapsed));
+    }
+    
+    return result;
+  } catch (err) {
+    handleError(err, label || undefined);
+    return undefined;
+  } finally {
+    store.setIsProcessing(false);
+  }
+}
 
 // ── Branch Validation Types ──────────────────────────────────────────────────
 
@@ -329,45 +361,42 @@ export async function checkoutBranch(branchName: string, options = { force: fals
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   
-  try {
-    useAppStore.setState({ checkoutError: null });
-    await invoke('checkout_branch', { repoPath: path, branchName, options });
-    // Refresh the repo state
-    await loadRepo(path);
-    toast.success(`Switched to branch "${branchName}"`);
-    useAppStore.setState({ confirmCheckoutTo: null });
-  } catch (e: any) {
-    console.error("Checkout failed structure:", e);
-    
-    // e should be of type CheckoutError if it came from our Result<.., CheckoutError>
-    const checkoutError = e as CheckoutError;
-    useAppStore.setState({ checkoutError });
-
-    if (checkoutError.type === 'Generic') {
-      toast.error(`Checkout failed: ${checkoutError.data.message}`);
-    } else if (checkoutError.type === 'NotFound') {
-      toast.error(`Branch "${branchName}" not found.`);
-    } else if (checkoutError.type === 'DirtyState') {
-      toast.error(`Repository is in a ${checkoutError.data.state} state. Resolve it first.`);
-    } else if (checkoutError.type === 'DetachedHead') {
-      toast.info(`Switched to detached HEAD at ${checkoutError.data.oid.substring(0, 7)}`);
+  await withLoading(async () => {
+    try {
+      useAppStore.setState({ checkoutError: null });
+      await invoke('checkout_branch', { repoPath: path, branchName, options });
       await loadRepo(path);
+      toast.success(`Switched to branch "${branchName}"`);
       useAppStore.setState({ confirmCheckoutTo: null });
+    } catch (e: any) {
+      console.error("Checkout failed structure:", e);
+      const checkoutError = e as CheckoutError;
+      useAppStore.setState({ checkoutError });
+
+      if (checkoutError.type === 'Generic') {
+        toast.error(`Checkout failed: ${checkoutError.data.message}`);
+      } else if (checkoutError.type === 'NotFound') {
+        toast.error(`Branch "${branchName}" not found.`);
+      } else if (checkoutError.type === 'DirtyState') {
+        toast.error(`Repository is in a ${checkoutError.data.state} state. Resolve it first.`);
+      } else if (checkoutError.type === 'DetachedHead') {
+        toast.info(`Switched to detached HEAD at ${checkoutError.data.oid.substring(0, 7)}`);
+        await loadRepo(path);
+        useAppStore.setState({ confirmCheckoutTo: null });
+      }
     }
-  }
+  }, `Switching to "${branchName}"...`, 600);
 }
 
 export async function fetchAllRepo() {
   const { activeRepoPath } = useAppStore.getState();
   if (!activeRepoPath) return;
 
-  try {
+  await withLoading(async () => {
     await invoke('fetch_all_remotes', { repoPath: activeRepoPath });
     toast.success('Fetched all remotes successfully');
     await loadRepo(activeRepoPath);
-  } catch (e) {
-    toast.error(`Fetch failed: ${e}`);
-  }
+  }, "Fetching all remotes...", 1000);
 }
 
 export async function pullRepo(strategy?: PullStrategy) {
@@ -377,10 +406,7 @@ export async function pullRepo(strategy?: PullStrategy) {
   
   const pullStrategy = strategy || state.pullStrategy;
   
-  try {
-    state.setIsLoadingPull(true);
-    toast.info("Pulling changes...");
-    
+  await withLoading(async () => {
     const result = await invoke<PullResult>('pull_remote', { 
       repoPath: path, 
       remote: 'origin',
@@ -403,11 +429,7 @@ export async function pullRepo(strategy?: PullStrategy) {
         toast.success(`Rebased successfully.`);
         break;
     }
-  } catch (e: any) {
-    toast.error(`Pull failed: ${e}`);
-  } finally {
-    state.setIsLoadingPull(false);
-  }
+  }, "Pulling changes...", 800);
 }
 
 
@@ -422,60 +444,54 @@ export async function pushCurrentBranch(
   mode: 'normal' | 'force_with_lease',
 ) {
   const store = useAppStore.getState();
-  store.setIsLoadingPush(true);
-  try {
-    const result = await invoke<PushResult>('push_current_branch', {
-      repoPath,
-      mode,
-    });
-    
-    if (result.type === 'Success') {
-      toast.success(`Pushed ${result.data.commits_pushed} commit(s) to remote.`);
-      store.setLastCommitWasAmend(false);
-    } else if (result.type === 'UpToDate') {
-      toast.info('Already up to date.');
+  await withLoading(async () => {
+    try {
+      const result = await invoke<PushResult>('push_current_branch', {
+        repoPath,
+        mode,
+      });
+      
+      if (result.type === 'Success') {
+        toast.success(`Pushed ${result.data.commits_pushed} commit(s) to remote.`);
+        store.setLastCommitWasAmend(false);
+      } else if (result.type === 'UpToDate') {
+        toast.info('Already up to date.');
+      }
+      
+      await loadRepo(repoPath);
+    } catch (e) {
+      if (String(e) === 'NO_UPSTREAM') {
+        store.setShowSetUpstreamDialog(true);
+        // Don't throw further to avoid global error handler showing a toast
+        return;
+      }
+      throw e; // Pass to withLoading -> handleError
     }
-    
-    await loadRepo(repoPath);
-  } catch (e) {
-    const msg = String(e);
-    if (msg === 'NO_UPSTREAM') {
-      store.setShowSetUpstreamDialog(true);
-    } else {
-      toast.error(msg);
-      console.error('Push failed:', e);
-    }
-  } finally {
-    store.setIsLoadingPush(false);
-  }
+  }, "Pushing changes...", 800);
 }
 
 export async function createStash(message?: string) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   
-  try {
+  await withLoading(async () => {
     await invoke('create_stash', { repoPath: path, message: message || null });
     await loadRepo(path);
     toast.success("Stashed changes");
-  } catch (e) {
-    toast.error(`Stash failed: ${e}`);
-  }
+  }, "Stashing changes...", 600);
 }
 
 export async function stashUnstaged(options: StashUnstagedOptions) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
 
-  try {
-    // 1. Precondition Check
+  return await withLoading(async () => {
     const state = await invoke<RepoState>('check_stash_preconditions', { repoPath: path });
     if (state !== 'Clean') {
       toast.error(`Cannot stash: repository is in ${state} state`);
-      return;
+      return false;
     }
 
-    // 2. Perform Stash Advanced
     await invoke('stash_save_advanced', {
       repoPath: path,
       message: options.message || null,
@@ -483,21 +499,17 @@ export async function stashUnstaged(options: StashUnstagedOptions) {
       keepIndex: options.keepIndex,
     });
 
-    await loadRepo(path); // Refresh UI
+    await loadRepo(path);
     toast.success(options.keepIndex ? "Stashed unstaged changes" : "Stashed all changes");
     return true;
-  } catch (e) {
-    toast.error(`Stash failed: ${e}`);
-    return false;
-  }
+  }, "Stashing changes...", 600);
 }
 
 export async function applyStash(stackIndex: number) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
 
-  try {
-    // 1. Precondition Check
+  await withLoading(async () => {
     const state = await invoke<RepoState>('check_stash_preconditions', { repoPath: path });
     if (state !== 'Clean') {
       const errorMsg = state === 'HasConflicts' 
@@ -507,29 +519,23 @@ export async function applyStash(stackIndex: number) {
       return;
     }
 
-    // 2. Perform Apply
     const result = await invoke<StashApplyResult>('apply_stash', { repoPath: path, index: stackIndex });
-    
-    await loadRepo(path); // Refresh UI to show applied changes
+    await loadRepo(path);
 
     if (result.type === 'Conflict') {
-      // Handle Conflicts
       useAppStore.setState({ stashConflict: { files: result.data.files, index: stackIndex, isPop: false } });
       toast.info("Stash applied with conflicts. Please resolve them manually.");
     } else {
       toast.success("Applied stash successfully");
     }
-  } catch (e) {
-    toast.error(`Apply stash failed: ${e}`);
-  }
+  }, "Applying stash...", 800);
 }
 
 export async function popStash(stackIndex: number) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
 
-  try {
-    // 1. Precondition Check
+  await withLoading(async () => {
     const state = await invoke<RepoState>('check_stash_preconditions', { repoPath: path });
     if (state !== 'Clean') {
       const errorMsg = state === 'HasConflicts' 
@@ -539,10 +545,8 @@ export async function popStash(stackIndex: number) {
       return;
     }
 
-    // 2. Perform Pop (Atomic apply + conditional drop on backend)
     const result = await invoke<StashApplyResult>('pop_stash', { repoPath: path, index: stackIndex });
-    
-    await loadRepo(path); // Refresh UI
+    await loadRepo(path);
 
     if (result.type === 'Conflict') {
       useAppStore.setState({ stashConflict: { files: result.data.files, index: stackIndex, isPop: true } });
@@ -550,37 +554,30 @@ export async function popStash(stackIndex: number) {
     } else {
       toast.success("Popped stash successfully");
     }
-  } catch (e) {
-    toast.error(`Pop stash failed: ${e}`);
-  }
+  }, "Popping stash...", 800);
 }
 
 export async function dropStash(stackIndex: number) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
 
-  try {
+  await withLoading(async () => {
     await invoke('drop_stash', { repoPath: path, index: stackIndex });
     await loadRepo(path);
     toast.success("Dropped stash entry");
-  } catch (e) {
-    toast.error(`Drop stash failed: ${e}`);
-  }
+  }, "Dropping stash...", 600);
 }
 
 export async function createBranch(name: string, startPoint?: string): Promise<CreateBranchResult | null> {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return null;
   
-  try {
+  return await withLoading(async () => {
     const result = await invoke<CreateBranchResult>('create_branch', { repoPath: path, name, startPoint });
     await loadRepo(path);
     toast.success(`Created branch "${name}"`);
     return result;
-  } catch (e) {
-    toast.error(`Failed to create branch: ${e}`);
-    return null;
-  }
+  }, `Creating branch "${name}"...`, 600);
 }
 
 export async function validateBranchName(name: string): Promise<BranchValidation> {
@@ -644,17 +641,12 @@ export async function commitRepo(message: string, amend: boolean = false) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path || !message.trim()) return;
   
-  try {
-    toast.info(amend ? "Amending commit..." : "Creating commit...");
+  await withLoading(async () => {
     const result = await invoke<CommitResult>('create_commit', { repoPath: path, message, amend });
     useAppStore.getState().setLastCommitWasAmend(result.amended);
     await loadRepo(path);
     toast.success(result.amended ? "Amended successfully" : "Committed successfully");
-    return true;
-  } catch (e) {
-    toast.error(`Commit failed: ${e}`);
-    return false;
-  }
+  }, amend ? "Amending commit..." : "Creating commit...", 1000);
 }
 
 export async function getHeadCommitInfo(): Promise<HeadCommitInfo | null> {
@@ -677,7 +669,7 @@ export async function stageFile(filePath: string) {
       repoStatus 
     });
   } catch (e) {
-    toast.error(`Stage failed: ${e}`);
+    handleError(e, "Stage failed");
   }
 }
 
@@ -694,41 +686,35 @@ export async function unstageFile(filePath: string) {
       repoStatus 
     });
   } catch (e) {
-    toast.error(`Unstage failed: ${e}`);
+    handleError(e, "Unstage failed");
   }
 }
 
 export async function stageAll() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('stage_all', { repoPath: path });
     await loadRepo(path);
-  } catch (e) {
-    toast.error(`Stage all failed: ${e}`);
-  }
+  }, "Staging all files...", 600);
 }
 
 export async function unstageAll() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('unstage_all', { repoPath: path });
     await loadRepo(path);
-  } catch (e) {
-    toast.error(`Unstage all failed: ${e}`);
-  }
+  }, "Unstaging all files...", 600);
 }
 
 export async function discardAll() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('discard_all', { repoPath: path });
     await loadRepo(path);
-  } catch (e) {
-    toast.error(`Discard all failed: ${e}`);
-  }
+  }, "Discarding all changes...", 800);
 }
 
 export async function undoLastCommit() {
@@ -962,23 +948,18 @@ export async function resolveConflictFile(repoPath: string, path: string, resolv
 export async function abortCherryPick() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
-    useAppStore.getState().setCherryPickState('aborting');
+  await withLoading(async () => {
     await invoke('cherry_pick_abort', { repoPath: path });
     useAppStore.getState().resetCherryPick();
     await loadRepo(path);
     toast.success('Cherry-pick aborted');
-  } catch (e) {
-    toast.error(`Abort failed: ${e}`);
-    useAppStore.getState().setCherryPickState('conflict');
-  }
+  }, "Aborting cherry-pick...", 600);
 }
 
 export async function continueCherryPick() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
-    useAppStore.getState().setCherryPickState('continuing');
+  await withLoading(async () => {
     await invoke('cherry_pick_continue', { repoPath: path });
     toast.success('Cherry-pick continued successfully');
     
@@ -990,18 +971,14 @@ export async function continueCherryPick() {
       useAppStore.getState().resetCherryPick();
       await loadRepo(path);
     }
-  } catch (e) {
-    toast.error(`Continue failed: ${e}`);
-    useAppStore.getState().setCherryPickState('conflict');
-  }
+  }, "Continuing cherry-pick...", 800);
 }
 
 export async function invokeCherryPick(oids: string[]) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path || oids.length === 0) return;
-  useAppStore.getState().setCherryPickState('applying');
   
-  try {
+  await withLoading(async () => {
     const res = await invoke<any>('cherry_pick_commit', { repoPath: path, oids, mainline: 1 });
     if (res.type === 'Conflict') {
       useAppStore.getState().setCherryPickConflict(res.conflicted_oid, res.conflicted_files, res.remaining_oids);
@@ -1019,10 +996,7 @@ export async function invokeCherryPick(oids: string[]) {
       useAppStore.getState().resetCherryPick();
       await loadRepo(path);
     }
-  } catch (e) {
-    toast.error(`Cherry-pick failed: ${e}`);
-    useAppStore.getState().resetCherryPick();
-  }
+  }, "Applying cherry-pick...", 1000);
 }
 
 export async function openInEditor(filePath: string) {
@@ -1032,7 +1006,7 @@ export async function openInEditor(filePath: string) {
   try {
     await invoke('open_file', { path: fullPath });
   } catch (e) {
-    toast.error(`Failed to open file: ${e}`);
+    handleError(e, "Failed to open file");
   }
 }
 
@@ -1043,34 +1017,29 @@ export async function showInExplorer(filePath: string) {
   try {
     await invoke('reveal_file', { path: fullPath });
   } catch (e) {
-    toast.error(`Failed to reveal file: ${e}`);
+    handleError(e, "Failed to reveal file");
   }
 }
 
 export async function discardFileChanges(filePath: string) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('discard_file_changes', { repoPath: path, filePath });
     await refreshActiveRepoStatus();
     toast.success(`Discarded changes in "${filePath}"`);
-  } catch (e) {
-    toast.error(`Failed to discard changes: ${e}`);
-  }
+  }, `Discarding "${filePath}"...`, 600);
 }
 
 export async function restoreFileFromCommit(commitOid: string, filePath: string) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  return await withLoading(async () => {
     await invoke('restore_file_from_commit', { repoPath: path, commitOid, filePath });
     await refreshActiveRepoStatus();
     toast.success(`"${filePath}" restored from commit ${commitOid.substring(0, 7)}`);
     return true;
-  } catch (e) {
-    toast.error(`Failed to restore file: ${e}`);
-    return false;
-  }
+  }, `Restoring "${filePath}"...`, 800);
 }
 
 export interface FileLogResponse {
@@ -1105,16 +1074,13 @@ export async function resetToCommit(commitOid: string, mode: ResetMode) {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
   
-  try {
+  await withLoading(async () => {
     const result = await invoke<ResetResult>('reset_to_commit', { repoPath: path, commitOid, mode });
     useAppStore.getState().setResetToCommitTarget(null);
     await refreshActiveRepoStatus();
-    const { loadRepo } = await import('./repo'); // Circular ref workaround if needed, or just refresh
     await loadRepo(path);
     toast.success(`Reset ${result.commits_rewound} commit(s) successfully (${mode})`);
-  } catch (e) {
-    toast.error(`Reset failed: ${e}`);
-  }
+  }, `Resetting to ${commitOid.substring(0, 7)}...`, 800);
 }
 
 // ── New Conflict Routing Actions ─────────────────────────────────────────────
@@ -1133,51 +1099,43 @@ export async function getConflictContext(): Promise<ConflictContext | null> {
 export async function abortMerge() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('merge_abort', { repoPath: path });
     await loadRepo(path);
     useAppStore.getState().closeConflictEditor();
     toast.success('Merge aborted');
-  } catch (e) {
-    toast.error(`Abort failed: ${e}`);
-  }
+  }, "Aborting merge...", 600);
 }
 
 export async function continueMerge() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('merge_continue', { repoPath: path });
     await loadRepo(path);
     useAppStore.getState().closeConflictEditor();
     toast.success('Merge continued successfully');
-  } catch (e) {
-    toast.error(`Continue failed: ${e}`);
-  }
+  }, "Continuing merge...", 800);
 }
 
 export async function abortRebase() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('rebase_abort', { repoPath: path });
     await loadRepo(path);
     useAppStore.getState().closeConflictEditor();
     toast.success('Rebase aborted');
-  } catch (e) {
-    toast.error(`Abort failed: ${e}`);
-  }
+  }, "Aborting rebase...", 600);
 }
 
 export async function continueRebase() {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
+  await withLoading(async () => {
     await invoke('rebase_continue', { repoPath: path });
     await loadRepo(path);
     useAppStore.getState().closeConflictEditor();
     toast.success('Rebase continued successfully');
-  } catch (e) {
-    toast.error(`Continue failed: ${e}`);
-  }
+  }, "Continuing rebase...", 800);
 }

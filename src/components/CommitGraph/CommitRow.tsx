@@ -2,6 +2,33 @@ import React, { useState, useMemo } from 'react';
 import { Copy, Check, Monitor, Cloud, ChevronDown } from 'lucide-react';
 import { CommitNode, useAppStore } from '../../store';
 import { selectCommitDetail, safeSwitchBranch } from '../../lib/repo';
+import { Skeleton } from '../ui/Loading';
+
+export function SkeletonRow({ virtualRow, cw, gw }: { virtualRow: any, cw: any, gw: number }) {
+  return (
+    <div 
+      className="absolute left-0 w-full flex items-center px-2 pointer-events-none opacity-40"
+      style={{ 
+        height: ROW_H,
+        transform: `translateY(${virtualRow.start}px)`
+      }}
+    >
+      <div className="shrink-0" style={{ width: cw.label }}>
+        <Skeleton width="60%" height={16} borderRadius="12px" />
+      </div>
+      <div style={{ width: gw + 5 }} />
+      <div className="flex-1 flex items-center pl-4 pr-4">
+        <Skeleton width="80%" height={14} />
+      </div>
+      <div className="pl-4" style={{ width: cw.hash }}>
+        <Skeleton width="80%" height={14} />
+      </div>
+      <div className="pl-4" style={{ width: cw.author }}>
+        <Skeleton width="70%" height={14} />
+      </div>
+    </div>
+  );
+}
 
 // ── Constants ────────────────────────────────────────────────────────
 const ROW_H = 30;
