@@ -888,8 +888,9 @@ export async function restoreAppState() {
         if (state.pull_strategy) {
           useAppStore.setState({ pullStrategy: state.pull_strategy });
         }
+        console.log("[Repo] App state restoration logic finished.");
     } catch (e) {
-      console.error('Failed to restore app state:', e);
+      console.error('[Repo] Failed to restore app state:', e);
     }
 }
 

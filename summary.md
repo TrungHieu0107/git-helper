@@ -1,6 +1,6 @@
 # Summary - GitKit
-## Version: 1.1.1
-## Last updated: 2026-04-21 – Fixing Missing invoke Import
+## Version: 1.1.2
+## Last updated: 2026-04-21
 ## Project: GitKit
 
-GitKit has been patched to fix a critical `ReferenceError` where the `invoke` function was not defined in `repo.ts`, causing failures during application startup and repository operations. The import has been restored using the modern Tauri V2 `@tauri-apps/api/core` module. This ensures that the newly implemented premium loading states and repository interactions function correctly as part of the overall architectural stability.
+GitKit is now stable with a robust startup lifecycle. The "black screen" issue has been fully resolved by fixing the `ErrorBoundary` render logic and refactoring the app's initialization sequence. The application now provides clear visual feedback during startup ("Initializing GitKit...") and is protected by a global ErrorBoundary that prevents silent failures. Circular dependencies have been resolved, and the project is ready for further feature development.

@@ -1,23 +1,21 @@
 # GitKit
 
-A high-performance, premium Git management application built with Tauri 2 and Rust. GitKit provides a beautiful, virtualized commit graph, advanced stashing, and safe branching workflows.
+GitKit is a high-performance, premium Git GUI built with Tauri, React, and Rust. It provides a visual, context-aware interface for complex Git workflows, including a Manhattan-routed commit graph, specialized conflict resolution, and advanced stashing management.
 
-## Documentation Suite
+## Project Documentation
 
-The full technical documentation is organized as follows:
+Explore the detailed documentation for GitKit:
 
-| Document | Purpose |
-|---|---|
-| [Architecture](file:///d:/learn/git-helper/docs/architecture.md) | Tech stack, IPC surface, and state management |
-| [Specification](file:///d:/learn/git-helper/docs/spec.md) | Feature map and technical mechanics |
-| [User Flow](file:///d:/learn/git-helper/docs/user_flow.md) | Mermaid diagrams of key interaction paths |
-| [Developer Docs](file:///d:/learn/git-helper/docs/docs.md) | Setup, build, and implementation rationale |
-| [Bug Registry](file:///d:/learn/git-helper/docs/bug_registry.md) | Tracking of issues and their fixes |
-| [Changelog](file:///d:/learn/git-helper/docs/changelog.md) | Version history and release notes |
+- [Architecture](file:///d:/learn/git-helper/docs/architecture.md) - Tech stack, directory map, and IPC surface.
+- [Technical Specification](file:///d:/learn/git-helper/docs/spec.md) - Feature implementation status and technical constraints.
+- [User Flow](file:///d:/learn/git-helper/docs/user_flow.md) - Visualized state transitions and user workflows.
+- [Developer Guide](file:///d:/learn/git-helper/docs/docs.md) - Setup instructions and implementation notes.
+- [Bug Registry](file:///d:/learn/git-helper/docs/bug_registry.md) - Log of known issues and their resolutions.
+- [Changelog](file:///d:/learn/git-helper/docs/changelog.md) - Version history and feature milestones.
 
 ## Tech Stack
-
-**Rust (git2, Tauri 2)** + **React 19 (Zustand, Tailwind CSS v4, Monaco Editor)**
+**Frontend**: React 19, TypeScript 5.8, Zustand, Tailwind CSS v4, Monaco Editor.
+**Backend**: Rust, Tauri v2, `git2` crate.
 
 ## Quick Start
 
@@ -32,5 +30,5 @@ npm run tauri dev
 npm run tauri build
 ```
 
----
-*Developed with precision for advanced Git workflows.*
+## Current Status
+GitKit is in active development with a stable [3.1.0] core. Most essential git features are implemented, including branch management, conflict resolution, and commit history visualization.

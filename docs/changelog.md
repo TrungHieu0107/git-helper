@@ -1,70 +1,41 @@
 # Changelog
-## Version: 3.0.0
-## Last updated: 2026-04-21 – Major refactoring and UI/UX overhaul.
+## Version: 3.1.0
+## Last updated: 2026-04-21 – Startup stabilization and major UI/UX overhaul.
 ## Project: GitKit
 
 All notable changes to this project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## [3.1.0] - 2026-04-21
+### Added
+- **Startup Loading State**: Implemented an explicit `isInitializing` state with a professional loading UI.
+- **Global Error Boundary**: Integrated a high-level `ErrorBoundary` wrapper in `main.tsx`.
+
+### Fixed
+- **Black Screen on Launch**: Resolved a critical bug where `ErrorBoundary` was incorrectly accessing `this.children`.
+- **Tauri V2 API Alignment**: Fixed `ReferenceError` for `invoke` in `repo.ts`.
+- **JSX Syntax Ambiguity**: Refactored `App.tsx` layout to eliminate nested ternaries causing transpilation errors.
 
 ## [3.0.0] - 2026-04-21
 ### Added
-- **UI Component Library**: Created `src/components/ui` containing reusable primitives: `Button`, `Badge`, `Input`, and `Card`.
-- **Design System Tokens**: Introduced HSL-based color variables, unified spacing, and glassmorphic UI tokens in `index.css`.
-### Changed
-- **Architectural Overhaul**: Decomposed monolithic components into modular structures for better maintainability.
-  - `RightPanel.tsx` -> `src/components/RightPanel/` (Header, Tabs, FileList, FileTree, CommitArea).
-  - `Sidebar.tsx` -> `src/components/Sidebar/` (BranchTree, SectionHeader, Stashes).
-- **Modernized Aesthetics**: Applied a "premium" design overhaul with refined typography, smoother transitions, and unified surface colors.
-- **Improved Responsiveness**: Optimized layout behavior for different panel widths.
+- **UI Component Library**: Created reusable primitives: `Button`, `Badge`, `Input`, and `Card`.
+- **Design System Tokens**: Introduced HSL-based color variables and glassmorphic tokens.
+- **Architectural Overhaul**: Decomposed monolithic components into modular structures (Sidebar, RightPanel).
 
 ### Fixed
-- **Branch Dropdown & Graph Visibility (Optimal Fix)**: Resolved the conflict between dropdown accessibility and graph node visibility.
-  - Implemented an **Optimal Layering Strategy**: Elevated the SVG graph layer to `z-10` while keeping rows at their natural stacking level.
-  - Resolved "Disappearing Avatars": Row highlights now naturally stay behind the graph nodes.
-  - Resolved "Dropdown Accessibility": Implemented a dynamic `z-100` elevation strictly on the branch interaction area, allowing the menu to stay on top of subsequent rows without obscuring the graph.
-  - Preserved the **Hover Bridge** logic for stable menu navigation.
+- **Branch Dropdown (Optimal Fix)**: Resolved conflict between dropdown accessibility and graph node visibility using dynamic layering and hover bridges.
 
 ## [2.10.0] - 2026-04-12
 ### Added
-- **Conflict Routing**: Unified conflict resolution workflow. Clicking any conflicted file in the working tree now automatically detects the source (Merge, Rebase, Cherry-Pick) and opens a context-aware editor.
-- **Merge/Rebase Ops**: Integrated Abort and Continue actions for Merge and Rebase directly into the Conflict Editor.
-- **Stale State Cleanup**: Editor now automatically closes if conflicts are resolved externally (e.g., via terminal).
-### Improved
-- **Process Stability**: `continue_rebase` now correctly handles interactive editor prompts by bypassing them.
-- **Merge Logic**: `continue_merge` automatically retrieves messages from `.git/MERGE_MSG`.
-
-## [2.9.2] - 2026-04-12
-### Fixed
-- **Reset Commit**: Allowed resetting to any valid commit object in the repository. Removed the strict ancestor reachability check that previously caused "Target commit is not reachable from HEAD" errors.
-
-## [2.9.1] - 2026-04-12
-### Fixed
-- **Reset Commit**: Resolved a logic bug where the "Reset" option was incorrectly disabled for all commits due to an incorrect property check on the cherry-pick state object.
-- **Safety Polish**: Specifically disabled Reset for stash nodes to maintain logical consistency.
+- **Conflict Routing**: Context-aware conflict resolution workflow detecting Merge, Rebase, and Cherry-Pick sources.
+- **Merge/Rebase Ops**: Integrated Abort/Continue actions into the Conflict Editor.
 
 ## [2.9.0] - 2026-04-12
 ### Added
-- **Reset Commit**: Right-click any commit in the graph to reset HEAD to that point. Supports Soft, Mixed, and Hard modes.
-- **Safety Guards**: Added detached HEAD protection and reaching validation.
-- **Destructive UI**: Implemented interactive warnings for Hard resets on dirty working trees.
-
-## [2.8.4] - 2026-04-12
-### Fixed
-- **Graph Layout**: Resolved a visual discontinuity where the WIP node incorrectly connected to stash nodes instead of HEAD.
+- **Reset Commit**: Soft, Mixed, and Hard reset modes from the commit graph context menu.
+- **Safety Guards**: Detached HEAD protection and dirty working tree warnings.
 
 ## [2.8.0] - 2026-04-12
 ### Added
-- **Stash Management**: Full lifecycle management (Save, Apply, Pop, Delete) with graph integration.
-- **Refresh Optimization**: Implemented smart window focus detection for auto-refreshing repository status.
-
-## [2.7.0] - 2026-04-11
-### Added
-- **Restore File**: Selective recovery of files from commit history.
-- **Encoding Detection**: Automatic charset detection for non-UTF8 source files in the Monaco editor.
-- **Branch Management**: Enhanced safe checkout with conflict pre-detection.
-
-## [2.5.0] - 2026-04-11
-### Added
-- **Commit Graph**: Virtualized Manhattan routing with curvy SVG edges.
-- **Diff View**: Monaco-based side-by-side and inline diffing.
+- **Stash Management**: Save, Apply, Pop, and Drop functionality with graph integration.
+- **Smart Refresh**: Window focus detection for automatic repository status updates.

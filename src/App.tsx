@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from "./store";
 import { loadRepo, restoreAppState, refreshActiveRepoStatus } from "./lib/repo";
@@ -20,13 +20,10 @@ import { ToastContainer } from "./components/ToastContainer";
 import { FileHistoryModal } from "./components/FileHistoryModal";
 import { RestoreFileAlert } from "./components/RestoreFileAlert";
 import { ResetCommitDialog } from "./components/ResetCommitDialog";
-import { ErrorBoundary } from "./components/ErrorBoundary";
 import { setupGlobalErrorHandlers } from "./lib/error";
 import { LoadingOverlay } from "./components/ui/Loading";
 
-// Initialize global error handlers
-setupGlobalErrorHandlers();
-
+// App component
 export function App() {
   const activeTabId = useAppStore(state => state.activeTabId);
   const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
@@ -40,9 +37,22 @@ export function App() {
   const resetToCommitTarget = useAppStore(state => state.resetToCommitTarget);
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [isInitializing, setIsInitializing] = useState(true);
+
   useEffect(() => {
-    // Restore tabs and active repo on startup
-    restoreAppState();
+    const init = async () => {
+      console.log("[App] Starting initialization...");
+      setupGlobalErrorHandlers();
+      try {
+        await restoreAppState();
+        console.log("[App] State restoration complete.");
+      } catch (err) {
+        console.error("[App] State restoration failed:", err);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+    init();
 
     const unlistenDrop = listen('tauri://file-drop', async (event) => {
       const paths = event.payload as string[];
@@ -63,54 +73,75 @@ export function App() {
     };
   }, []);
 
+  // Main rendering logic separated for clarity and to avoid syntax ambiguity
+  const renderMainContent = () => {
+    if (isInitializing) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center bg-[#282c34] h-full">
+           <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+              <span className="text-sm font-medium text-[#6e7681] animate-pulse">Initializing GitKit...</span>
+           </div>
+        </div>
+      );
+    }
+
+    if (activeTabId === 'home') {
+      return <WelcomeScreen />;
+    }
+
+    return (
+      <>
+        <TopToolbar />
+        <CherryPickBanner />
+        <div className="flex-1 flex overflow-hidden w-full">
+           <Sidebar />
+           <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
+              {activeConflictFile && conflictVersions ? (
+                <ConflictEditorView />
+              ) : selectedDiff ? (
+                <MainDiffView />
+              ) : (
+                <CommitGraph />
+              )}
+           </div>
+           <RightPanel />
+        </div>
+      </>
+    );
+  };
+
   return (
-    <ErrorBoundary>
-      <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#282c34] text-[#a0a6b1] font-sans relative">
-        <TopTabBar />
-        
-        {activeTabId === 'home' ? (
-          <WelcomeScreen />
-        ) : (
-          <>
-            <TopToolbar />
-            <CherryPickBanner />
-            <div className="flex-1 flex overflow-hidden w-full">
-               <Sidebar />
-               {activeConflictFile && conflictVersions
-                 ? <ConflictEditorView />
-                 : selectedDiff ? <MainDiffView /> : <CommitGraph />}
-               <RightPanel />
-            </div>
-          </>
-        )}
-        
-        {isLoadingRepo && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 pointer-events-auto">
-             <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
-          </div>
-        )}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#282c34] text-[#a0a6b1] font-sans relative">
+      <TopTabBar />
+      {renderMainContent()}
+      
+      {isLoadingRepo && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 pointer-events-auto">
+           <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
+        </div>
+      )}
 
-        {isProcessing && <LoadingOverlay label={processingLabel || undefined} />}
+      {isProcessing && <LoadingOverlay label={processingLabel || undefined} />}
 
-        <CheckoutAlert />
-        <DiscardAlert />
-        <StashAlerts />
-        <ForceCheckoutAlert />
-        {showSetUpstreamDialog && (
-          <SetUpstreamDialog 
-            onClose={() => setShowSetUpstreamDialog(false)} 
-            onSuccess={() => {
-              setShowSetUpstreamDialog(false);
-              refreshActiveRepoStatus();
-            }} 
-          />
-        )}
-        <ToastContainer />
-        <FileHistoryModal />
-        <RestoreFileAlert />
-        {resetToCommitTarget && <ResetCommitDialog />}
-      </div>
-    </ErrorBoundary>
+      <CheckoutAlert />
+      <DiscardAlert />
+      <StashAlerts />
+      <ForceCheckoutAlert />
+      {showSetUpstreamDialog && (
+        <SetUpstreamDialog 
+          onClose={() => setShowSetUpstreamDialog(false)} 
+          onSuccess={() => {
+            setShowSetUpstreamDialog(false);
+            refreshActiveRepoStatus();
+          }} 
+        />
+      )}
+      <ToastContainer />
+      <FileHistoryModal />
+      <RestoreFileAlert />
+      {resetToCommitTarget && <ResetCommitDialog />}
+    </div>
   );
 }
 

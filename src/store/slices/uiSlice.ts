@@ -69,6 +69,9 @@ export interface UISlice {
   isProcessing: boolean;
   processingLabel: string | null;
 
+  resetToCommitTarget: string | null;
+  setResetToCommitTarget: (target: string | null) => void;
+
   setIsProcessing: (isProcessing: boolean, label?: string | null) => void;
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
