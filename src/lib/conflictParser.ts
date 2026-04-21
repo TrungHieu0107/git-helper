@@ -1,17 +1,33 @@
 export interface ConflictHunk {
+  id: string;
   // line numbers are 1-based, matching Monaco's line system
   markerStartLine: number;   // line with <<<<<<<
   dividerLine: number;       // line with =======
   markerEndLine: number;     // line with >>>>>>>
   oursLines: [number, number];    // [startLine, endLine] inclusive, ours content
   theirsLines: [number, number];  // [startLine, endLine] inclusive, theirs content
+  oursContent?: string;
+  theirsContent?: string;
+  fullMarkerText: string;    // The entire block from <<<<<<< to >>>>>>>
+}
+
+export interface ConflictSegment {
+  id: string;
+  type: 'common' | 'conflict';
+  content?: string;
+  ours?: string;
+  theirs?: string;
+  startLine?: number;
+  endLine?: number;
 }
 
 export interface ParsedConflict {
   hunks: ConflictHunk[];
-  oursContent: string;    // full text for left panel — only ours blocks, markers removed
-  theirsContent: string;  // full text for right panel — only theirs blocks, markers removed
-  resultContent: string;  // full text for center panel — conflict blocks replaced with empty lines
+  oursContent: string;    // full text for left panel
+  theirsContent: string;  // full text for right panel
+  resultContent: string;  // full text for center panel (processed)
+  mergedBase: string;     // the original raw content with markers
+  segments: ConflictSegment[];
 }
 
 export function parseConflictMarkers(raw: string): ParsedConflict {
@@ -21,6 +37,7 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
   
   const hunks: ConflictHunk[] = [];
   let currentHunk: Partial<ConflictHunk> = {};
+  let currentHunkLines: string[] = [];
   
   const oursLines: string[] = [];
   const theirsLines: string[] = [];
@@ -33,7 +50,14 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
     if (state === 'normal') {
       if (line.startsWith('<<<<<<<')) {
         state = 'in_ours';
-        currentHunk = { markerStartLine: lineNum, oursLines: [lineNum + 1, lineNum] };
+        currentHunkLines = [line];
+        currentHunk = { 
+          id: `hunk-${hunks.length}`,
+          markerStartLine: lineNum, 
+          oursLines: [lineNum + 1, lineNum],
+          oursContent: "",
+          theirsContent: ""
+        };
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
@@ -43,6 +67,7 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         resultLines.push(line);
       }
     } else if (state === 'in_ours') {
+      currentHunkLines.push(line);
       if (line.startsWith('=======')) {
         state = 'in_theirs';
         currentHunk.oursLines![1] = lineNum - 1;
@@ -53,14 +78,17 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         resultLines.push('');
       } else {
         oursLines.push(line);
+        currentHunk.oursContent += (currentHunk.oursContent ? "\n" : "") + line;
         theirsLines.push('');
         resultLines.push('');
       }
     } else if (state === 'in_theirs') {
+      currentHunkLines.push(line);
       if (line.startsWith('>>>>>>>')) {
         state = 'normal';
         currentHunk.theirsLines![1] = lineNum - 1;
         currentHunk.markerEndLine = lineNum;
+        currentHunk.fullMarkerText = currentHunkLines.join('\n');
         
         // fix up empty blocks where start > end
         if (currentHunk.oursLines![0] > currentHunk.oursLines![1]) {
@@ -72,6 +100,7 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         
         hunks.push(currentHunk as ConflictHunk);
         currentHunk = {};
+        currentHunkLines = [];
         
         oursLines.push('');
         theirsLines.push('');
@@ -79,17 +108,65 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
       } else {
         oursLines.push('');
         theirsLines.push(line);
+        currentHunk.theirsContent += (currentHunk.theirsContent ? "\n" : "") + line;
         resultLines.push('');
       }
     }
   }
   
-  // Ensure same exact line breaks (preserve CRLF if any, but array join is enough for Monaco matching lines)
-  // Usually Monaco lines are defined by the array entries when joined with \n
   return {
     hunks,
     oursContent: oursLines.join('\n'),
     theirsContent: theirsLines.join('\n'),
-    resultContent: resultLines.join('\n')
+    resultContent: resultLines.join('\n'),
+    mergedBase: raw,
+    segments: parseToSegments(raw)
   };
+}
+
+export function parseToSegments(raw: string): ConflictSegment[] {
+  const lines = raw.split(/\r?\n/);
+  const segments: ConflictSegment[] = [];
+  let currentLines: string[] = [];
+  let oursLines: string[] = [];
+  let theirsLines: string[] = [];
+  let state: 'normal' | 'ours' | 'theirs' = 'normal';
+  let hunkCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('<<<<<<<')) {
+      if (currentLines.length > 0) {
+        segments.push({ type: 'common', content: currentLines.join('\n') });
+        currentLines = [];
+      }
+      state = 'ours';
+      oursLines = [];
+    } else if (line.startsWith('=======')) {
+      state = 'theirs';
+      theirsLines = [];
+    } else if (line.startsWith('>>>>>>>')) {
+      state = 'normal';
+      segments.push({
+        id: `hunk-${hunkCount++}`,
+        type: 'conflict',
+        ours: oursLines.join('\n'),
+        theirs: theirsLines.join('\n'),
+        startLine: 0, // Will be calculated after assembly if needed
+        endLine: 0
+      });
+      oursLines = [];
+      theirsLines = [];
+    } else {
+      if (state === 'normal') currentLines.push(line);
+      else if (state === 'ours') oursLines.push(line);
+      else if (state === 'theirs') theirsLines.push(line);
+    }
+  }
+
+  if (currentLines.length > 0) {
+    segments.push({ type: 'common', content: currentLines.join('\n') });
+  }
+
+  return segments;
 }

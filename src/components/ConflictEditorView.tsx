@@ -8,7 +8,7 @@ import {
 import { useAppStore } from "../store";
 import { Editor, useMonaco } from "@monaco-editor/react";
 import { X, CheckCircle, ArrowRight, ArrowLeft, Ban, Play } from "lucide-react";
-import { parseConflictMarkers, ParsedConflict } from "../lib/conflictParser";
+import { parseConflictMarkers, ParsedConflict, ConflictHunk } from "../lib/conflictParser";
 import { buildOursDecorations, buildTheirsDecorations, buildResultDecorations } from "../lib/monacoDecorations";
 
 export function ConflictEditorView() {
@@ -32,6 +32,8 @@ export function ConflictEditorView() {
   const theirsDecsRef = useRef<any>(null);
   const resultDecsRef = useRef<any>(null);
   const [mountedEditors, setMountedEditors] = useState(0);
+  const [currentHunkIndex, setCurrentHunkIndex] = useState(0);
+  const [remainingConflicts, setRemainingConflicts] = useState(0);
 
   // Unmount models properly when closing
   useEffect(() => {
@@ -50,15 +52,24 @@ export function ConflictEditorView() {
   // Set the initial result content natively so we can keep it uncontrolled but reset on file change
   useEffect(() => {
     if (parsed && resultEditorRef.current) {
-      resultEditorRef.current.setValue(parsed.resultContent);
+      resultEditorRef.current.setValue(parsed.mergedBase);
+      setRemainingConflicts(parsed.hunks.length);
+      setCurrentHunkIndex(0);
     }
   }, [parsed]);
+
+  const updateRemainingCount = () => {
+    if (!resultEditorRef.current) return;
+    const content = resultEditorRef.current.getValue();
+    const count = (content.match(/^<<<<<<< /gm) || []).length;
+    setRemainingConflicts(count);
+  };
 
   useEffect(() => {
     if (!parsed || !monaco) return;
     
     if (oursEditorRef.current) {
-      const decs = buildOursDecorations(parsed.hunks, monaco.Range);
+      const decs = buildOursDecorations(parsed.hunks, monaco.Range, currentHunkIndex);
       if (oursEditorRef.current.createDecorationsCollection) {
         oursDecsRef.current = oursEditorRef.current.createDecorationsCollection(decs);
       } else {
@@ -67,7 +78,7 @@ export function ConflictEditorView() {
     }
     
     if (theirsEditorRef.current) {
-      const decs = buildTheirsDecorations(parsed.hunks, monaco.Range);
+      const decs = buildTheirsDecorations(parsed.hunks, monaco.Range, currentHunkIndex);
       if (theirsEditorRef.current.createDecorationsCollection) {
         theirsDecsRef.current = theirsEditorRef.current.createDecorationsCollection(decs);
       } else {
@@ -76,14 +87,14 @@ export function ConflictEditorView() {
     }
     
     if (resultEditorRef.current) {
-      const decs = buildResultDecorations(parsed.hunks, monaco.Range);
+      const decs = buildResultDecorations(parsed.hunks, monaco.Range, currentHunkIndex);
       if (resultEditorRef.current.createDecorationsCollection) {
         resultDecsRef.current = resultEditorRef.current.createDecorationsCollection(decs);
       } else {
         resultEditorRef.current.deltaDecorations([], decs);
       }
     }
-  }, [parsed, monaco, mountedEditors]);
+  }, [parsed, monaco, mountedEditors, currentHunkIndex]);
 
   useEffect(() => {
     if (mountedEditors === 3) {
@@ -114,6 +125,55 @@ export function ConflictEditorView() {
     }
   }, [mountedEditors, parsed]);
 
+  useEffect(() => {
+    if (!monaco || !resultEditorRef.current || !parsed) return;
+    
+    const editor = resultEditorRef.current;
+    const widgets: any[] = [];
+
+    parsed.hunks.forEach((hunk, index) => {
+      const id = `widget-${hunk.id}`;
+      const domNode = document.createElement('div');
+      domNode.className = 'conflict-action-bar flex items-center gap-1 bg-[#161b22] border border-[#30363d] rounded shadow-lg p-1 z-50';
+      domNode.style.cssText = 'pointer-events: auto !important; z-index: 9999; position: relative;';
+      
+      const btnClass = "px-2 py-0.5 text-[10px] font-bold uppercase rounded hover:bg-[#30363d] transition-colors";
+      
+      const createBtn = (label: string, color: string, type: 'ours' | 'theirs' | 'both') => {
+        const btn = document.createElement('button');
+        btn.innerText = label;
+        btn.className = `${btnClass} text-[${color}]`;
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          alert(`Button clicked: ${type}, hunk id: ${hunk.id}`);
+          resolveHunk(hunk, type);
+        };
+        return btn;
+      };
+
+      domNode.appendChild(createBtn('Ours', '#3fb950', 'ours'));
+      domNode.appendChild(createBtn('Theirs', '#d29922', 'theirs'));
+      domNode.appendChild(createBtn('Both', '#58a6ff', 'both'));
+
+      const widget = {
+        getId: () => id,
+        getDomNode: () => domNode,
+        getPosition: () => ({
+          position: { lineNumber: hunk.markerStartLine, column: 1 },
+          preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE]
+        })
+      };
+
+      editor.addContentWidget(widget);
+      widgets.push(widget);
+    });
+
+    return () => {
+      widgets.forEach(w => editor.removeContentWidget(w));
+    };
+  }, [monaco, parsed, mountedEditors, remainingConflicts]);
+
   if (!activeConflictFile || !conflictVersions || !activeRepoPath) return null;
 
   const closeView = () => {
@@ -140,6 +200,67 @@ export function ConflictEditorView() {
       case 'Rebase': continueRebase(); break;
       case 'CherryPick': continueCherryPick(); break;
     }
+  };
+
+  const goToNext = () => {
+    if (!parsed || parsed.hunks.length === 0) return;
+    const nextIndex = (currentHunkIndex + 1) % parsed.hunks.length;
+    setCurrentHunkIndex(nextIndex);
+    revealHunk(nextIndex);
+  };
+
+  const goToPrev = () => {
+    if (!parsed || parsed.hunks.length === 0) return;
+    const prevIndex = (currentHunkIndex - 1 + parsed.hunks.length) % parsed.hunks.length;
+    setCurrentHunkIndex(prevIndex);
+    revealHunk(prevIndex);
+  };
+
+  const revealHunk = (index: number) => {
+    if (!parsed || !parsed.hunks[index]) return;
+    const hunk = parsed.hunks[index];
+    resultEditorRef.current?.revealLineInCenter(hunk.markerStartLine);
+    oursEditorRef.current?.revealLineInCenter(hunk.markerStartLine);
+    theirsEditorRef.current?.revealLineInCenter(hunk.markerStartLine);
+  };
+
+  const resolveHunk = (hunk: ConflictHunk, type: 'ours' | 'theirs' | 'both') => {
+    if (!resultEditorRef.current) return;
+    const model = resultEditorRef.current.getModel();
+    if (!model) return;
+
+    const currentContent = model.getValue();
+    
+    // Normalize về \n để xử lý, detect EOL của file
+    const eol = currentContent.includes('\r\n') ? '\r\n' : '\n';
+    const normalizedContent = currentContent.replace(/\r\n/g, '\n');
+    const normalizedMarker = hunk.fullMarkerText.replace(/\r\n/g, '\n');
+
+    const markerIndex = normalizedContent.indexOf(normalizedMarker);
+    if (markerIndex === -1) return;
+
+    // Build newText với \n
+    let newText = "";
+    const hOurs = hunk.oursContent || "";
+    const hTheirs = hunk.theirsContent || "";
+    
+    if (type === 'ours') newText = hOurs;
+    else if (type === 'theirs') newText = hTheirs;
+    else newText = hOurs + (hOurs && hTheirs ? "\n" : "") + hTheirs;
+
+    // Ghép lại và restore EOL
+    const newNormalized = 
+      normalizedContent.slice(0, markerIndex) + 
+      newText + 
+      normalizedContent.slice(markerIndex + normalizedMarker.length);
+
+    const finalContent = eol === '\r\n' 
+      ? newNormalized.replace(/\n/g, '\r\n')
+      : newNormalized;
+
+    model.setValue(finalContent);
+    updateRemainingCount();
+    goToNext();
   };
 
   const useOurs = () => {
@@ -212,6 +333,20 @@ export function ConflictEditorView() {
              activeConflictMode === 'Rebase' ? 'Rebase Conflict' : 
              activeConflictMode === 'CherryPick' ? 'Cherry-Pick Conflict' : 'Unmerged Conflict'}
           </span>
+          
+          <div className="flex items-center gap-1 ml-4 px-2 py-1 bg-[#21262d] rounded-md border border-[#30363d]">
+            <button onClick={goToPrev} className="p-1 hover:text-white text-[#8b949e] transition-colors"><ArrowLeft size={14}/></button>
+            <span className="text-[11px] font-mono text-[#8b949e] min-w-[50px] text-center">
+              {parsed && parsed.hunks.length > 0 ? `${currentHunkIndex + 1} / ${parsed.hunks.length}` : '0 / 0'}
+            </span>
+            <button onClick={goToNext} className="p-1 hover:text-white text-[#8b949e] transition-colors"><ArrowRight size={14}/></button>
+          </div>
+          
+          {remainingConflicts > 0 && (
+            <span className="text-[10px] text-[#f85149] font-bold animate-pulse">
+              {remainingConflicts} unresolved
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0 ml-4">
@@ -233,7 +368,12 @@ export function ConflictEditorView() {
 
           <button 
             onClick={handleResolve}
-            className="group flex items-center gap-2 px-4 py-1.5 bg-gradient-to-b from-[#2ea043] to-[#238636] text-white hover:from-[#3fb950] hover:to-[#2ea043] transition-all duration-300 rounded-md text-[11px] font-bold uppercase tracking-wide shadow-[0_2px_10px_rgba(35,134,54,0.4)] hover:shadow-[0_4px_15px_rgba(35,134,54,0.6)] hover:-translate-y-0.5 active:translate-y-0 relative overflow-hidden"
+            disabled={remainingConflicts > 0}
+            className={`group flex items-center gap-2 px-4 py-1.5 transition-all duration-300 rounded-md text-[11px] font-bold uppercase tracking-wide shadow-sm relative overflow-hidden ${
+              remainingConflicts > 0 
+                ? 'bg-[#21262d] text-[#484f58] cursor-not-allowed border border-[#30363d]' 
+                : 'bg-gradient-to-b from-[#2ea043] to-[#238636] text-white hover:from-[#3fb950] hover:to-[#2ea043] shadow-[0_2px_10px_rgba(35,134,54,0.4)] hover:shadow-[0_4px_15px_rgba(35,134,54,0.6)] hover:-translate-y-0.5'
+            }`}
           >
             <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></div>
             <CheckCircle size={14} className="relative z-10 drop-shadow-md" /> 
@@ -312,7 +452,7 @@ export function ConflictEditorView() {
                 </div>
              )}
              <Editor
-               defaultValue={parsed?.resultContent || ""}
+               defaultValue={parsed?.mergedBase || ""}
                language={language}
                theme="vs-dark"
                onMount={(editor) => handleMount(editor, resultEditorRef)}

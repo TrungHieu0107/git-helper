@@ -922,6 +922,7 @@ export async function refreshCherryPickState() {
     const store = useAppStore.getState();
     if (cpState.is_in_progress) {
       store.setCherryPickState('conflict', cpState.conflicted_files, cpState.source);
+      await refreshActiveRepoStatus();
     } else if (store.cherryPickState === 'conflict') {
       store.setCherryPickState('idle');
     }
@@ -1006,6 +1007,7 @@ export async function invokeCherryPick(oids: string[]) {
     if (res.type === 'Conflict') {
       toast.warning("Cherry-pick resulted in conflicts. Please resolve them.");
       useAppStore.getState().setCherryPickState('conflict', res.conflicted_files, 'cherry_pick');
+      await refreshActiveRepoStatus();
     } else if (res.type === 'Empty') {
        toast.info(`Commit ${res.skip_oid.substring(0, 7)} is empty and was skipped.`);
        if (res.remaining_oids.length > 0) {
@@ -1150,6 +1152,7 @@ export async function mergeBranch(branchName: string) {
         toast.warning(`Merge conflict — ${result.conflicted_files.length} file(s) need resolution`);
         useAppStore.getState().setCherryPickState('conflict', result.conflicted_files, 'merge');
         await loadRepo(path);
+        await refreshActiveRepoStatus();
         break;
     }
 

@@ -24,6 +24,13 @@
 .conflict-result-empty {
   background-color: rgba(255, 255, 255, 0.05);
 }
+.conflict-active-hunk {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+  box-shadow: inset 2px 0 0 var(--accent-primary);
+}
+.conflict-action-bar {
+  pointer-events: auto;
+}
   :root {
     /* Background Hierarchy - Refined HSL */
     --bg-main: hsl(210, 20%, 6%);
