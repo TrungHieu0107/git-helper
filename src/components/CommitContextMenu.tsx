@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, CloudSync, Trash2, ChevronsDown, RotateCcw } from 'lucide-react';
+import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, GitMerge, CloudSync, Trash2, ChevronsDown, RotateCcw } from 'lucide-react';
 import { CommitNode, useAppStore, StashEntry } from '../store';
-import { safeSwitchBranch, selectCommitDetail, applyStash, popStash } from '../lib/repo';
+import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, findMergableBranch } from '../lib/repo';
 import { toast } from '../lib/toast';
 import { CreateBranchDialog } from './CreateBranchDialog';
 import { CherryPickDialog } from './CherryPickDialog';
@@ -138,7 +138,27 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     );
   }
 
+  const mergableBranch = repoInfo
+    ? findMergableBranch(commit.refs, repoInfo.head_branch)
+    : null;
+
   const menuItems = [
+    {
+      id: 'merge-branch',
+      icon: <GitMerge size={14} />,
+      label: mergableBranch
+        ? `Merge '${mergableBranch}' into '${repoInfo?.head_branch}'`
+        : 'Merge Branch into HEAD...',
+      color: 'text-[#388bfd]',
+      action: () => {
+        if (mergableBranch) {
+          useAppStore.getState().setMergeTarget(mergableBranch);
+          onClose();
+        }
+      },
+      hidden: isStash || !mergableBranch,
+      disabled: isStash || cherryPickState !== 'idle',
+    },
     {
       id: 'cherry-pick',
       icon: <GitCommit size={14} />,

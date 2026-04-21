@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, GitMerge } from 'lucide-react';
 import { useAppStore } from '../../store';
 
 interface BranchContextMenuProps {
@@ -13,12 +13,13 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
   position, 
   onClose 
 }) => {
-  const { branches, cherryPickState } = useAppStore();
+  const { branches, cherryPickState, activeBranch } = useAppStore();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState(position);
 
   const hasOrigin = branches.some(b => b.branch_type === 'remote' && b.name === `origin/${branch}`);
   const isProcessing = cherryPickState !== 'idle';
+  const isCurrentBranch = activeBranch === branch;
 
   useEffect(() => {
     if (!menuRef.current) return;
@@ -56,6 +57,11 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
     useAppStore.setState({ forceCheckoutTarget: branch, forceCheckoutPhase: 'confirm_reset' });
   };
 
+  const handleMerge = () => {
+    onClose();
+    useAppStore.getState().setMergeTarget(branch);
+  };
+
   return (
     <div 
       ref={menuRef}
@@ -65,7 +71,22 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
       <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#30363d] mb-1 truncate">
         Branch: {branch}
       </div>
+
+      <button
+        disabled={isCurrentBranch || isProcessing}
+        onClick={handleMerge}
+        className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
+          isCurrentBranch || isProcessing
+            ? 'text-slate-600 cursor-not-allowed'
+            : 'text-blue-400 hover:bg-blue-500/10 hover:text-blue-300'
+        }`}
+      >
+        <GitMerge size={14} />
+        Merge into current branch
+      </button>
       
+      <div className="my-1 border-t border-[#21262d]" />
+
       <button 
         disabled={!hasOrigin || isProcessing}
         onClick={handleForceCheckout}
