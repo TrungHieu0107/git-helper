@@ -6,6 +6,7 @@ import {
   abortCherryPick, continueCherryPick 
 } from "../lib/repo";
 import { useAppStore } from "../store";
+import { toast } from "../lib/toast";
 import { Editor, useMonaco } from "@monaco-editor/react";
 import { X, CheckCircle, ArrowRight, ArrowLeft, Ban, Play } from "lucide-react";
 import { parseConflictMarkers, ParsedConflict, ConflictHunk } from "../lib/conflictParser";
