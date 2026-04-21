@@ -10,7 +10,8 @@ import { CommitGraph } from "./components/CommitGraph";
 import { RightPanel } from "./components/RightPanel";
 import { MainDiffView } from "./components/MainDiffView";
 import { ConflictEditorView } from "./components/ConflictEditorView";
-import { CherryPickBanner } from "./components/CherryPickBanner";
+import { MergeBanner } from "./components/MergeBanner";
+import { MergeDialog } from "./components/MergeDialog";
 import { CheckoutAlert } from "./components/CheckoutAlert";
 import { DiscardAlert } from "./components/DiscardAlert";
 import { StashAlerts } from "./components/StashAlerts";
@@ -35,6 +36,7 @@ export function App() {
   const showSetUpstreamDialog = useAppStore(state => state.showSetUpstreamDialog);
   const setShowSetUpstreamDialog = useAppStore(state => state.setShowSetUpstreamDialog);
   const resetToCommitTarget = useAppStore(state => state.resetToCommitTarget);
+  const mergeTarget = useAppStore(state => state.mergeTarget);
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isInitializing, setIsInitializing] = useState(true);
@@ -93,7 +95,7 @@ export function App() {
     return (
       <>
         <TopToolbar />
-        <CherryPickBanner />
+        <MergeBanner />
         <div className="flex-1 flex overflow-hidden w-full">
            <Sidebar />
            <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
@@ -141,6 +143,7 @@ export function App() {
       <FileHistoryModal />
       <RestoreFileAlert />
       {resetToCommitTarget && <ResetCommitDialog />}
+      {mergeTarget && <MergeDialog />}
     </div>
   );
 }
