@@ -16,3 +16,8 @@
 - Identified source of "Unhandled Promise Rejection" as Monaco Editor's loader cancellation.
 - Implemented TDD workflow using `vitest` to verify error suppression.
 - Updated `handleError` in `src/lib/error.ts` to silently ignore objects with `type: 'cancelation'`.
+## 2026-04-21 - Result Pane UI Refinement & Lifecycle Fixes
+- Implemented `editor.setHiddenAreas` in `ConflictEditorView.tsx` to hide `<<<<<<< HEAD` markers in the Result pane for a cleaner look.
+- Updated `resolveHunk` to call `refreshHiddenAreas` after each resolution to keep markers hidden for remaining hunks.
+- Adjusted widget positions to appear on the first visible line of conflict content (since markers are hidden).
+- Fixed unhandled promise rejections in `App.tsx` by adding `.catch()` handlers to Tauri event unlisten calls.

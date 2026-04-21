@@ -1,2 +1,2 @@
 # Project Summary
-GitKit is currently in a stable state with a robust, per-block conflict resolution system. All harmless cancellation errors from external libraries (Monaco Editor) are now suppressed via a centralized error handler, ensuring a clean developer console. The project uses a premium imperative dialog system and handles multi-platform line endings correctly.
+GitKit is currently in a stable state with a robust, per-block conflict resolution system. The Result pane now offers a "smart" clean view by hiding Git markers while still allowing full interactive resolution. Harmless cancellation errors and unhandled promise rejections during lifecycle events have been suppressed or fixed, ensuring a professional developer console experience.
