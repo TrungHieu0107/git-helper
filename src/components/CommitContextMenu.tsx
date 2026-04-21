@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, GitMerge, CloudSync, Trash2, ChevronsDown, RotateCcw } from 'lucide-react';
 import { CommitNode, useAppStore, StashEntry } from '../store';
-import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, findMergableBranch } from '../lib/repo';
+import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, dropStash, findMergableBranch } from '../lib/repo';
+import { confirm } from './ui/ConfirmDialog';
 import { toast } from '../lib/toast';
 import { CreateBranchDialog } from './CreateBranchDialog';
 import { CherryPickDialog } from './CherryPickDialog';
@@ -104,18 +105,17 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     }
   }, [commit.stash_index, onClose]);
 
-  const handleDropStash = useCallback(() => {
+  const handleDropStash = useCallback(async () => {
     if (commit.stash_index !== undefined) {
-      // Map CommitNode to StashEntry for the confirmation dialog
-      const stashEntry: StashEntry = {
-        stackIndex: commit.stash_index,
-        message: commit.message,
-        oid: commit.oid,
-        parent_oid: commit.parents?.[0] || '',
-        timestamp: commit.timestamp
-      };
-      useAppStore.setState({ confirmStashDrop: stashEntry });
       onClose();
+      const ok = await confirm({
+        title: 'Delete Stash',
+        message: 'Are you sure you want to delete this stash entry? This action cannot be undone.',
+        detail: <span className="text-xs text-[#8b949e] font-mono italic">"{commit.message}"</span>,
+        confirmLabel: 'Delete',
+        variant: 'danger'
+      });
+      if (ok) await dropStash(commit.stash_index);
     }
   }, [commit, onClose]);
 

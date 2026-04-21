@@ -4,12 +4,11 @@ import { AlertCircle, AlertTriangle, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function StashAlerts() {
-  const confirmDrop = useAppStore(state => state.confirmStashDrop);
   const stashConflict = useAppStore(state => state.stashConflict);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (confirmDrop || stashConflict) {
+    if (stashConflict) {
       const timer = setTimeout(() => setVisible(true), 10);
       return () => {
           clearTimeout(timer);
@@ -18,70 +17,16 @@ export function StashAlerts() {
     } else {
       setVisible(false);
     }
-  }, [confirmDrop, stashConflict]);
+  }, [stashConflict]);
 
-  if (!confirmDrop && !stashConflict && !visible) return null;
+  if (!stashConflict && !visible) return null;
 
   const handleCancel = () => {
     setVisible(false);
     setTimeout(() => {
-      useAppStore.setState({ confirmStashDrop: null, stashConflict: null });
+      useAppStore.setState({ stashConflict: null });
     }, 300);
   };
-
-  const handleConfirmDrop = async () => {
-    if (!confirmDrop) return;
-    const index = confirmDrop.stackIndex;
-    handleCancel();
-    await dropStash(index);
-  };
-
-  if (confirmDrop) {
-    return (
-      <div 
-        className={`fixed top-0 left-0 w-full z-[100] transition-transform duration-300 ease-out transform h-[48px] border-b border-red-500/30 ${
-          visible ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="absolute inset-0 bg-[#1c2128]/98 backdrop-blur-md" />
-        
-        <div className="relative h-full w-full flex items-center px-4 justify-between select-none max-w-5xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="bg-red-500/20 p-1.5 rounded-full flex items-center justify-center shrink-0">
-              <Trash2 size={18} className="text-red-400" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-200">Delete stash entry?</span>
-              <span className="text-sm text-slate-400 font-mono truncate max-w-sm">
-                "{confirmDrop.message}"
-              </span>
-              <span className="text-xs font-bold text-red-400/80 ml-2 uppercase tracking-tighter">
-                Action cannot be undone
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 relative z-10">
-            <button
-              onClick={handleConfirmDrop}
-              className="h-7 px-3 bg-red-600 hover:bg-red-500 text-white text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1 shadow-lg shadow-red-900/20"
-            >
-              <Trash2 size={12} />
-              DELETE STASH
-            </button>
-            <button
-              onClick={handleCancel}
-              className="h-7 px-3 bg-[#30363d] hover:bg-[#21262d] text-[#c9d1d9] text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1"
-            >
-              <X size={12} />
-              CANCEL
-            </button>
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 h-[2px] bg-red-500/50 w-full" />
-      </div>
-    );
-  }
 
   if (stashConflict) {
     return (

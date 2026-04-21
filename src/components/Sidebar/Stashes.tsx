@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Layers, CloudSync, Trash2, ChevronsDown } from "lucide-react";
 import { useAppStore, StashEntry } from "../../store";
-import { applyStash, popStash } from "../../lib/repo";
+import { applyStash, popStash, dropStash } from "../../lib/repo";
+import { confirm } from "../ui/ConfirmDialog";
 
 interface StashEntryItemProps {
   stash: StashEntry;
@@ -46,7 +47,17 @@ export function StashEntryItem({ stash, filter, onContextMenu }: StashEntryItemP
               <CloudSync size={14} />
            </button>
            <button 
-              onClick={(e) => { e.stopPropagation(); useAppStore.setState({ confirmStashDrop: stash }); }}
+              onClick={async (e) => { 
+                e.stopPropagation(); 
+                const ok = await confirm({
+                  title: 'Delete Stash',
+                  message: 'Are you sure you want to delete this stash entry? This action cannot be undone.',
+                  detail: <span className="text-xs text-[#8b949e] font-mono italic">"{stash.message}"</span>,
+                  confirmLabel: 'Delete',
+                  variant: 'danger'
+                });
+                if (ok) await dropStash(stash.stackIndex);
+              }}
               className="p-1 hover:bg-red-500/20 text-red-400 rounded transition-colors" 
               title="Drop"
            >
@@ -126,7 +137,18 @@ export function StashContextMenu({ stash, position, onClose }: { stash: StashEnt
       </button>
       <div className="h-[1px] bg-[#30363d] my-1" />
       <button 
-        onClick={(e) => { e.stopPropagation(); onClose(); useAppStore.setState({ confirmStashDrop: stash }); }}
+        onClick={async (e) => { 
+          e.stopPropagation(); 
+          onClose(); 
+          const ok = await confirm({
+            title: 'Delete Stash',
+            message: 'Are you sure you want to delete this stash entry? This action cannot be undone.',
+            detail: <span className="text-xs text-[#8b949e] font-mono italic">"{stash.message}"</span>,
+            confirmLabel: 'Delete',
+            variant: 'danger'
+          });
+          if (ok) await dropStash(stash.stackIndex);
+        }}
         className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
       >
         <Trash2 size={14} />

@@ -18,14 +18,12 @@ export type RepoState = 'Clean' | 'Merging' | 'Rebasing' | 'CherryPicking' | 'Ha
 export interface StashSlice {
   stashes: StashEntry[];
   showCreateStash: boolean;
-  confirmStashDrop: StashEntry | null;
   stashConflict: { files: string[], index: number, isPop: boolean } | null;
   lastStashMode: 'all' | 'unstaged';
   lastIncludeUntracked: boolean;
 
   setStashes: (stashes: StashEntry[]) => void;
   setShowCreateStash: (show: boolean) => void;
-  setConfirmStashDrop: (stash: StashEntry | null) => void;
   setStashConflict: (conflict: { files: string[], index: number, isPop: boolean } | null) => void;
   setLastStashSettings: (mode: 'all' | 'unstaged', includeUntracked: boolean) => void;
 }
@@ -33,14 +31,12 @@ export interface StashSlice {
 export const createStashSlice: StateCreator<AppStore, [], [], StashSlice> = (set) => ({
   stashes: [],
   showCreateStash: false,
-  confirmStashDrop: null,
   stashConflict: null,
   lastStashMode: 'all',
   lastIncludeUntracked: false,
 
   setStashes: (stashes) => set(() => ({ stashes })),
   setShowCreateStash: (show) => set(() => ({ showCreateStash: show })),
-  setConfirmStashDrop: (stash) => set(() => ({ confirmStashDrop: stash })),
   setStashConflict: (conflict) => set(() => ({ stashConflict: conflict })),
   setLastStashSettings: (mode, includeUntracked) => set(() => ({ 
     lastStashMode: mode, 
