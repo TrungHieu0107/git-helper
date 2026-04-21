@@ -53,6 +53,11 @@ export function setupGlobalErrorHandlers() {
   });
 
   window.addEventListener('unhandledrejection', (event) => {
+    // Prevent browser from logging the harmless Monaco cancellation error
+    if (event.reason && typeof event.reason === 'object' && event.reason.type === 'cancelation') {
+      event.preventDefault();
+      return;
+    }
     handleError(event.reason, 'Unhandled Promise Rejection');
   });
 }

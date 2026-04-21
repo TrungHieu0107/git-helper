@@ -54,22 +54,12 @@ export function ConflictEditorView() {
     if (parsed && resultEditorRef.current && monaco) {
       try {
         const editor = resultEditorRef.current;
-        editor.setValue(parsed.mergedBase);
+        editor.setValue(parsed.displayBase); // Use displayBase which is clean of raw git markers
         
-        // Hide conflict marker lines for a cleaner "smart" look
-        if (typeof editor.setHiddenAreas === 'function') {
-          const hiddenRanges = parsed.hunks.flatMap(hunk => [
-            new monaco.Range(hunk.markerStartLine, 1, hunk.markerStartLine, 1),
-            new monaco.Range(hunk.dividerLine, 1, hunk.dividerLine, 1),
-            new monaco.Range(hunk.markerEndLine, 1, hunk.markerEndLine, 1)
-          ]);
-          editor.setHiddenAreas(hiddenRanges);
-        }
-
         setRemainingConflicts(parsed.hunks.length);
         setCurrentHunkIndex(0);
       } catch (e) {
-        console.warn("Failed to initialize result editor hidden areas:", e);
+        console.warn("Failed to initialize result editor:", e);
       }
     }
   }, [parsed, monaco]);
@@ -251,10 +241,13 @@ export function ConflictEditorView() {
     // Normalize về \n để xử lý, detect EOL của file
     const eol = currentContent.includes('\r\n') ? '\r\n' : '\n';
     const normalizedContent = currentContent.replace(/\r\n/g, '\n');
-    const normalizedMarker = hunk.fullMarkerText.replace(/\r\n/g, '\n');
+    const normalizedMarker = hunk.displayMarkerText!.replace(/\r\n/g, '\n');
 
     const markerIndex = normalizedContent.indexOf(normalizedMarker);
-    if (markerIndex === -1) return;
+    if (markerIndex === -1) {
+      toast.error('Could not find conflict block in the result editor. It may have been manually modified.');
+      return;
+    }
 
     // Build newText với \n
     let newText = "";
@@ -277,56 +270,12 @@ export function ConflictEditorView() {
 
     model.setValue(finalContent);
     
-    // Sau khi setValue, các hiddenAreas bị mất, cần set lại cho các hunk còn lại
-    refreshHiddenAreas();
-    
     updateRemainingCount();
     goToNext();
   };
 
   const refreshHiddenAreas = () => {
-    if (!resultEditorRef.current || !parsed || !monaco) return;
-    const editor = resultEditorRef.current;
-    
-    if (typeof editor.setHiddenAreas !== 'function') return;
-
-    try {
-      const content = editor.getValue();
-      
-      // Tìm lại tất cả các hunk chưa resolve trong content mới
-      const currentHunks = parsed.hunks.filter(h => content.includes(h.fullMarkerText));
-      
-      const lines = content.split(/\r?\n/);
-      const hiddenRanges: any[] = [];
-      
-      currentHunks.forEach(h => {
-        // Tìm dòng bắt đầu của marker này trong content hiện tại
-        const markerLines = h.fullMarkerText.split('\n');
-        const firstLineMarker = markerLines[0];
-        const lastLineMarker = markerLines[markerLines.length - 1];
-        
-        const startIdx = lines.findIndex(l => l.includes(firstLineMarker));
-        if (startIdx !== -1) {
-          hiddenRanges.push(new monaco.Range(startIdx + 1, 1, startIdx + 1, 1));
-          
-          // Tìm divider và end marker trong khối này
-          const endIdx = lines.slice(startIdx).findIndex(l => l.includes(lastLineMarker)) + startIdx;
-          if (endIdx !== -1) {
-            hiddenRanges.push(new monaco.Range(endIdx + 1, 1, endIdx + 1, 1));
-            
-            // Tìm =======
-            const dividerIdx = lines.slice(startIdx, endIdx).findIndex(l => l.startsWith('=======')) + startIdx;
-            if (dividerIdx !== -1) {
-              hiddenRanges.push(new monaco.Range(dividerIdx + 1, 1, dividerIdx + 1, 1));
-            }
-          }
-        }
-      });
-      
-      editor.setHiddenAreas(hiddenRanges);
-    } catch (e) {
-      console.warn("Failed to refresh hidden areas:", e);
-    }
+    // No longer needed because we use displayBase which natively hides markers
   };
 
   const useOurs = () => {

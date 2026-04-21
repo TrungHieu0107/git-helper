@@ -9,6 +9,7 @@ export interface ConflictHunk {
   oursContent?: string;
   theirsContent?: string;
   fullMarkerText: string;    // The entire block from <<<<<<< to >>>>>>>
+  displayMarkerText: string; // The placeholder block in displayBase
 }
 
 export interface ConflictSegment {
@@ -27,6 +28,7 @@ export interface ParsedConflict {
   theirsContent: string;  // full text for right panel
   resultContent: string;  // full text for center panel (processed)
   mergedBase: string;     // the original raw content with markers
+  displayBase: string;    // clean content with placeholders for result pane
   segments: ConflictSegment[];
 }
 
@@ -42,6 +44,7 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
   const oursLines: string[] = [];
   const theirsLines: string[] = [];
   const resultLines: string[] = [];
+  const displayLines: string[] = [];
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -61,10 +64,12 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
+        displayLines.push(`<<<<<<< CONFLICT ${currentHunk.id} >>>>>>>`);
       } else {
         oursLines.push(line);
         theirsLines.push(line);
         resultLines.push(line);
+        displayLines.push(line);
       }
     } else if (state === 'in_ours') {
       currentHunkLines.push(line);
@@ -76,11 +81,13 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
+        displayLines.push('');
       } else {
         oursLines.push(line);
         currentHunk.oursContent += (currentHunk.oursContent ? "\n" : "") + line;
         theirsLines.push('');
         resultLines.push('');
+        displayLines.push('');
       }
     } else if (state === 'in_theirs') {
       currentHunkLines.push(line);
@@ -89,6 +96,12 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         currentHunk.theirsLines![1] = lineNum - 1;
         currentHunk.markerEndLine = lineNum;
         currentHunk.fullMarkerText = currentHunkLines.join('\n');
+        
+        const displayMarkerLines = [`<<<<<<< CONFLICT ${currentHunk.id} >>>>>>>`];
+        for (let j = 0; j < lineNum - currentHunk.markerStartLine; j++) {
+          displayMarkerLines.push('');
+        }
+        currentHunk.displayMarkerText = displayMarkerLines.join('\n');
         
         // fix up empty blocks where start > end
         if (currentHunk.oursLines![0] > currentHunk.oursLines![1]) {
@@ -105,11 +118,13 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
         oursLines.push('');
         theirsLines.push('');
         resultLines.push('');
+        displayLines.push('');
       } else {
         oursLines.push('');
         theirsLines.push(line);
         currentHunk.theirsContent += (currentHunk.theirsContent ? "\n" : "") + line;
         resultLines.push('');
+        displayLines.push('');
       }
     }
   }
@@ -120,6 +135,7 @@ export function parseConflictMarkers(raw: string): ParsedConflict {
     theirsContent: theirsLines.join('\n'),
     resultContent: resultLines.join('\n'),
     mergedBase: raw,
+    displayBase: displayLines.join('\n'),
     segments: parseToSegments(raw)
   };
 }
