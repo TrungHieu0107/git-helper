@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileCode, FolderSearch, Plus, Minus, RotateCcw, History, Copy, X, Undo2 } from 'lucide-react';
-import { openInEditor, showInExplorer, stageFile, unstageFile, discardFileChanges, refreshActiveRepoStatus } from '../lib/repo';
+import { openInEditor, showInExplorer, stageFile, unstageFile, discardFileChanges, refreshActiveRepoStatus, restoreFileFromCommit } from '../lib/repo';
 import { toast } from '../lib/toast';
 import { useAppStore } from '../store';
+import { confirm } from './ui/ConfirmDialog';
 
 export interface FileContextMenuProps {
   path: string;
@@ -28,7 +29,7 @@ export function FileContextMenu({
 }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState(position);
-  const { setFileHistory, activeRepoPath, setConfirmRestoreFile } = useAppStore();
+  const { setFileHistory, activeRepoPath } = useAppStore();
 
   // Adjust position to stay within viewport
   useEffect(() => {
@@ -81,9 +82,16 @@ export function FileContextMenu({
     onClose();
   };
 
-  const handleDiscard = () => {
-    if (window.confirm(`Are you sure you want to discard all changes in "${path}"?\nThis will revert the file to its state in HEAD and cannot be undone.`)) {
-      discardFileChanges(path);
+  const handleDiscard = async () => {
+    const ok = await confirm({
+      title: 'Discard Changes',
+      message: `Are you sure you want to discard all changes in "${path}"? This action cannot be undone.`,
+      confirmLabel: 'Discard',
+      variant: 'danger'
+    });
+    
+    if (ok) {
+      await discardFileChanges(path);
       onClose();
     }
   };
@@ -126,13 +134,24 @@ export function FileContextMenu({
       action: async () => {
         if (!shortOid || !commitMessage) return;
         onClose();
-        await refreshActiveRepoStatus();
-        setConfirmRestoreFile({
-          path,
-          commitOid,
-          shortOid,
-          commitMessage,
+        
+        const ok = await confirm({
+          title: 'Restore File',
+          message: `Restore "${path}" to version from commit?`,
+          detail: (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-blue-400 font-mono font-bold">{shortOid}</span>
+              <span className="text-[#8b949e] italic truncate">"{commitMessage}"</span>
+            </div>
+          ),
+          confirmLabel: 'Restore',
+          variant: 'warning'
         });
+
+        if (ok) {
+          await restoreFileFromCommit(commitOid, path);
+          await refreshActiveRepoStatus();
+        }
       }
     }, { id: 'sep-restore', separator: true }] : []),
     {
