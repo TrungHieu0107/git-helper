@@ -1,80 +1,77 @@
-# User Flow & Interaction Map
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Documenting Git Reset and File Restore flows.
+# User Flows
+## Version: 3.1.0
+## Last updated: 2026-04-21 – Major feature workflows and state transitions.
 ## Project: GitKit
 
-This document maps user actions in the UI to their corresponding Tauri commands and state updates.
+This document maps user interactions to state changes and backend operations.
 
-## 1. Git Reset Workflow
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant G as CommitGraph
-    participant M as CommitContextMenu
-    participant D as ResetCommitDialog
-    participant T as Tauri (repo:reset_to_commit)
-    participant S as Zustand Store
-
-    U->>G: Right-Click Commit
-    G->>M: Show Context Menu
-    U->>M: Click "Reset to this commit..."
-    M->>S: setResetToCommitTarget(commit)
-    S->>D: Render ResetCommitDialog
-    U->>D: Select Mode (Soft/Mixed/Hard)
-    D->>T: Invoke reset_to_commit(oid, mode)
-    T-->>D: Result (commits_rewound)
-    D->>S: setResetToCommitTarget(null)
-    S->>S: refreshActiveRepoStatus + refreshLog
-```
-
-## 2. File Restore Workflow
+## Opening a Repository
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant C as CommitDetailPanel
-    participant M as FileContextMenu
-    participant A as RestoreFileAlert
-    participant T as Tauri (repo:restore_file_from_commit)
+    participant User
+    participant Welcome as WelcomeScreen
+    participant Store as Zustand Store
+    participant Repo as repo.ts
+    participant Backend as Rust Backend
 
-    U->>C: Right-Click File in Commit
-    C->>M: Show Context Menu
-    U->>M: Click "Restore File from This Version"
-    M->>A: Open Alert (setConfirmRestoreFile)
-    U->>A: Click "Restore File"
-    A->>T: Invoke restore_file_from_commit(oid, path)
-    T-->>A: Success
+    User->>Welcome: Click "Open Local Repository"
+    Welcome->>Repo: open_repo_dialog()
+    Repo->>Backend: tauri-plugin-dialog: open()
+    Backend-->>Repo: returns path
+    Repo->>Backend: invoke('open_repo', { path })
+    Backend-->>Repo: returns RepoInfo
+    Repo->>Store: setRepoPath(path)
+    Store->>Store: setActiveTabId(path)
+    Repo->>Repo: refreshActiveRepoStatus()
+    Repo->>Store: setRepoInfo(info)
 ```
 
-## 3. Pull Strategy Workflow
+## Committing Changes
 
 ```mermaid
 flowchart TD
-    Click[Click Pull Split-Button] --> Menu[Show FF / Merge / Rebase]
-    Menu --> Selected[User selects Strategy]
-    Selected --> Cmd[Tauri: remote:pull_remote]
-    Cmd --> Res{Result}
-    Res -- Success --> Done[Reload Log & Status]
-    Res -- Conflict --> Conflict[Show Conflict Editor]
+    A[User types commit message] --> B[User clicks 'Commit']
+    B --> C{Any staged files?}
+    C -- No --> D[Show Toast: No staged files]
+    C -- Yes --> E[Call commit_changes message]
+    E --> F[invoke 'create_commit']
+    F --> G[Rust: git2 commit]
+    G --> H[Update Log & Status]
+    H --> I[Clear commit message area]
 ```
 
-## 4. Interaction Mapping
+## Switching Branches
 
-| UI Action | Trigger Component | Tauri Command | Store Update |
-|---|---|---|---|
-| Reset to Commit | `CommitContextMenu` | `reset_to_commit` | `resetToCommitTarget`, `commitLog` |
-| Restore File | `FileContextMenu` | `restore_file_from_commit` | `repoStatus` |
-| Stage File | `RightPanel` | `stage_file` | `stagedFiles`, `unstagedFiles` |
-| Safe Checkout | `Sidebar` | `safe_checkout` | `activeBranch`, `commitLog` |
-| Cherry-pick | `CommitContextMenu` | `cherry_pick_commit` | `cherryPickState` |
-| Save Stash | `TopToolbar` | `stash_save_advanced` | `stashEntries` |
-| Fetch All | `TopToolbar` | `fetch_all_remotes` | `repoStatus`, `commitLog` |
+```mermaid
+flowchart TD
+    Start[User double-clicks branch] --> Check[safe_checkout validation]
+    Check --> Result{Action Result}
+    Result -- Clean --> Checkout[invoke 'checkout_branch']
+    Result -- DirtyNoConflict --> Checkout
+    Result -- DirtyWithConflict --> Alert[Show ForceCheckoutAlert]
+    Alert -- Stash & Switch --> Stash[invoke 'force_checkout_confirm_with_stash']
+    Alert -- Force Switch --> Force[invoke 'force_checkout_from_origin']
+    Result -- AlreadyOn --> Toast[Show Toast: Already on branch]
+```
 
-## 5. View States Logic
+## Conflict Resolution Workflow
 
-- **`activeTabId === 'home'`**: Shows `WelcomeScreen`.
-- **`resetToCommitTarget !== null`**: Overlays `ResetCommitDialog`.
-- **`showFileHistoryModal === true`**: Overlays `FileHistoryModal`.
-- **`selectedDiff !== null`**: Overlays `MainDiffView` (Monaco).
-- **`isLoadingRepo === true`**: Displays global linear progress/spinner.
+```mermaid
+sequenceDiagram
+    participant User
+    participant Tree as FileTree
+    participant Store as Zustand Store
+    participant Editor as ConflictEditorView
+    participant Backend as Rust Backend
+
+    User->>Tree: Click conflicted file (!)
+    Tree->>Store: openConflictEditor(path, mode)
+    Store->>Editor: Render Monaco Merge Editor
+    Editor->>Backend: invoke('get_conflict_diff', { path })
+    Backend-->>Editor: returns Ours, Base, Theirs
+    User->>Editor: Resolve hunks
+    User->>Editor: Click 'Accept Solution'
+    Editor->>Backend: invoke('resolve_conflict_file', { path, content })
+    Backend-->>Store: triggerRefresh()
+```

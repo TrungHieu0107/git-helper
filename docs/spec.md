@@ -1,82 +1,47 @@
-# Feature Specification
-## Version: 3.0.0
-## Last updated: 2026-04-21 – Added Design System and UI Architecture details.
+# Technical Specification
+## Version: 3.1.0
+## Last updated: 2026-04-21 – Feature specifications and implementation status.
 ## Project: GitKit
 
-This document outlines the implemented features of GitKit, detailing their technical mechanics and edge case handling.
+GitKit provides a robust set of Git features focused on developer productivity and visual clarity.
 
-## Core Feature Areas
+## Feature Implementation Status
 
-### 1. Repository Management
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **Discovery**: Uses `git2::Repository::discover` to locate the `.git` directory.
-    - **Auto-Refresh**: Listens for window focus events to trigger `refreshActiveRepoStatus()`.
-    - **Persistence**: Saves active workspace state (open tabs, last repo) to `app_state.json`.
+### Core Repository Management
+- **Repository Initialization**: `[Implemented]` - Detecting and opening existing git repositories via [repo.ts](file:///d:/learn/git-helper/src/lib/repo.ts).
+- **Recent Repositories**: `[Implemented]` - Persistent list of previously opened repositories with "Last Opened" timestamps.
+- **State Restoration**: `[Implemented]` - Automatically restores active tabs, stash settings, and UI preferences on startup.
 
-### 2. Commit Graph
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **Layout Engine**: Rust-based engine performs topological sorting and calculates lane occupancy for Manhattan routing.
-    - **Virtualization**: Uses `@tanstack/react-virtual` to render only visible nodes, supporting repositories with 10k+ commits.
-    - **Active Lineage**: Highlights parent-child relationships for the current branch using `Revwalk`.
+### Visual Commit Graph
+- **Manhattan Routing**: `[Implemented]` - Curvy SVG-based edge routing to visualize complex branch topologies in [CommitGraph.tsx](file:///d:/learn/git-helper/src/components/CommitGraph.tsx).
+- **Virtualized Rendering**: `[Implemented]` - High-performance list capable of handling thousands of commits using `@tanstack/react-virtual`.
+- **Branch/Tag Badges**: `[Implemented]` - Interactive badges with context menus for checkout and management.
+- **WIP Node**: `[Implemented]` - Virtual node representing the current working tree state, dynamically connected to HEAD.
 
-### 3. Git Reset (new in v2.9.0)
-- **Status**: `[Implemented]`
-- **Modes**:
-    - `--soft`: Moves HEAD, preserves index (staged) and working tree.
-    - `--mixed`: Moves HEAD, resets index, preserves working tree (unstaged).
-    - `--hard`: Moves HEAD, resets index and working tree (destructive).
-- **Guards**:
-    - **Detached HEAD**: Explicitly blocked to prevent history loss.
-    - **Hard Reset Warning**: UI triggers a destructive action banner if the repository is dirty.
-    - **Reachability**: (Fixed in v2.9.2) Allows resetting to any valid commit, but provides distance info only if reachable from HEAD.
+### Working Tree & Staging
+- **Staging Management**: `[Implemented]` - Individual file staging/unstaging and "Stage All" / "Unstage All" functionality.
+- **Diff Comparison**: `[Implemented]` - Real-time diffs using Monaco Editor with side-by-side and inline modes in [MainDiffView.tsx](file:///d:/learn/git-helper/src/components/MainDiffView.tsx).
+- **Discard Changes**: `[Implemented]` - Safe discarding of file changes with interactive confirmation dialogs.
 
-### 4. Branch Management
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **Safe Checkout**: Performs a dry-run checkout to detect conflicts before moving HEAD.
-    - **Remote Tracking**: Automatically maps remote refs to local tracking branches on checkout.
+### Advanced Git Operations
+- **Safe Checkout**: `[Implemented]` - Pre-checkout validation that detects local conflicts and prompts for stashing or discarding in [ForceCheckoutAlert.tsx](file:///d:/learn/git-helper/src/components/ForceCheckoutAlert.tsx).
+- **Cherry-Picking**: `[Implemented]` - Support for cherry-picking single or multiple commits with a dedicated progress banner and conflict resolution workflow.
+- **Stash Lifecycle**: `[Implemented]` - Stash Save (with untracked options), Apply, Pop, and Drop directly from the sidebar.
+- **Conflict Resolution**: `[Implemented]` - Specialized [ConflictEditorView.tsx](file:///d:/learn/git-helper/src/components/ConflictEditorView.tsx) that automatically routes conflicts from Merge, Rebase, or Cherry-pick operations.
 
-### 5. File History & Operations
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **File Log**: Traverses commit history filtered by pathspec.
-    - **Restore File**: Selective checkout of a file blob from a historical commit, handling parent directory creation and CRLF conversion.
-    - **Encoding Pipeline**: Automatic charset detection using BOM and `chardetng` statistical models.
+## Technical Constraints & Edge Cases
 
-### 6. Remote Operations
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **Pull Strategies**: Supports `Fast-Forward Only`, `Merge`, and `Rebase`.
-    - **Safe Push**: Implements `--force-with-lease` for amended commits and automatic upstream resolution.
+### IPC Performance
+- Large diffs are truncated or streamed to prevent IPC payload limits.
+- Commit logs are fetched in chunks of 100 to maintain frontend responsiveness.
 
-### 7. Conflict Routing & Editor (updated in v2.10.0)
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **Source Detection**: Backend scans `.git` metadata to identify conflict sources (Merge, Rebase, Cherry-Pick, or Standalone).
-    - **Routing**: Right Panel intercepts clicks on conflicted files (except `DD`) to open the Conflict Editor.
-    - **Editor**: Mode-aware Monaco view with context-sensitive actions:
-        - **Merge**: Abort/Continue (reads `.git/MERGE_MSG`).
-        - **Rebase**: Abort/Continue (with `GIT_EDITOR` bypass).
-        - **Cherry-Pick**: Abort/Continue/Commit.
-    - **State Cleanup**: `refreshActiveRepoStatus` automatically closes the editor if the conflict is resolved externally.
+### Conflict Detection
+- The app detects `MERGE_HEAD`, `REBASE_HEAD`, and `CHERRY_PICK_HEAD` to determine the current repository state and adjust the UI accordingly.
 
-### 8. Stash Management
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **Advanced Save**: Supports "Unstaged Only" stashing and custom messages.
-    - **Lifecycle**: Pop, Apply, and Drop operations with graph integration.
+### Encoding
+- Non-UTF8 files are detected using `chardetng` in the Rust backend and handled via `encoding_rs` to ensure correct rendering in the Monaco editor.
 
-### 9. Design System & UI Library (new in v3.0.0)
-- **Status**: `[Implemented]`
-- **Mechanics**:
-    - **HSL Tokenization**: All colors are defined as HSL components, allowing for easy theme shifting and brand consistency.
-    - **Component Primitives**: A standardized library in `src/components/ui/` provides atom-level components (`Button`, `Badge`, `Input`, `Card`) with consistent behavior and styles.
-    - **Glassmorphism**: UI surfaces utilize backdrop blurring and subtle semi-transparent backgrounds to create a "premium" depth effect.
-    - **Modularization**: Complex UI panels are broken into smaller, decoupled sub-modules, facilitating easier maintenance and reducing the cognitive load for developers.
-
-- **Dirty Tree during Reset**: Hard reset is guarded by a confirmation dialog.
-- **Detached HEAD Safety**: Reset is blocked to prevent accidental state loss.
-- **Binary Files during Restore**: Detection logic prevents trying to decode binary blobs as text.
-- **Long Pathnames on Windows**: Path normalization ensures compatibility with system reveal commands.
+## Planned Features
+- **Partial Staging**: `[Planned]` - Staging individual hunks or lines from a file.
+- **Interactive Rebase UI**: `[Planned]` - Drag-and-drop commit reordering and squashing.
+- **Git Hooks Integration**: `[Planned]` - Visual feedback and management of pre-commit and post-commit hooks.

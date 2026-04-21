@@ -1,6 +1,6 @@
 # Bug Registry
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Documenting Branch Dropdown hover fix.
+## Version: 3.1.0
+## Last updated: 2026-04-21 – Documenting Startup Black Screen fix.
 ## Project: GitKit
 
 | ID | Title | Severity | Status | Fixed In |
