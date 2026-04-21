@@ -863,13 +863,17 @@ export async function saveCurrentState() {
 }
 
 export async function restoreAppState() {
+    console.log("[Repo] Restoring app state...");
     try {
         const state = await invoke<AppStateData>('get_app_state');
+        console.log("[Repo] Fetched app state from backend:", state);
+        
         if (state.tabs.length > 0) {
             useAppStore.setState({ repos: state.tabs });
         }
         
         if (state.active_tab) {
+            console.log("[Repo] Restoring active tab:", state.active_tab);
             await loadRepo(state.active_tab);
         } else {
             useAppStore.setState({ activeTabId: 'home' });
