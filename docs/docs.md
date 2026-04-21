@@ -1,6 +1,6 @@
 # Developer Documentation
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Documenting reset distance and encoding logic.
+## Version: 3.0.0
+## Last updated: 2026-04-21 – Documenting modular architecture and UI library.
 ## Project: GitKit
 
 This guide explains how to set up, build, and extend the GitKit project, with deep dives into non-obvious design patterns.
@@ -48,3 +48,21 @@ When opening a file, the `get_file_contents` command:
 
 - **`useAppStore` ( sliced Zustand)**: The store is modularized to prevent monolithic growth. Components should subscribe to specific slices to avoid unnecessary re-renders.
 - **`Manhattan Routing`**: SVG paths use a custom `roundedPath` utility in `CommitGraph.tsx` to convert stiff 90-degree lines into smooth, premium corners using SVG Arcs (`A`).
+
+## 4. UI Architecture & Design System
+
+### 4.1 UI Component Library (`src/components/ui/`)
+GitKit utilizes a set of shared UI primitives to ensure visual consistency and ease of maintenance. These components are built with standard CSS and React:
+- **Button**: Supports variants (primary, secondary, ghost, danger) and loading states.
+- **Badge**: Used for status labels, counts, and tags.
+- **Input**: Standardized input fields with label and error support.
+- **Card**: Container component with glassmorphic styling options.
+
+### 4.2 Modular Component Structure
+Large panels like the `RightPanel` and `Sidebar` are decomposed into specialized sub-components within their respective directories. This pattern:
+- Improves readability and testability.
+- Enables granular re-renders by isolating state to specific sub-modules.
+- Facilitates collaborative development on complex UI areas.
+
+### 4.3 Design Tokens
+Global styles in `src/index.css` define a set of HSL color tokens and spacing variables. Components should always use these variables (e.g., `var(--bg-glass)`, `var(--radius-md)`) rather than hardcoded values to support future themeability and maintain a unified aesthetic.

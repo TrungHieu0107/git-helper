@@ -1,13 +1,23 @@
 # Changelog
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Fixed Branch Dropdown hover interaction.
+## Version: 3.0.0
+## Last updated: 2026-04-21 – Major refactoring and UI/UX overhaul.
 ## Project: GitKit
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.10.1] - 2026-04-12
+## [3.0.0] - 2026-04-21
+### Added
+- **UI Component Library**: Created `src/components/ui` containing reusable primitives: `Button`, `Badge`, `Input`, and `Card`.
+- **Design System Tokens**: Introduced HSL-based color variables, unified spacing, and glassmorphic UI tokens in `index.css`.
+### Changed
+- **Architectural Overhaul**: Decomposed monolithic components into modular structures for better maintainability.
+  - `RightPanel.tsx` -> `src/components/RightPanel/` (Header, Tabs, FileList, FileTree, CommitArea).
+  - `Sidebar.tsx` -> `src/components/Sidebar/` (BranchTree, SectionHeader, Stashes).
+- **Modernized Aesthetics**: Applied a "premium" design overhaul with refined typography, smoother transitions, and unified surface colors.
+- **Improved Responsiveness**: Optimized layout behavior for different panel widths.
+
 ### Fixed
 - **Branch Dropdown & Graph Visibility (Optimal Fix)**: Resolved the conflict between dropdown accessibility and graph node visibility.
   - Implemented an **Optimal Layering Strategy**: Elevated the SVG graph layer to `z-10` while keeping rows at their natural stacking level.

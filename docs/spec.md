@@ -1,6 +1,6 @@
 # Feature Specification
-## Version: 2.10.1
-## Last updated: 2026-04-12 – Added Git Reset workflow details.
+## Version: 3.0.0
+## Last updated: 2026-04-21 – Added Design System and UI Architecture details.
 ## Project: GitKit
 
 This document outlines the implemented features of GitKit, detailing their technical mechanics and edge case handling.
@@ -68,7 +68,13 @@ This document outlines the implemented features of GitKit, detailing their techn
     - **Advanced Save**: Supports "Unstaged Only" stashing and custom messages.
     - **Lifecycle**: Pop, Apply, and Drop operations with graph integration.
 
-## Handled Edge Cases
+### 9. Design System & UI Library (new in v3.0.0)
+- **Status**: `[Implemented]`
+- **Mechanics**:
+    - **HSL Tokenization**: All colors are defined as HSL components, allowing for easy theme shifting and brand consistency.
+    - **Component Primitives**: A standardized library in `src/components/ui/` provides atom-level components (`Button`, `Badge`, `Input`, `Card`) with consistent behavior and styles.
+    - **Glassmorphism**: UI surfaces utilize backdrop blurring and subtle semi-transparent backgrounds to create a "premium" depth effect.
+    - **Modularization**: Complex UI panels are broken into smaller, decoupled sub-modules, facilitating easier maintenance and reducing the cognitive load for developers.
 
 - **Dirty Tree during Reset**: Hard reset is guarded by a confirmation dialog.
 - **Detached HEAD Safety**: Reset is blocked to prevent accidental state loss.

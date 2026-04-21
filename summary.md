@@ -1,18 +1,19 @@
 # Project Summary: GitKit
-## Version: 1.1.0
-## Last updated: 2026-04-20 – Performance optimization phase complete.
+## Version: 1.2.0
+## Last updated: 2026-04-21 – Refactoring & UI/UX modernization complete.
 ## Project: GitKit
 
 ### Status
 GitKit is a high-performance, cross-platform Git GUI built with Tauri 2 and React 19.
-The project just completed a major performance optimization phase, addressing 6 key bottlenecks across the Rust backend and React frontend.
+The major refactoring and UI/UX modernization phase is complete, resulting in a more modular architecture and a premium design system.
 
 ### Latest Changes
-- **Backend Optimization**: Implemented thread-local repository caching, paginated file history scanning, and intelligent stash metadata caching.
-- **Frontend Scalability**: Virtualized large file lists and added search performance safeguards.
-- **Code Quality**: Refactored imports, removed unused dependencies, and achieved zero-error `tsc` and `cargo check` status.
+- **Modular Architecture**: Decomposed monolithic `RightPanel` and `Sidebar` into specialized sub-components.
+- **UI Component Library**: Established a reusable primitive library in `src/components/ui/` (Button, Badge, Input, Card).
+- **Design System Modernization**: Implemented a unified HSL-based design system with glassmorphic elements and refined typography.
+- **Code Clean-up**: Improved maintainability by reducing component complexity and centralizing design tokens.
 
 ### Next Steps
-- Implement backend-side search for commits to further optimize large repository handling.
-- Add "Load more" functionality to the `FileHistoryModal` pagination UI.
-- Conduct a follow-up performance audit after these changes are integrated and tested.
+- Continue refining individual UI elements for maximum "wow" factor.
+- Monitor for any regressions following the major architectural shift.
+- Expand the UI library with more complex components (Modals, Dropdowns).

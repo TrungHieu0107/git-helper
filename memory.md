@@ -39,3 +39,9 @@
 - **Reason**: Polish codebase after performance audit fixes.
 - **Fix**: Consolidated imports in `mod.rs`, removed unused `Plus` icon in `Sidebar.tsx`, and verified clean build.
 - **Status**: Completed ✓
+
+### Refactoring & UI/UX Improvement (2026-04-21)
+- **Request**: Refactor and clean up code, improve UI for better user experience.
+- **Reason**: Enhance maintainability and elevate the application's aesthetic and usability.
+- **Status**: Completed. Modularized `RightPanel` and `Sidebar`, introduced UI primitives, and refined design tokens.
+- **2026-04-21 12:45**: Finalized all planned modularization tasks and verified UI consistency.
