@@ -757,6 +757,106 @@ pub fn reset_to_commit(repo_path: String, commit_oid: String, mode: ResetMode) -
     Ok(ResetResult { commits_rewound })
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+pub enum MergeResult {
+    AlreadyUpToDate,
+    FastForward { new_oid: String },
+    MergeCommit { merge_oid: String },
+    Conflict { conflicted_files: Vec<String> },
+}
+
+#[tauri::command]
+pub fn merge_branch(repo_path: String, branch_name: String) -> Result<MergeResult, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // 1. Validate repo state
+    let state = repo.state();
+    if state != RepositoryState::Clean {
+        return Err(format!("Cannot merge: repository is in a busy state ({:?}).", state));
+    }
+
+    // 2. Validate working tree is clean
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(false).include_ignored(false);
+    if let Ok(statuses) = repo.statuses(Some(&mut opts)) {
+        let has_changes = statuses.iter().any(|e| !e.status().is_empty());
+        if has_changes {
+            return Err("Working tree has uncommitted changes. Please commit or stash before merging.".to_string());
+        }
+    }
+
+    // 3. Resolve target branch OID
+    let target_oid = if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Local) {
+        branch.get().target().ok_or("Branch has no target")?
+    } else if let Ok(branch) = repo.find_branch(&branch_name, git2::BranchType::Remote) {
+        branch.get().target().ok_or("Remote branch has no target")?
+    } else if let Ok(obj) = repo.revparse_single(&branch_name) {
+        obj.id()
+    } else {
+        return Err(format!("Branch '{}' not found.", branch_name));
+    };
+
+    // 4. Get HEAD
+    let head = repo.head().map_err(|e| e.to_string())?;
+    let head_oid = head.target().ok_or("HEAD has no target")?;
+
+    // 5. Already up-to-date check
+    if head_oid == target_oid {
+        return Ok(MergeResult::AlreadyUpToDate);
+    }
+
+    let merge_base = repo.merge_base(head_oid, target_oid).map_err(|e| e.to_string())?;
+    if merge_base == target_oid {
+        return Ok(MergeResult::AlreadyUpToDate);
+    }
+
+    // 6. Execute merge via CLI (safer for merge commit creation)
+    let output = Command::new("git")
+        .args(["-C", &repo_path, "merge", &branch_name, "--no-edit"])
+        .output()
+        .map_err(|e| format!("Failed to execute git merge: {}", e))?;
+
+    if output.status.success() {
+        // Determine if it was a fast-forward or merge commit
+        let new_head = repo.head()
+            .ok()
+            .and_then(|h| h.target())
+            .map(|o| o.to_string())
+            .unwrap_or_default();
+
+        if merge_base == head_oid {
+            // Was fast-forward
+            Ok(MergeResult::FastForward { new_oid: new_head })
+        } else {
+            Ok(MergeResult::MergeCommit { merge_oid: new_head })
+        }
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        
+        // Check if it's a conflict
+        if stderr.contains("CONFLICT") || stderr.contains("Automatic merge failed") {
+            let index = repo.index().map_err(|e| e.to_string())?;
+            let mut conflicted_files = Vec::new();
+            
+            let mut seen = std::collections::HashSet::new();
+            for entry in index.iter() {
+                let stage = entry.flags >> 12 & 3;
+                if stage > 0 {
+                    let path = String::from_utf8_lossy(&entry.path).to_string();
+                    if seen.insert(path.clone()) {
+                        conflicted_files.push(path);
+                    }
+                }
+            }
+
+            Ok(MergeResult::Conflict { conflicted_files })
+        } else {
+            Err(format!("Merge failed: {}", stderr.trim()))
+        }
+    }
+}
+
 #[tauri::command]
 pub fn merge_abort(repo_path: String) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
@@ -832,3 +932,18 @@ pub fn rebase_continue(repo_path: String) -> Result<(), String> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn get_repo_state(repo_path: String) -> Result<String, String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let state = match repo.state() {
+        RepositoryState::Clean => "clean",
+        RepositoryState::Merge => "merge",
+        RepositoryState::CherryPick | RepositoryState::CherryPickSequence => "cherry_pick",
+        RepositoryState::Rebase | RepositoryState::RebaseInteractive | 
+        RepositoryState::RebaseMerge => "rebase",
+        _ => "other",
+    };
+    Ok(state.to_string())
+}
+
