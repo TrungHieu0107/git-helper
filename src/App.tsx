@@ -42,13 +42,11 @@ export function App() {
 
   useEffect(() => {
     const init = async () => {
-      console.log("[App] Starting initialization...");
       setupGlobalErrorHandlers();
       try {
         await restoreAppState();
-        console.log("[App] State restoration complete.");
       } catch (err) {
-        console.error("[App] State restoration failed:", err);
+        handleError(err, 'App Initialization');
       } finally {
         setIsInitializing(false);
       }

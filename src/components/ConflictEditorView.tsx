@@ -52,19 +52,25 @@ export function ConflictEditorView() {
   // Set the initial result content natively so we can keep it uncontrolled but reset on file change
   useEffect(() => {
     if (parsed && resultEditorRef.current && monaco) {
-      const editor = resultEditorRef.current;
-      editor.setValue(parsed.mergedBase);
-      
-      // Hide conflict marker lines for a cleaner "smart" look
-      const hiddenRanges = parsed.hunks.flatMap(hunk => [
-        new monaco.Range(hunk.markerStartLine, 1, hunk.markerStartLine, 1),
-        new monaco.Range(hunk.dividerLine, 1, hunk.dividerLine, 1),
-        new monaco.Range(hunk.markerEndLine, 1, hunk.markerEndLine, 1)
-      ]);
-      editor.setHiddenAreas(hiddenRanges);
+      try {
+        const editor = resultEditorRef.current;
+        editor.setValue(parsed.mergedBase);
+        
+        // Hide conflict marker lines for a cleaner "smart" look
+        if (typeof editor.setHiddenAreas === 'function') {
+          const hiddenRanges = parsed.hunks.flatMap(hunk => [
+            new monaco.Range(hunk.markerStartLine, 1, hunk.markerStartLine, 1),
+            new monaco.Range(hunk.dividerLine, 1, hunk.dividerLine, 1),
+            new monaco.Range(hunk.markerEndLine, 1, hunk.markerEndLine, 1)
+          ]);
+          editor.setHiddenAreas(hiddenRanges);
+        }
 
-      setRemainingConflicts(parsed.hunks.length);
-      setCurrentHunkIndex(0);
+        setRemainingConflicts(parsed.hunks.length);
+        setCurrentHunkIndex(0);
+      } catch (e) {
+        console.warn("Failed to initialize result editor hidden areas:", e);
+      }
     }
   }, [parsed, monaco]);
 
@@ -281,44 +287,46 @@ export function ConflictEditorView() {
   const refreshHiddenAreas = () => {
     if (!resultEditorRef.current || !parsed || !monaco) return;
     const editor = resultEditorRef.current;
-    const content = editor.getValue();
     
-    // Tìm lại tất cả các hunk chưa resolve trong content mới
-    const currentHunks = parsed.hunks.filter(h => content.includes(h.fullMarkerText));
-    
-    // Tính toán lại line numbers cho các hunk còn lại (vì lines đã thay đổi)
-    // Tuy nhiên, vì ta dùng setValue toàn bộ, cách đơn giản nhất là parse lại content
-    // Nhưng để hiệu năng cao, ta có thể dùng decorations để track.
-    // Hiện tại ta tạm thời ẩn lại dựa trên indexOf
-    
-    const lines = content.split(/\r?\n/);
-    const hiddenRanges: any[] = [];
-    
-    currentHunks.forEach(h => {
-      // Tìm dòng bắt đầu của marker này trong content hiện tại
-      const markerLines = h.fullMarkerText.split('\n');
-      const firstLineMarker = markerLines[0];
-      const lastLineMarker = markerLines[markerLines.length - 1];
+    if (typeof editor.setHiddenAreas !== 'function') return;
+
+    try {
+      const content = editor.getValue();
       
-      const startIdx = lines.findIndex(l => l.includes(firstLineMarker));
-      if (startIdx !== -1) {
-        hiddenRanges.push(new monaco.Range(startIdx + 1, 1, startIdx + 1, 1));
+      // Tìm lại tất cả các hunk chưa resolve trong content mới
+      const currentHunks = parsed.hunks.filter(h => content.includes(h.fullMarkerText));
+      
+      const lines = content.split(/\r?\n/);
+      const hiddenRanges: any[] = [];
+      
+      currentHunks.forEach(h => {
+        // Tìm dòng bắt đầu của marker này trong content hiện tại
+        const markerLines = h.fullMarkerText.split('\n');
+        const firstLineMarker = markerLines[0];
+        const lastLineMarker = markerLines[markerLines.length - 1];
         
-        // Tìm divider và end marker trong khối này
-        const endIdx = lines.slice(startIdx).findIndex(l => l.includes(lastLineMarker)) + startIdx;
-        if (endIdx !== -1) {
-          hiddenRanges.push(new monaco.Range(endIdx + 1, 1, endIdx + 1, 1));
+        const startIdx = lines.findIndex(l => l.includes(firstLineMarker));
+        if (startIdx !== -1) {
+          hiddenRanges.push(new monaco.Range(startIdx + 1, 1, startIdx + 1, 1));
           
-          // Tìm =======
-          const dividerIdx = lines.slice(startIdx, endIdx).findIndex(l => l.startsWith('=======')) + startIdx;
-          if (dividerIdx !== -1) {
-            hiddenRanges.push(new monaco.Range(dividerIdx + 1, 1, dividerIdx + 1, 1));
+          // Tìm divider và end marker trong khối này
+          const endIdx = lines.slice(startIdx).findIndex(l => l.includes(lastLineMarker)) + startIdx;
+          if (endIdx !== -1) {
+            hiddenRanges.push(new monaco.Range(endIdx + 1, 1, endIdx + 1, 1));
+            
+            // Tìm =======
+            const dividerIdx = lines.slice(startIdx, endIdx).findIndex(l => l.startsWith('=======')) + startIdx;
+            if (dividerIdx !== -1) {
+              hiddenRanges.push(new monaco.Range(dividerIdx + 1, 1, dividerIdx + 1, 1));
+            }
           }
         }
-      }
-    });
-    
-    editor.setHiddenAreas(hiddenRanges);
+      });
+      
+      editor.setHiddenAreas(hiddenRanges);
+    } catch (e) {
+      console.warn("Failed to refresh hidden areas:", e);
+    }
   };
 
   const useOurs = () => {
