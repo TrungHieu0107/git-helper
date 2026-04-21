@@ -11,6 +11,20 @@
     - `memory/preferences.md`: Created with full user preferences (language, UI/UX design, architecture, code style, workflow, tools) derived from 12+ conversation sessions.
 - **Status**: Completed ✓
 
+### [2026-04-21] — Merge Branch Implementation
+- **Issue**: Missing core "Merge Branch" functionality in the GUI.
+- **Changes**:
+  - **2026-04-21**: Unified Git conflict synchronization.
+  - Added `get_repo_state` to Rust backend to expose native `RepositoryState`.
+  - Refactored `loadRepo` to use backend state for robust conflict detection.
+  - Unified `CherryPickSlice` and `UISlice` to handle Merge/Cherry-pick/Rebase conflicts via a single state machine.
+  - Refactored `MergeBanner` to be context-aware.
+  - **2026-04-21**: Implemented **Merge Branch** feature.
+  - Added `merge_branch`, `merge_abort`, `merge_continue` commands.
+  - Updated `CommitContextMenu` with dynamic merge labels.
+    - **Stability**: Fixed TypeScript errors in `ResetCommitDialog` and `RightPanel` related to store type changes.
+- **Status**: Completed & Verified ✓
+
 ### [2026-04-21] — Final Blank Screen Resolution
 - **Issue**: Persistent black screen despite fixing initial startup logic.
 - **Root Cause**: `ErrorBoundary` component was incorrectly attempting to render `this.children` instead of `this.props.children`, resulting in an empty render of the entire application tree.
