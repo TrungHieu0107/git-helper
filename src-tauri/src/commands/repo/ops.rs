@@ -541,8 +541,13 @@ pub fn force_checkout_from_origin(repo_path: String, branch_name: String) -> Res
         return Ok(ForceCheckoutResult::NotOnBranch);
     }
 
-    // 2. Resolve origin/{branch_name}
-    let remote_ref_name = format!("origin/{}", branch_name);
+    // 2. Resolve origin/{branch_name} and local name
+    let (remote_ref_name, local_branch_name) = if branch_name.starts_with("origin/") {
+        (branch_name.clone(), branch_name.strip_prefix("origin/").unwrap().to_string())
+    } else {
+        (format!("origin/{}", branch_name), branch_name.clone())
+    };
+
     let remote_branch = match repo.find_branch(&remote_ref_name, git2::BranchType::Remote) {
         Ok(b) => b,
         Err(_) => return Ok(ForceCheckoutResult::NoRemoteRef),
@@ -558,8 +563,7 @@ pub fn force_checkout_from_origin(repo_path: String, branch_name: String) -> Res
 
     // 4. Determine if we are force-resetting the current branch
     let head = repo.head().map_err(|e| e.to_string())?;
-    let is_current = head.shorthand() == Some(&branch_name);
-
+    let is_current = head.shorthand() == Some(&local_branch_name);
     if is_current {
         // Force reset current branch (updates ref + workdir)
         repo.reset(&remote_obj, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
@@ -567,7 +571,7 @@ pub fn force_checkout_from_origin(repo_path: String, branch_name: String) -> Res
         // Move a different branch ref to the remote's OID (force=true to avoid "already exists")
         let remote_commit = remote_obj.as_commit()
             .ok_or("Remote object is not a commit")?;
-        repo.branch(&branch_name, remote_commit, true).map_err(|e| e.to_string())?;
+        repo.branch(&local_branch_name, remote_commit, true).map_err(|e| e.to_string())?;
     }
     
     Ok(ForceCheckoutResult::Clean)
@@ -585,7 +589,12 @@ pub fn force_checkout_confirm_with_stash(repo_path: String, branch_name: String)
     
     // 2. Resolve origin/{branch_name} and reset
     {
-        let remote_ref_name = format!("origin/{}", branch_name);
+        let (remote_ref_name, local_branch_name) = if branch_name.starts_with("origin/") {
+            (branch_name.clone(), branch_name.strip_prefix("origin/").unwrap().to_string())
+        } else {
+            (format!("origin/{}", branch_name), branch_name.clone())
+        };
+
         let remote_branch = match repo.find_branch(&remote_ref_name, git2::BranchType::Remote) {
             Ok(b) => b,
             Err(_) => return Ok(ForceCheckoutResult::NoRemoteRef),
@@ -594,14 +603,13 @@ pub fn force_checkout_confirm_with_stash(repo_path: String, branch_name: String)
         let remote_obj = repo.find_object(remote_oid, None).map_err(|e| e.to_string())?;
         
         let head = repo.head().map_err(|e| e.to_string())?;
-        let is_current = head.shorthand() == Some(&branch_name);
-
+        let is_current = head.shorthand() == Some(&local_branch_name);
         if is_current {
             repo.reset(&remote_obj, git2::ResetType::Hard, None).map_err(|e| e.to_string())?;
         } else {
             let remote_commit = remote_obj.as_commit()
                 .ok_or("Remote object is not a commit")?;
-            repo.branch(&branch_name, remote_commit, true).map_err(|e| e.to_string())?;
+            repo.branch(&local_branch_name, remote_commit, true).map_err(|e| e.to_string())?;
         }
     }
     // remote_branch and remote_obj are dropped here, releasing the borrow on repo
