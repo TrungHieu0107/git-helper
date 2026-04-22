@@ -100,21 +100,8 @@ pub async fn pull_remote(
     let head = repo.head().map_err(|e| e.to_string())?;
     let branch_name = head.shorthand().ok_or("HEAD is not a branch")?;
 
-    // 2. Pre-flight: Check dirty working tree (Block unstaged, allow staged/untracked)
-    let statuses = repo.statuses(None).map_err(|e| e.to_string())?;
-    let has_unstaged = statuses.iter().any(|s| {
-        let status = s.status();
-        status.intersects(
-            git2::Status::WT_MODIFIED
-                | git2::Status::WT_DELETED
-                | git2::Status::WT_RENAMED
-                | git2::Status::WT_TYPECHANGE,
-        )
-    });
-
-    if has_unstaged {
-        return Err("Cannot pull: you have unstaged changes. Please stash or commit them first.".to_string());
-    }
+    // 2. Pre-flight: Check dirty working tree (Block unstaged AND staged changes)
+    check_working_tree_clean(&repo)?;
 
     // 3. Fetch
     let mut remote_obj = repo.find_remote(&remote).map_err(|e| e.to_string())?;
@@ -195,22 +182,38 @@ fn fast_forward(repo: &Repository, fetch_head: &git2::Reference, branch_name: &s
 }
 
 fn perform_merge(repo: &Repository, annotated: &AnnotatedCommit, branch_name: &str) -> Result<String, String> {
-    repo.merge(&[annotated], None, None).map_err(|e| e.to_string())?;
+    // Check clean state TRƯỚC khi gọi repo.merge()
+    // Đây là safety net thứ 2, phòng race condition
+    check_working_tree_clean(repo)?;
+
+    // Attempt merge — catch error cụ thể thay vì propagate raw
+    repo.merge(&[annotated], None, None).map_err(|e| {
+        // libgit2 error code -13 = GIT_EUNCOMMITTED
+        // class 22 = GIT_ERROR_MERGE
+        match (e.class(), e.code()) {
+            (git2::ErrorClass::Merge, git2::ErrorCode::Conflict) => {
+                format!(
+                    "Pulling changes...: {} uncommitted change(s) would be overwritten by merge; \
+                     please commit or stash before pulling.",
+                    // Cố gắng đếm số file conflict nếu có thể
+                    repo.index()
+                        .map(|i| i.len())
+                        .unwrap_or(1)
+                )
+            }
+            _ => format!("Merge failed: {}", e.message()),
+        }
+    })?;
     
-    // Check for conflicts
-    let index = repo.index().map_err(|e| e.to_string())?;
+    // Check for git conflicts
+    let mut index = repo.index().map_err(|e| e.to_string())?;
     if index.has_conflicts() {
-        // Cleanup merge state before returning error?
-        // Actually, git2 merge leaves the repo in MERGING state. 
-        // We should let the user resolve conflicts if we had a conflict UI, 
-        // but for now our plan says "return Err with conflicted files".
-        // Let's abort the merge for safety if we don't support conflict resolution here.
-        repo.cleanup_state().map_err(|e| e.to_string())?;
-        return Err("Merge resulted in conflicts. Operation aborted for safety.".to_string());
+        // KHÔNG cleanup_state() ở đây — giữ MERGING state
+        // để frontend có thể mở ConflictEditorView
+        return Err("MERGE_CONFLICT".to_string()); // sentinel value cho frontend
     }
 
     // Write tree and create merge commit
-    let mut index = repo.index().map_err(|e| e.to_string())?;
     let tree_id = index.write_tree().map_err(|e| e.to_string())?;
     let tree = repo.find_tree(tree_id).map_err(|e| e.to_string())?;
     
