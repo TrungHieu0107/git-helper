@@ -418,8 +418,11 @@ export async function pullRepo(strategy?: PullStrategy) {
   if (!path) return;
   
   const pullStrategy = strategy || state.pullStrategy;
+  const store = useAppStore.getState();
   
-  await withLoading(async () => {
+  store.setIsProcessing(true, "Pulling changes...");
+  
+  try {
     const result = await invoke<PullResult>('pull_remote', { 
       repoPath: path, 
       remote: 'origin',
@@ -442,7 +445,22 @@ export async function pullRepo(strategy?: PullStrategy) {
         toast.success(`Rebased successfully.`);
         break;
     }
-  }, "Pulling changes...", 800);
+  } catch (error: unknown) {
+    const msg = String(error);
+    if (msg === "MERGE_CONFLICT") {
+      await loadRepo(path); // Must load repo to get the conflicted file statuses
+      const fileStatuses = await invoke<FileStatus[]>('get_status', { repoPath: path });
+      const conflictFiles = fileStatuses.filter(f => f.status === 'conflicted');
+      if (conflictFiles.length > 0) {
+          useAppStore.getState().openConflictEditor(conflictFiles[0].path, 'Merge');
+      }
+      toast.info("Pull resulted in conflicts. Please resolve them.");
+    } else {
+      toast.error(msg);
+    }
+  } finally {
+    store.setIsProcessing(false);
+  }
 }
 
 
