@@ -1,6 +1,5 @@
 import { useAppStore } from "../store";
-import { dropStash } from "../lib/repo";
-import { AlertCircle, AlertTriangle, Trash2, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function StashAlerts() {

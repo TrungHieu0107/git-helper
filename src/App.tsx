@@ -20,7 +20,7 @@ import { ToastContainer } from "./components/ToastContainer";
 import { FileHistoryModal } from "./components/FileHistoryModal";
 import { ResetCommitDialog } from "./components/ResetCommitDialog";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
-import { setupGlobalErrorHandlers } from "./lib/error";
+import { setupGlobalErrorHandlers, handleError } from "./lib/error";
 import { LoadingOverlay } from "./components/ui/Loading";
 
 // App component

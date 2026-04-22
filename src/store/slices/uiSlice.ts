@@ -57,6 +57,8 @@ export interface UISlice {
   forceCheckoutTarget: string | null;
   forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
+  confirmCheckoutTo: string | null;
+
   showFileHistoryModal: boolean;
   fileHistoryPath: string | null;
 
@@ -109,6 +111,8 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
 
   forceCheckoutTarget: null,
   forceCheckoutPhase: 'idle',
+
+  confirmCheckoutTo: null,
 
   showFileHistoryModal: false,
   fileHistoryPath: null,

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Layers, CloudSync, Trash2, ChevronsDown } from "lucide-react";
-import { useAppStore, StashEntry } from "../../store";
+import { StashEntry } from "../../store";
 import { applyStash, popStash, dropStash } from "../../lib/repo";
 import { confirm } from "../ui/ConfirmDialog";
 

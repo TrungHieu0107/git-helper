@@ -150,7 +150,7 @@ export function parseToSegments(raw: string): ConflictSegment[] {
     const line = lines[i];
     if (line.startsWith('<<<<<<<')) {
       if (currentLines.length > 0) {
-        segments.push({ type: 'common', content: currentLines.join('\n') });
+        segments.push({ id: `common-${hunkCount++}`, type: 'common', content: currentLines.join('\n') });
         currentLines = [];
       }
       state = 'ours';
@@ -178,7 +178,7 @@ export function parseToSegments(raw: string): ConflictSegment[] {
   }
 
   if (currentLines.length > 0) {
-    segments.push({ type: 'common', content: currentLines.join('\n') });
+    segments.push({ id: `common-${hunkCount++}`, type: 'common', content: currentLines.join('\n') });
   }
 
   return segments;

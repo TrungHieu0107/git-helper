@@ -148,7 +148,7 @@ export function ConflictEditorView() {
     const editor = resultEditorRef.current;
     const widgets: any[] = [];
 
-    parsed.hunks.forEach((hunk, index) => {
+    parsed.hunks.forEach((hunk) => {
       const id = `widget-${hunk.id}`;
       const domNode = document.createElement('div');
       domNode.className = 'conflict-action-bar flex items-center gap-1 bg-[#161b22] border border-[#30363d] rounded shadow-lg p-1 z-50';

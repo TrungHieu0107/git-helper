@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AlertTriangle, Info, Trash2, LucideIcon, Check } from 'lucide-react';
 import { Button } from './Button';
 

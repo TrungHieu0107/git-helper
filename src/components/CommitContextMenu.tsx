@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, GitMerge, CloudSync, Trash2, ChevronsDown, RotateCcw } from 'lucide-react';
-import { CommitNode, useAppStore, StashEntry } from '../store';
+import { CommitNode, useAppStore } from '../store';
 import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, dropStash, findMergableBranch } from '../lib/repo';
 import { confirm } from './ui/ConfirmDialog';
 import { toast } from '../lib/toast';
