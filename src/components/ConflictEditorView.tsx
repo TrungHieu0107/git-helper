@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { 
-  resolveConflictFile, 
-  abortMerge, continueMerge, 
-  abortRebase, continueRebase, 
-  abortCherryPick, continueCherryPick 
+  resolveConflictFile 
 } from "../lib/repo";
 import { useAppStore } from "../store";
 import { toast } from "../lib/toast";
 import { Editor, useMonaco } from "@monaco-editor/react";
-import { X, CheckCircle, ArrowRight, ArrowLeft, Ban, Play } from "lucide-react";
+import { CheckCircle, ArrowRight, ArrowLeft, X } from "lucide-react";
 import { parseConflictMarkers, ParsedConflict, ConflictHunk } from "../lib/conflictParser";
 import { buildOursDecorations, buildTheirsDecorations, buildResultDecorations } from "../lib/monacoDecorations";
 
@@ -202,21 +199,15 @@ export function ConflictEditorView() {
     if (!resultEditorRef.current || !activeConflictFile) return;
     const resolvedContent = resultEditorRef.current.getValue();
     resolveConflictFile(activeRepoPath!, activeConflictFile, resolvedContent);
-  };
-
-  const handleAbort = () => {
-    switch (activeConflictMode) {
-      case 'Merge': abortMerge(); break;
-      case 'Rebase': abortRebase(); break;
-      case 'CherryPick': abortCherryPick(); break;
-    }
-  };
-
-  const handleContinue = () => {
-    switch (activeConflictMode) {
-      case 'Merge': continueMerge(); break;
-      case 'Rebase': continueRebase(); break;
-      case 'CherryPick': continueCherryPick(); break;
+    
+    // Auto populate commit message
+    const store = useAppStore.getState();
+    const currentMsg = store.commitMessage;
+    const resolvedText = `Resolved conflict in ${activeConflictFile}`;
+    if (!currentMsg) {
+      store.setCommitMessage(resolvedText);
+    } else if (!currentMsg.includes(activeConflictFile)) {
+      store.setCommitMessage(`${currentMsg}\n${resolvedText}`);
     }
   };
 
@@ -422,26 +413,6 @@ export function ConflictEditorView() {
             <CheckCircle size={14} className="relative z-10 drop-shadow-md" /> 
             <span className="relative z-10 drop-shadow-md">Mark Resolved</span>
           </button>
-
-          {activeConflictMode !== 'Standalone' && (
-            <>
-               <div className="w-px h-5 bg-[#30363d] mx-1"></div>
-               <button 
-                onClick={handleContinue}
-                title={`Continue ${activeConflictMode}`}
-                className="p-1.5 text-[#3fb950] hover:bg-[#3fb950]/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-[#3fb950]/30"
-              >
-                  <Play size={16} fill="currentColor" />
-              </button>
-              <button 
-                onClick={handleAbort}
-                title={`Abort ${activeConflictMode}`}
-                className="p-1.5 text-[#f85149] hover:bg-[#f85149]/10 rounded-md transition-all active:scale-95 border border-transparent hover:border-[#f85149]/30"
-              >
-                  <Ban size={16} />
-              </button>
-            </>
-          )}
 
           <button 
             onClick={closeView} 
