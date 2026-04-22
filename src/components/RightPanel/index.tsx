@@ -40,9 +40,7 @@ function buildTree(files: FileStatus[]): TreeNode {
 }
 
 export function RightPanel() {
-  const { stagedFiles, unstagedFiles, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath } = useAppStore();
-  const [message, setMessage] = useState('');
-  const [description, setDescription] = useState('');
+  const { stagedFiles, unstagedFiles, selectedCommitDetail, isLoadingCommitDetail, cherryPickState, cherryPickConflictFiles, selectedConflictFile, activeRepoPath, commitMessage: message, setCommitMessage: setMessage, commitDescription: description, setCommitDescription: setDescription } = useAppStore();
   const [amend, setAmend] = useState(false);
   const [headCommitInfo, setHeadCommitInfo] = useState<HeadCommitInfo | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('path');

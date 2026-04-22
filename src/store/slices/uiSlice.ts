@@ -74,6 +74,11 @@ export interface UISlice {
 
   setResetToCommitTarget: (target: CommitNode | null) => void;
 
+  commitMessage: string;
+  commitDescription: string;
+  setCommitMessage: (msg: string) => void;
+  setCommitDescription: (desc: string) => void;
+
   setIsProcessing: (isProcessing: boolean, label?: string | null) => void;
   setActiveTabId: (id: string) => void;
   setRepos: (repos: RepoMeta[]) => void;
@@ -131,6 +136,11 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setResetToCommitTarget: (target) => set(() => ({ resetToCommitTarget: target })),
   
   setMergeTarget: (branch) => set(() => ({ mergeTarget: branch })),
+
+  commitMessage: '',
+  commitDescription: '',
+  setCommitMessage: (msg) => set(() => ({ commitMessage: msg })),
+  setCommitDescription: (desc) => set(() => ({ commitDescription: desc })),
 
   setActiveTabId: (id) => set(() => ({ activeTabId: id })),
   setRepos: (repos) => set(() => ({ repos })),
