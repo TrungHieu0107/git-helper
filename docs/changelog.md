@@ -1,10 +1,31 @@
 # Changelog
-## Version: 3.1.0
-## Last updated: 2026-04-21 – Startup stabilization and major UI/UX overhaul.
+## Version: 3.4.0
+## Last updated: 2026-04-22 – High-Fidelity UI Modernization & Stability Hardening.
 ## Project: GitKit
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## [3.4.0] - 2026-04-22
+### Added
+- **High-Fidelity UI Modernization**: Massive refactor of core components (CommitGraph, TopToolbar, CommitRow, CommitDetailPanel) to a premium glassmorphic design system.
+- **Manhattan-routed Edges**: Optimized commit graph edge rendering for better visual clarity.
+- **Repository Search**: Integrated search and filter capabilities into the TopToolbar repository switcher.
+- **Window State Persistence**: Integration of `tauri-plugin-window-state` to remember application window size and position.
+
+### Fixed
+- **Architectural Stability**: Implemented app-wide null-safety hardening in rendering paths to prevent "Something went wrong" runtime crashes.
+- **Branch Dropdown Interactions**: Fixed z-index and hover persistence issues in virtualized rows using Framer Motion.
+
+## [3.3.0] - 2026-04-22
+### Added
+- **Atomic Dialog System**: Rebuilt all critical application dialogs (Create Branch, Merge, Stash, Reset, Upstream) into a cohesive glassmorphic atomic design system.
+- **Sophisticated Transitions**: Integrated `framer-motion` for smooth state transitions and professional entrance/exit animations.
+
+## [3.2.0] - 2026-04-22
+### Added
+- **Auto-Fetch**: Implemented background remote synchronization on app startup, repository opening, and tab switching.
+- **Silent Refresh**: Background fetch utility that updates the UI state without intrusive loading overlays.
 
 ## [3.1.0] - 2026-04-21
 ### Added

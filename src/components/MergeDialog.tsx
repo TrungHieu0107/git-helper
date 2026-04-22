@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store';
 import { mergeBranch } from '../lib/repo';
-import { GitMerge, AlertTriangle, ArrowRight, Info } from 'lucide-react';
+import { GitMerge, AlertTriangle, ArrowRight, Info, X } from 'lucide-react';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 export function MergeDialog() {
   const mergeTarget = useAppStore(s => s.mergeTarget);
@@ -25,119 +28,159 @@ export function MergeDialog() {
     return branches.find(b => b.name === mergeTarget);
   }, [mergeTarget, branches]);
 
-  if (!mergeTarget) return null;
-
   const isDirty = (repoStatus?.staged_count || 0) > 0 || (repoStatus?.unstaged_count || 0) > 0;
   const targetShortOid = targetBranchInfo?.last_commit_oid?.substring(0, 7) || '???';
 
   const handleConfirm = async () => {
     setIsMerging(true);
-    await mergeBranch(mergeTarget);
+    await mergeBranch(mergeTarget!);
     setIsMerging(false);
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
-      onClick={() => !isMerging && setMergeTarget(null)}
-    >
-      <div
-        className="bg-[#161b22] border border-[#30363d] rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-[#21262d] flex items-center gap-3 bg-[#0d1117]/50">
-          <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
-            <GitMerge size={18} />
-          </div>
-          <div>
-            <h2 className="text-[15px] font-semibold text-[#e6edf3]">Merge Branch</h2>
-            <p className="text-xs text-[#8b949e]">
-              Merge changes into <span className="text-blue-400 font-mono font-medium">{activeBranch || 'HEAD'}</span>
-            </p>
-          </div>
-        </div>
+    <AnimatePresence>
+      {mergeTarget && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !isMerging && setMergeTarget(null)}
+            className="absolute inset-0 bg-background/40 backdrop-blur-md"
+          />
 
-        <div className="p-5 flex flex-col gap-4">
-          {/* Visual merge flow */}
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-            <div className="flex items-center justify-center gap-3">
-              {/* Source branch */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="bg-[#21162e] text-[#a855f7] border border-[#a855f7]/30 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm">
-                  {mergeTarget}
-                </div>
-                <span className="text-[10px] font-mono text-[#6e7681]">{targetShortOid}</span>
-              </div>
-
-              {/* Arrow */}
-              <div className="flex flex-col items-center">
-                <ArrowRight size={20} className="text-[#3fb950]" />
-              </div>
-
-              {/* Target branch */}
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="bg-[#0b213f] text-[#388bfd] border border-[#388bfd]/30 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm ring-1 ring-[#388bfd]/20">
-                  {activeBranch || 'HEAD'}
-                </div>
-                <span className="text-[10px] font-mono text-[#6e7681]">current</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="flex items-start gap-2 px-1">
-            <Info size={14} className="text-[#8b949e] mt-0.5 shrink-0" />
-            <p className="text-xs text-[#8b949e] leading-relaxed">
-              This will merge all commits from <span className="text-[#a855f7] font-medium">{mergeTarget}</span> into your current branch.
-              If conflicts arise, you'll be prompted to resolve them.
-            </p>
-          </div>
-
-          {/* Commit preview */}
-          {targetBranchInfo && (
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-              <div className="text-[10px] uppercase tracking-wider text-[#484f58] font-bold mb-1">Latest Commit</div>
-              <div className="text-sm text-[#c9d1d9] truncate">{targetBranchInfo.last_commit_message || 'No message'}</div>
-            </div>
-          )}
-
-          {/* Dirty tree warning */}
-          {isDirty && (
-            <div className="px-3 py-2.5 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-              <AlertTriangle size={16} className="text-yellow-500 mt-0.5 shrink-0" />
-              <div className="flex flex-col gap-0.5">
-                <p className="text-xs font-semibold text-yellow-200">Uncommitted Changes</p>
-                <p className="text-[11px] text-yellow-100/80 leading-tight">
-                  You have uncommitted changes. Commit or stash them before merging to avoid issues.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-[#21262d] bg-[#0d1117]/50 flex justify-end gap-2">
-          <button
-            onClick={() => setMergeTarget(null)}
-            disabled={isMerging}
-            className="px-4 py-1.5 rounded-md text-sm font-medium text-[#c9d1d9] hover:bg-[#21262d] transition-colors disabled:opacity-50"
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={isMerging || isDirty}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-[#238636] text-white hover:bg-[#2ea043] transition-colors border border-[#2ea043]/40 flex items-center gap-2 disabled:opacity-50"
-          >
-            {isMerging ? (
-              <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Merging...</>
-            ) : (
-              <><GitMerge size={14} /> Merge</>
-            )}
-          </button>
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-border/30 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 rounded-xl bg-primary/10">
+                  <GitMerge size={20} className="text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-[17px] font-bold text-foreground tracking-tight">Merge Branch</h2>
+                  <p className="text-[12px] text-muted-foreground/60">
+                    Target: <span className="text-primary font-mono font-bold">{activeBranch || 'HEAD'}</span>
+                  </p>
+                </div>
+              </div>
+              {!isMerging && (
+                <Button variant="ghost" size="icon" onClick={() => setMergeTarget(null)} className="h-8 w-8 text-muted-foreground/40 hover:text-foreground">
+                  <X size={16} />
+                </Button>
+              )}
+            </div>
+
+            <div className="p-8 flex flex-col gap-8">
+              {/* Visual merge flow */}
+              <div className="bg-secondary/20 border border-border/30 rounded-2xl p-6 relative overflow-hidden group shadow-inner">
+                <div className="flex items-center justify-between gap-4 relative z-10">
+                  {/* Source branch */}
+                  <div className="flex flex-col items-center gap-2 flex-1">
+                    <Badge variant="secondary" className="bg-dracula-purple/10 text-dracula-purple border-dracula-purple/20 px-4 py-1.5 text-[13px] font-bold shadow-lg shadow-dracula-purple/5">
+                      {mergeTarget}
+                    </Badge>
+                    <span className="text-[10px] font-mono text-muted-foreground/60 font-bold uppercase tracking-widest">{targetShortOid}</span>
+                  </div>
+
+                  {/* Arrow */}
+                  <div className="flex flex-col items-center group-hover:scale-110 transition-transform duration-500">
+                    <div className="p-2 rounded-full bg-primary/10 border border-primary/20">
+                      <ArrowRight size={20} className="text-primary" />
+                    </div>
+                  </div>
+
+                  {/* Target branch */}
+                  <div className="flex flex-col items-center gap-2 flex-1">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-4 py-1.5 text-[13px] font-bold shadow-lg shadow-primary/5">
+                      {activeBranch || 'HEAD'}
+                    </Badge>
+                    <span className="text-[10px] font-mono text-muted-foreground/60 font-bold uppercase tracking-widest">Current</span>
+                  </div>
+                </div>
+                
+                {/* Background Decoration */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
+              </div>
+
+              {/* Info & Latest Commit */}
+              <div className="space-y-6">
+                <div className="flex items-start gap-4 px-1">
+                  <div className="p-1.5 rounded-lg bg-muted/10">
+                    <Info size={16} className="text-muted-foreground" />
+                  </div>
+                  <p className="text-[13px] text-muted-foreground/80 leading-relaxed font-medium">
+                    This will merge all commits from <span className="text-dracula-purple font-bold">{mergeTarget}</span> into your current branch.
+                    Conflicted files will be routed to the conflict editor.
+                  </p>
+                </div>
+
+                {targetBranchInfo && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-secondary/30 border border-border/40 rounded-xl p-4 flex flex-col gap-2"
+                  >
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-black">Latest Commit</span>
+                    <p className="text-[14px] text-foreground/80 font-medium line-clamp-2 leading-snug italic">
+                      "{targetBranchInfo.last_commit_message || 'No message'}"
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* Dirty tree warning */}
+                {isDirty && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="px-5 py-4 bg-dracula-orange/10 border border-dracula-orange/20 rounded-xl flex items-start gap-4 shadow-lg shadow-dracula-orange/5"
+                  >
+                    <div className="p-2 rounded-lg bg-dracula-orange/20">
+                      <AlertTriangle size={18} className="text-dracula-orange" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[14px] font-bold text-dracula-orange">Uncommitted Changes</p>
+                      <p className="text-[12px] text-dracula-orange/70 leading-relaxed font-medium">
+                        You have uncommitted changes. Please commit or stash them before merging to ensure a clean merge.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-5 border-t border-border/30 bg-secondary/10 flex justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setMergeTarget(null)}
+                disabled={isMerging}
+                className="px-5 font-bold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleConfirm}
+                disabled={isMerging || isDirty}
+                isLoading={isMerging}
+                leftIcon={!isMerging && <GitMerge size={16} />}
+                className="px-8 font-bold shadow-lg shadow-primary/20 min-w-[140px]"
+              >
+                Merge
+              </Button>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }

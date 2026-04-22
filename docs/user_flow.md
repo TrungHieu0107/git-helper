@@ -1,6 +1,6 @@
 # User Flows
-## Version: 3.1.0
-## Last updated: 2026-04-21 – Major feature workflows and state transitions.
+## Version: 3.4.0
+## Last updated: 2026-04-22 – High-Fidelity UI Modernization & Stability Hardening.
 ## Project: GitKit
 
 This document maps user interactions to state changes and backend operations.

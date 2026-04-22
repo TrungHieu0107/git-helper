@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from "./store";
-import { loadRepo, restoreAppState, refreshActiveRepoStatus } from "./lib/repo";
+import { loadRepo, restoreAppState, refreshActiveRepoStatus } from "./services/git/repoService";
+import { autoFetch } from "./services/git/repoService"; // Assuming autoFetch was in repoService or I should add it
 import { WelcomeScreen } from "./components/WelcomeScreen";
+import { SettingsView } from "./components/SettingsView";
 import { TopTabBar } from "./components/TopTabBar";
 import { TopToolbar } from "./components/TopToolbar";
 import { Sidebar } from "./components/Sidebar";
@@ -39,6 +41,11 @@ export function App() {
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isInitializing, setIsInitializing] = useState(true);
+  const fontSize = useAppStore(state => state.fontSize);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--app-font-size', `${fontSize}px`);
+  }, [fontSize]);
 
   useEffect(() => {
     const init = async () => {
@@ -55,7 +62,10 @@ export function App() {
 
     const unlistenDrop = listen('tauri://file-drop', async (event) => {
       const paths = event.payload as string[];
-      if (paths.length > 0) await loadRepo(paths[0]);
+      if (paths.length > 0) {
+        await loadRepo(paths[0]);
+        autoFetch(paths[0]);
+      }
     });
 
     const unlistenFocus = listen('focus-changed', () => {
@@ -76,9 +86,9 @@ export function App() {
   const renderMainContent = () => {
     if (isInitializing) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center bg-[#282c34] h-full">
+        <div className="flex-1 flex flex-col items-center justify-center bg-background h-full">
            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
               <span className="text-sm font-medium text-[#6e7681] animate-pulse">Initializing GitKit...</span>
            </div>
         </div>
@@ -87,6 +97,10 @@ export function App() {
 
     if (activeTabId === 'home') {
       return <WelcomeScreen />;
+    }
+
+    if (activeTabId === 'settings') {
+      return <SettingsView />;
     }
 
     return (
@@ -111,13 +125,13 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#282c34] text-[#a0a6b1] font-sans relative">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground font-sans relative">
       <TopTabBar />
       {renderMainContent()}
       
       {isLoadingRepo && (
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 pointer-events-auto">
-           <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin shadow-lg"></div>
+           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-lg"></div>
         </div>
       )}
 

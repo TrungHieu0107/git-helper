@@ -23,7 +23,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   return (
     <div 
-      className={`skeleton-shimmer bg-[#30363d] relative overflow-hidden ${className}`}
+      className={`skeleton-shimmer bg-secondary/40 relative overflow-hidden ${className}`}
       style={style}
     />
   );
@@ -52,18 +52,18 @@ export const Spinner: React.FC<SpinnerProps> = ({
   return (
     <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
       <div 
-        className={`${sizeMap[size]} border-t-blue-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(59,130,246,0.3)]`}
+        className={`${sizeMap[size]} border-t-dracula-cyan border-r-transparent border-b-dracula-cyan border-l-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(139,233,253,0.3)]`}
         style={{ borderColor: `${color} transparent ${color} transparent` } as any}
       />
-      {label && <span className="text-sm font-medium text-[#8b949e] animate-pulse">{label}</span>}
+      {label && <span className="text-sm font-medium text-muted-foreground animate-pulse">{label}</span>}
     </div>
   );
 };
 
 export const LoadingOverlay: React.FC<{ label?: string }> = ({ label }) => {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0d1117]/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-8 shadow-2xl flex flex-col items-center gap-4 scale-in-center">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-secondary/40 border border-border/30 rounded-xl p-8 shadow-2xl flex flex-col items-center gap-4 scale-in-center">
         <Spinner size="lg" label={label} />
       </div>
     </div>

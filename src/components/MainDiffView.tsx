@@ -1,10 +1,15 @@
 import { useRef, useState, useEffect } from "react";
 import { invoke } from '@tauri-apps/api/core';
 import { DiffEditor } from "@monaco-editor/react";
-import { X, Columns, AlignLeft, ArrowUp, ArrowDown } from "lucide-react";
+import { X, Columns, AlignLeft, ArrowUp, ArrowDown, FileCode, Binary, AlertCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { EncodingBadge } from "./EncodingBadge";
 import { useAppStore } from "../store";
 import { Spinner } from "./ui/Loading";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
+import { Separator } from "./ui/Separator";
+import { cn } from "../lib/utils";
 
 export interface MainDiffViewProps {
   path?: string;
@@ -14,17 +19,14 @@ export interface MainDiffViewProps {
   onClose?: () => void;
 }
 
-
-
 export function MainDiffView(props: MainDiffViewProps) {
   const store = useAppStore();
   
-  // Prioritize props over store for portability (Bug 4 mitigation)
   const path = props.path ?? store.selectedDiff?.path;
   const staged = props.staged ?? store.selectedDiff?.staged ?? false;
   const commitOid = props.commitOid ?? store.selectedDiff?.commitOid;
   
-  const { activeRepoPath, refreshTimestamp } = store;
+  const { activeRepoPath, refreshTimestamp, fontSize } = store;
 
   const [oldContent, setOldContent] = useState<string | null>(null);
   const [newContent, setNewContent] = useState<string | null>(null);
@@ -34,7 +36,6 @@ export function MainDiffView(props: MainDiffViewProps) {
   const [isSplitMode, setIsSplitMode] = useState<boolean>(true);
   const [isFullFile, setIsFullFile] = useState<boolean>(false);
   
-  // Encoding metadata
   const [detection, setDetection] = useState<{ encoding: string, confidence: number, hadBom: boolean }>({
     encoding: 'utf-8',
     confidence: 1.0,
@@ -56,7 +57,6 @@ export function MainDiffView(props: MainDiffViewProps) {
       setChanges(lineChanges);
       if (lineChanges.length > 0) {
         setCurrentChangeIndex(0);
-        // Auto-reveal first hunk on load
         if (lastSelectionRef.current !== null) {
           const change = lineChanges[0];
           const modEditor = editor.getModifiedEditor();
@@ -86,7 +86,6 @@ export function MainDiffView(props: MainDiffViewProps) {
     });
   };
 
-  // Force update editor options when toggle changes to ensure collapse works
   useEffect(() => {
     if (diffEditorRef.current) {
       diffEditorRef.current.updateOptions({
@@ -132,7 +131,6 @@ export function MainDiffView(props: MainDiffViewProps) {
     if (!path || !activeRepoPath) return;
 
     let isMounted = true;
-    
     const selectionKey = `${path}-${staged}-${commitOid}`;
     const isNewSelection = lastSelectionRef.current !== selectionKey;
     const isRefresh = !isNewSelection && prevTimestampRef.current !== refreshTimestamp;
@@ -140,7 +138,6 @@ export function MainDiffView(props: MainDiffViewProps) {
     lastSelectionRef.current = selectionKey;
     prevTimestampRef.current = refreshTimestamp;
 
-    // Reset force encoding on new file selection (Bug 4 mitigation)
     if (isNewSelection) {
       setForceEncoding(null);
     }
@@ -191,20 +188,25 @@ export function MainDiffView(props: MainDiffViewProps) {
     return () => { isMounted = false; };
   }, [path, staged, commitOid, activeRepoPath, forceEncoding, refreshTimestamp]);
 
-  // Handle local override from EncodingBadge
   const handleEncodingOverride = (enc: string) => {
     setForceEncoding(enc === 'auto' ? null : enc);
   };
 
-  // Cleanup effect
-
   useEffect(() => {
     return () => {
-      if (diffEditorRef.current) {
+      const editor = diffEditorRef.current;
+      if (editor) {
         try {
-          diffEditorRef.current.setModel(null);
-        } catch (e) {
-          console.warn("Monaco: Failed to detach models during cleanup", e);
+          // Retrieve models before detaching so we can dispose them manually
+          const model = editor.getModel();
+          editor.setModel(null);
+          // Dispose orphaned models to prevent memory leaks
+          if (model) {
+            model.original?.dispose();
+            model.modified?.dispose();
+          }
+        } catch (_) {
+          // Silently handle race condition with @monaco-editor/react internal cleanup
         }
         diffEditorRef.current = null;
       }
@@ -243,71 +245,92 @@ export function MainDiffView(props: MainDiffViewProps) {
   const language = getLanguage(extension);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative z-10 border-r border-[#30363d] overflow-hidden animate-in fade-in duration-200">
+    <div className="flex-1 flex flex-col min-w-0 bg-background relative z-10 border-r border-border overflow-hidden">
       
       {/* Diff Toolbar */}
-      <div className="h-[40px] px-4 shrink-0 flex items-center justify-between border-b border-[#30363d] bg-[#161b22]">
-        <div className="flex items-center gap-3 overflow-hidden text-[#8b949e]">
-          <span className="text-[13px] font-mono text-[#c9d1d9] truncate">
+      <motion.div 
+        initial={{ y: -10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="h-10 px-4 shrink-0 flex items-center justify-between border-b border-border bg-background/50 backdrop-blur-sm z-20"
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="p-1.5 rounded-md bg-secondary/50 text-muted-foreground">
+            <FileCode size={14} />
+          </div>
+          <span className="text-[13px] font-mono text-foreground font-medium truncate tracking-tight">
             {path}
           </span>
-          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#21262d] border border-[#30363d] uppercase">
+          <Badge variant="glass" className="h-5 px-1.5 font-mono text-[9px] border-none uppercase opacity-60">
             {commitOid ? `Commit ${commitOid.substring(0, 7)}` : staged ? 'Staged' : 'Unstaged'}
-          </span>
+          </Badge>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 ml-4">
+        <div className="flex items-center gap-2 shrink-0 ml-4">
           
-          <div className="flex items-center bg-[#21262d] rounded-md border border-[#30363d] p-0.5 mx-2 text-[10px] font-semibold text-[#8b949e] uppercase tracking-wider">
-            <button
+          <div className="flex items-center bg-secondary/30 rounded-lg border border-border/50 p-0.5">
+            <Button
+               variant="ghost"
+               size="xs"
                onClick={() => setIsFullFile(false)}
-               className={`px-2 py-1 rounded ${!isFullFile ? 'bg-[#30363d] text-white shadow-sm' : 'hover:text-[#c9d1d9] hover:bg-[#30363d] transition-colors'}`}
+               className={cn("h-6 px-2 text-[10px] uppercase font-bold tracking-wider", !isFullFile && "bg-background shadow-sm text-foreground")}
             >
                Hunks
-            </button>
-            <button
+            </Button>
+            <Button
+               variant="ghost"
+               size="xs"
                onClick={() => setIsFullFile(true)}
-               className={`px-2 py-1 rounded ${isFullFile ? 'bg-[#30363d] text-white shadow-sm' : 'hover:text-[#c9d1d9] hover:bg-[#30363d] transition-colors'}`}
+               className={cn("h-6 px-2 text-[10px] uppercase font-bold tracking-wider", isFullFile && "bg-background shadow-sm text-foreground")}
             >
                Full
-            </button>
+            </Button>
           </div>
 
-          <div className="flex items-center bg-[#21262d] rounded-md border border-[#30363d] p-0.5">
-            <button
+          <Separator orientation="vertical" className="h-4 mx-1 opacity-50" />
+
+          <div className="flex items-center bg-secondary/30 rounded-lg border border-border/50 p-0.5">
+            <Button
+               variant="ghost"
+               size="icon"
                onClick={previousChange}
                title="Previous Change"
-               className="p-1 rounded text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+               className="h-6 w-6 text-muted-foreground hover:text-foreground"
             >
-               <ArrowUp size={14} />
-            </button>
-            <span className="text-[10px] text-[#8b949e] min-w-[32px] text-center font-mono">
+               <ArrowUp size={12} />
+            </Button>
+            <span className="text-[10px] text-muted-foreground min-w-[32px] text-center font-mono font-bold opacity-60">
               {changes.length > 0 ? `${currentChangeIndex + 1}/${changes.length}` : '0/0'}
             </span>
-            <button
+            <Button
+               variant="ghost"
+               size="icon"
                onClick={nextChange}
                title="Next Change"
-               className="p-1 rounded text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+               className="h-6 w-6 text-muted-foreground hover:text-foreground"
             >
-               <ArrowDown size={14} />
-            </button>
+               <ArrowDown size={12} />
+            </Button>
           </div>
 
-          <div className="flex items-center bg-[#21262d] rounded-md border border-[#30363d] p-0.5">
-            <button
+          <div className="flex items-center bg-secondary/30 rounded-lg border border-border/50 p-0.5">
+            <Button
+               variant="ghost"
+               size="icon"
                onClick={() => setIsSplitMode(true)}
                title="Side-by-Side"
-               className={`p-1 rounded ${isSplitMode ? 'bg-[#30363d] text-white shadow-sm' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
+               className={cn("h-6 w-6 text-muted-foreground hover:text-foreground", isSplitMode && "bg-background shadow-sm text-primary")}
             >
-               <Columns size={14} />
-            </button>
-            <button
+               <Columns size={12} />
+            </Button>
+            <Button
+               variant="ghost"
+               size="icon"
                onClick={() => setIsSplitMode(false)}
                title="Inline"
-               className={`p-1 rounded ${!isSplitMode ? 'bg-[#30363d] text-white shadow-sm' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
+               className={cn("h-6 w-6 text-muted-foreground hover:text-foreground", !isSplitMode && "bg-background shadow-sm text-primary")}
             >
-               <AlignLeft size={14} />
-            </button>
+               <AlignLeft size={12} />
+            </Button>
           </div>
 
           <EncodingBadge 
@@ -319,78 +342,109 @@ export function MainDiffView(props: MainDiffViewProps) {
 
           {!props.hideClose && (
             <>
-              <div className="w-px h-4 bg-[#30363d] mx-1"></div>
-              <button onClick={closeView} className="text-[#8b949e] hover:text-white transition-colors p-1 hover:bg-[#30363d] rounded">
+              <Separator orientation="vertical" className="h-4 mx-1 opacity-50" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={closeView} 
+                className="h-7 w-7 text-muted-foreground hover:text-destructive transition-colors"
+              >
                 <X size={16} />
-              </button>
+              </Button>
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Editor Content Area */}
-      <div className="flex-1 relative overflow-hidden">
-        
-        {!isBinary && (
-          <DiffEditor
-            original={oldContent || ""}
-            modified={newContent || ""}
-            language={language}
-            theme="vs-dark"
-            onMount={handleEditorMount}
-            options={{
-              renderSideBySide: isSplitMode,
-              readOnly: true,
-              minimap: { enabled: false },
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-              fontSize: 12,
-              scrollBeyondLastLine: false,
-              renderOverviewRuler: false,
-              ignoreTrimWhitespace: false,
-              wordWrap: "off",
-              useInlineViewWhenSpaceIsLimited: false,
-              hideUnchangedRegions: {
-                enabled: !isFullFile,
-                revealLineCount: 5,
-                minimumLineCount: 2,
-                contextLineCount: 3,
-              },
-              folding: true,
-              lineNumbersMinChars: 3,
-              glyphMargin: true,
-              // Add some extra stability options
-              renderIndicators: true,
-              originalEditable: false,
-              scrollbar: {
-                vertical: 'visible',
-                horizontal: 'visible',
-                useShadows: false,
-                verticalHasArrows: false,
-                horizontalHasArrows: false,
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10
-              }
-            }}
-          />
-        )}
-
-        {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0d1117] z-[50]">
-             <Spinner label="Loading diff..." />
-          </div>
-        )}
-
-        {error && (
-           <div className="absolute inset-0 flex items-center justify-center text-red-400 p-6 text-center text-sm font-mono bg-[#0d1117] z-[60]">
-              Error: {error}
-           </div>
-        )}
-
-        {isBinary && (
-           <div className="absolute inset-0 flex items-center justify-center text-[#8b949e] italic text-sm bg-[#0d1117] z-[40]">
-             Binary file cannot be displayed
-           </div>
-        )}
+      <div className="flex-1 relative overflow-hidden bg-background">
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            <motion.div 
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex flex-col items-center justify-center bg-background z-50"
+            >
+               <Spinner label="Analyzing diff..." />
+            </motion.div>
+          ) : error ? (
+            <motion.div 
+              key="error"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-6 text-center bg-background z-[60]"
+            >
+              <AlertCircle size={32} className="mb-4 opacity-50" />
+              <p className="text-sm font-medium max-w-md leading-relaxed">
+                {error}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-6">
+                Retry Connection
+              </Button>
+            </motion.div>
+          ) : isBinary ? (
+            <motion.div 
+              key="binary"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground italic text-sm bg-background z-40"
+            >
+              <Binary size={32} className="mb-4 opacity-20" />
+              Binary file contents cannot be displayed
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="editor"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full h-full"
+            >
+              <DiffEditor
+                original={oldContent || ""}
+                modified={newContent || ""}
+                language={language}
+                theme="vs-dark"
+                onMount={handleEditorMount}
+                keepCurrentOriginalModel={true}
+                keepCurrentModifiedModel={true}
+                options={{
+                  renderSideBySide: isSplitMode,
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                  fontSize: fontSize - 1,
+                  scrollBeyondLastLine: false,
+                  renderOverviewRuler: false,
+                  ignoreTrimWhitespace: false,
+                  wordWrap: "off",
+                  useInlineViewWhenSpaceIsLimited: false,
+                  hideUnchangedRegions: {
+                    enabled: !isFullFile,
+                    revealLineCount: 5,
+                    minimumLineCount: 2,
+                    contextLineCount: 3,
+                  },
+                  folding: true,
+                  lineNumbersMinChars: 3,
+                  glyphMargin: true,
+                  renderIndicators: true,
+                  originalEditable: false,
+                  scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible',
+                    useShadows: false,
+                    verticalHasArrows: false,
+                    horizontalHasArrows: false,
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8
+                  }
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
     </div>

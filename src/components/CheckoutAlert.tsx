@@ -1,155 +1,226 @@
 import { useAppStore } from "../store";
 import { checkoutBranch } from "../lib/repo";
-import { AlertCircle, Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Layers, GitMerge, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
 import { toast } from "../lib/toast";
+import { cn } from "../lib/utils";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
 
 export function CheckoutAlert() {
   const branchName = useAppStore(state => state.confirmCheckoutTo);
   const checkoutError = useAppStore(state => state.checkoutError);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (branchName) {
-      const timer = setTimeout(() => setVisible(true), 10);
-      return () => {
-          clearTimeout(timer);
-          setVisible(false);
-      };
-    } else {
-      setVisible(false);
-    }
-  }, [branchName]);
-
-  if (!branchName && !visible) return null;
+  const [loading, setLoading] = useState(false);
 
   const handleCancel = () => {
-    setVisible(false);
-    setTimeout(() => {
-      useAppStore.setState({ confirmCheckoutTo: null, checkoutError: null });
-    }, 300);
+    useAppStore.setState({ confirmCheckoutTo: null, checkoutError: null });
   };
 
-  const handleConfirm = () => {
-    checkoutBranch(branchName!);
+  const handleConfirm = async () => {
+    setLoading(true);
+    try {
+      await checkoutBranch(branchName!);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleForce = () => {
-    checkoutBranch(branchName!, { force: true, merge: false, create: false });
+  const handleForce = async () => {
+    setLoading(true);
+    try {
+      await checkoutBranch(branchName!, { force: true, merge: false, create: false });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleMerge = () => {
-    checkoutBranch(branchName!, { force: false, merge: true, create: false });
+  const handleMerge = async () => {
+    setLoading(true);
+    try {
+      await checkoutBranch(branchName!, { force: false, merge: true, create: false });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStashAndSwitch = async () => {
     const path = useAppStore.getState().activeRepoPath;
     if (!path) return;
+    setLoading(true);
     try {
         await invoke('create_stash', { repoPath: path, message: `Auto-stash before switch to ${branchName}` });
-        checkoutBranch(branchName!);
+        await checkoutBranch(branchName!);
     } catch (e) {
         toast.error(`Stash failed: ${e}`);
+    } finally {
+        setLoading(false);
     }
   };
 
   const isConflict = checkoutError?.type === 'Conflict';
   const isDirtyState = checkoutError?.type === 'DirtyState';
+  const isError = isConflict || isDirtyState;
 
   return (
-    <div 
-      className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ease-out transform border-b ${
-        visible ? "translate-x-0" : "translate-x-full"
-      } ${isConflict || isDirtyState ? "h-auto py-3 bg-[#1c2128]/98 border-red-500/30" : "min-h-[48px] py-1 bg-[#1c2128]/95 border-blue-500/30"}`}
-    >
-      {/* Background with blur for premium feel */}
-      <div className="absolute inset-0 backdrop-blur-md" />
-      
-      <div className="relative h-full w-full flex flex-col px-4 justify-center select-none gap-2">
-        <div className="flex items-center justify-between w-full max-w-5xl mx-auto gap-4">
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`${isConflict || isDirtyState ? "bg-red-500/20" : "bg-blue-500/20"} p-1.5 rounded-full flex items-center justify-center shrink-0`}>
-                <AlertCircle size={18} className={isConflict || isDirtyState ? "text-red-400" : "text-blue-400"} />
-            </div>
-            <div className="flex flex-col min-w-0">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-slate-300 whitespace-nowrap">
-                        {isDirtyState ? "Cannot Switch Branch:" : "Confirm Switch Branch:"}
-                    </span>
-                    <span className={`text-sm font-mono font-bold px-2 py-0.5 rounded border line-break-anywhere break-all line-clamp-2 ${isConflict || isDirtyState ? "text-red-400 bg-red-500/10 border-red-500/20" : "text-blue-400 bg-blue-500/10 border-blue-500/20"}`}>
-                        {branchName}
-                    </span>
+    <AnimatePresence>
+      {branchName && (
+        <motion.div
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -100, opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className={cn(
+            "fixed top-0 left-0 right-0 z-[100] border-b shadow-2xl overflow-hidden",
+            isError 
+              ? "bg-dracula-red/10 border-dracula-red/30 backdrop-blur-2xl" 
+              : "bg-dracula-cyan/10 border-dracula-cyan/30 backdrop-blur-2xl"
+          )}
+        >
+          {/* Main Content Area */}
+          <div className="max-w-6xl mx-auto w-full flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 gap-6">
+              {/* Context Info */}
+              <div className="flex items-center gap-5 flex-1 min-w-0">
+                <div className={cn(
+                  "p-2.5 rounded-xl shadow-lg transition-transform duration-500 hover:rotate-12",
+                  isError ? "bg-dracula-red/20 text-dracula-red shadow-dracula-red/10" : "bg-dracula-cyan/20 text-dracula-cyan shadow-dracula-cyan/10"
+                )}>
+                  {isError ? <AlertTriangle size={20} /> : <GitMerge size={20} />}
                 </div>
-                {isDirtyState && (
-                    <span className="text-[11px] text-red-400/80 mt-1">
-                        Repository is currently in <b>{checkoutError.data.state}</b> state. Resolve or abort before switching.
+                
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[13px] font-black tracking-widest text-muted-foreground/60 uppercase">
+                      {isDirtyState ? "Operation Blocked" : "Switch Branch"}
                     </span>
-                )}
-            </div>
-            </div>
+                    <Badge 
+                      variant="secondary" 
+                      className={cn(
+                        "px-3 py-1 text-[13px] font-mono font-bold shadow-sm",
+                        isError ? "bg-dracula-red/20 text-dracula-red" : "bg-dracula-cyan/20 text-dracula-cyan"
+                      )}
+                    >
+                      {branchName}
+                    </Badge>
+                  </div>
+                  
+                  {isDirtyState ? (
+                    <p className="text-[13px] text-dracula-red/80 font-medium">
+                      Repository is in <b>{checkoutError.data.state}</b> state. Please resolve current activity first.
+                    </p>
+                  ) : isConflict ? (
+                    <p className="text-[13px] text-dracula-red/80 font-medium">
+                      Local changes to the files below would be overwritten by checkout.
+                    </p>
+                  ) : (
+                    <p className="text-[13px] text-dracula-cyan/80 font-medium">
+                      Switching your workspace to the selected branch.
+                    </p>
+                  )}
+                </div>
+              </div>
 
-            <div className="flex items-center gap-2">
-            {!isDirtyState && !isConflict && (
-                <button
+              {/* Actions */}
+              <div className="flex items-center gap-3 shrink-0">
+                {!isDirtyState && !isConflict && (
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={handleConfirm}
-                    className="h-7 px-3 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1 shadow-lg shadow-blue-900/20"
+                    disabled={loading}
+                    isLoading={loading}
+                    className="bg-dracula-cyan/80 hover:bg-dracula-cyan text-white font-bold px-5 shadow-lg shadow-dracula-cyan/20"
+                  >
+                    Confirm Switch
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancel}
+                  className="font-bold text-muted-foreground hover:text-foreground"
                 >
-                    <Check size={12} />
-                    YES, SWITCH
-                </button>
-            )}
-            <button
-                onClick={handleCancel}
-                className="h-7 px-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1"
-            >
-                <X size={12} />
-                {isDirtyState ? "CLOSE" : "NO, CANCEL"}
-            </button>
+                  {isDirtyState ? "Dismiss" : "Cancel"}
+                </Button>
+              </div>
             </div>
-        </div>
 
-        {isConflict && (
-            <div className="flex flex-col gap-3 mt-2 pb-1 border-t border-red-500/20 pt-3 max-w-5xl mx-auto w-full">
-                <div className="flex flex-col gap-1">
-                    <span className="text-[12px] font-semibold text-red-400 uppercase tracking-wider">Local changes would be overwritten:</span>
-                    <div className="max-h-24 overflow-y-auto bg-black/20 rounded p-2 flex flex-col gap-1 border border-white/5">
-                        {checkoutError.data.files.map((f, i) => (
-                            <span key={i} className="text-[11px] font-mono text-slate-400 flex items-center gap-2">
-                                <span className="w-1 h-1 rounded-full bg-red-500/50" /> {f}
-                            </span>
-                        ))}
+            {/* Conflict Detail Section */}
+            <AnimatePresence>
+              {isConflict && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-t border-dracula-red/20 bg-dracula-red/5 px-6 py-6 space-y-6"
+                >
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-dracula-red/40 uppercase tracking-[0.2em] px-1">Conflicting Files</label>
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto custom-scrollbar p-3 bg-background/40 border border-dracula-red/10 rounded-2xl shadow-inner">
+                      {checkoutError.data.files.map((f: string, i: number) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2 bg-secondary/20 rounded-xl border border-border/10 group hover:border-dracula-red/20 transition-all">
+                          <div className="w-1.5 h-1.5 rounded-full bg-dracula-red/40 group-hover:bg-dracula-red transition-colors" />
+                          <span className="text-[12px] font-mono text-muted-foreground truncate">{f}</span>
+                        </div>
+                      ))}
                     </div>
-                </div>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleStashAndSwitch}
-                        className="h-8 px-4 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1.5 shadow-lg shadow-blue-900/20"
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleStashAndSwitch}
+                      disabled={loading}
+                      isLoading={loading}
+                      className="bg-dracula-cyan/80 hover:bg-dracula-cyan font-bold px-6 shadow-lg shadow-dracula-cyan/20 min-w-[160px]"
                     >
-                        STASH & SWITCH
-                    </button>
-                    <button
-                        onClick={handleMerge}
-                        className="h-8 px-4 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1.5"
-                        title="git switch -m (Merge your changes with the target branch)"
+                      <Layers size={14} className="mr-2" />
+                      Stash & Switch
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleMerge}
+                      disabled={loading}
+                      className="font-bold border-dracula-red/30 text-dracula-red/80 hover:bg-dracula-red hover:text-white px-6 transition-all"
+                      title="Merge local changes with the target branch"
                     >
-                        MERGE SWITCH (-m)
-                    </button>
-                    <button
-                        onClick={handleForce}
-                        className="h-8 px-4 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1.5"
-                        title="Force switch (Discard all conflicting local changes)"
-                    >
-                        FORCE SWITCH
-                    </button>
-                </div>
-            </div>
-        )}
-      </div>
+                      <GitMerge size={14} className="mr-2" />
+                      Merge Switch (-m)
+                    </Button>
 
-      {/* Decorative accent line */}
-      <div className={`absolute bottom-0 left-0 h-[2px] w-full ${isConflict || isDirtyState ? "bg-red-500/50" : "bg-blue-500/50"}`} />
-    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleForce}
+                      disabled={loading}
+                      className="font-bold text-dracula-red/40 hover:text-dracula-red hover:bg-dracula-red/10 px-4"
+                      title="Discard all conflicting local changes"
+                    >
+                      Discard & Force
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Progress Indicator */}
+          {loading && (
+            <motion.div 
+              layoutId="progress"
+              className={cn("absolute bottom-0 left-0 h-[3px] bg-white/30", isError ? "bg-dracula-red/50" : "bg-dracula-cyan/50")}
+              initial={{ width: "0%" }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 2, ease: "linear" }}
+            />
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

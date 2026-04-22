@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Search, Check, AlertTriangle, Copy, Terminal, Loader2, X, ArrowUpRight, Globe, Monitor, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../store';
 import {
@@ -16,6 +17,9 @@ import {
   type RemoteBranchInfo,
 } from '../lib/repo';
 import { toast } from '../lib/toast';
+import { cn } from '../lib/utils';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -27,8 +31,6 @@ interface CreateBranchDialogProps {
   defaultSource?: string;      // commit OID or branch name
   defaultSourceLabel?: string; // display text
 }
-
-// ── Source Item ───────────────────────────────────────────────────────
 
 interface SourceItem {
   label: string;    // display name: "main", "v1.0.0", "abc1234"
@@ -43,7 +45,7 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
   // Form fields
   const [name, setName] = useState('');
   const [mode, setMode] = useState<CreationMode>('local');
-  const [setUpstream, setSetUpstream] = useState(true);
+  const [setUpstream] = useState(true);
   const [selectedSource, setSelectedSource] = useState<string>(defaultSource || '');
   const [sourceLabel, setSourceLabel] = useState(defaultSourceLabel || '');
 
@@ -81,11 +83,9 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
   // ── Initialize ──────────────────────────────────────────────────
 
   useEffect(() => {
-    setTimeout(() => nameInputRef.current?.focus(), 80);
-    // Check working tree on mount
+    setTimeout(() => nameInputRef.current?.focus(), 150);
     checkWorkingTree().then(wt => {
       if (wt) setTreeCheck(wt);
-      // Set default source to HEAD if not provided
       if (!defaultSource && wt?.head_branch) {
         setSelectedSource(wt.head_branch);
         setSourceLabel(wt.head_branch);
@@ -102,7 +102,6 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
     const items: SourceItem[] = [];
     const seen = new Set<string>();
 
-    // Local branches from store
     if (branches) {
       for (const b of branches) {
         if (b.branch_type === 'local' && !seen.has(b.name)) {
@@ -112,7 +111,6 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
       }
     }
 
-    // Tags from commit refs
     if (commitLog) {
       for (const c of commitLog) {
         for (const ref of c.refs) {
@@ -124,7 +122,6 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
       }
     }
 
-    // If defaultSource is a commit OID, add it
     if (defaultSource && !seen.has(defaultSource)) {
       items.unshift({
         label: defaultSourceLabel || defaultSource.substring(0, 7),
@@ -163,7 +160,7 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
       } finally {
         setIsValidating(false);
       }
-    }, 300);
+    }, 400);
 
     return () => {
       if (validationTimer.current) clearTimeout(validationTimer.current);
@@ -214,7 +211,6 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
     setErrorMessage('');
 
     try {
-      // Handle stash if needed
       if (hasDirtyTree && stashDecision === 'stash') {
         const stashed = await autoStash(mode === 'remote' ? selectedRemoteBranch : name.trim());
         if (!stashed) {
@@ -225,12 +221,10 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
       }
 
       if (mode === 'remote') {
-        // Mode C: From remote
         await safeSwitchBranch(`origin/${selectedRemoteBranch}`);
         setResult({ name: selectedRemoteBranch, oid: '', short_oid: '' });
         setFormState('success');
       } else {
-        // Mode A & B: Create branch
         const branchResult = await createBranch(name.trim(), selectedSource || undefined);
         if (!branchResult) {
           setFormState('error');
@@ -238,14 +232,11 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
           return;
         }
 
-        // Switch to new branch
         await safeSwitchBranch(branchResult.name);
 
-        // Mode B: Push to remote
         if (mode === 'push') {
           const pushed = await pushBranchToRemote(branchResult.name, 'origin', setUpstream);
           if (!pushed) {
-            // Branch created locally but push failed
             toast.info(`Branch created locally. Push to remote failed.`);
           }
         }
@@ -266,357 +257,395 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
     }
   };
 
-  // ── Render: Success State ──────────────────────────────────────
-
-  if (formState === 'success' && result) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-        <div className="create-branch-dialog w-[440px]" onClick={e => e.stopPropagation()}>
-          {/* Success header */}
-          <div className="px-5 pt-5 pb-3 text-center">
-            <div className="w-12 h-12 rounded-full bg-[#238636]/20 border border-[#238636]/40 flex items-center justify-center mx-auto mb-3">
-              <Check size={24} className="text-[#3fb950]" />
-            </div>
-            <h3 className="text-[15px] font-semibold text-[#e6edf3]">Branch Created</h3>
-            <p className="text-[12px] text-[#8b949e] mt-1">
-              {mode === 'push' ? 'Created locally and pushed to remote' : mode === 'remote' ? 'Now tracking remote branch' : 'Created locally'}
-            </p>
-          </div>
-
-          {/* Branch info card */}
-          <div className="mx-5 mb-4 bg-[#0d1117] rounded-lg border border-[#21262d] p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <GitBranch size={14} className="text-[#3fb950]" />
-              <code className="text-[13px] font-mono text-[#79c0ff] font-semibold">{result.name}</code>
-            </div>
-            {result.short_oid && (
-              <div className="text-[11px] text-[#8b949e]">
-                HEAD at <code className="text-[#79c0ff] bg-[#161b22] px-1 py-0.5 rounded text-[10px]">{result.short_oid}</code>
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="px-5 pb-5 flex items-center gap-2">
-            <button onClick={handleCopyName}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] transition-all">
-              <Copy size={12} /> Copy name
-            </button>
-            <button onClick={() => { openTerminal(); onClose(); }}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] transition-all">
-              <Terminal size={12} /> Terminal
-            </button>
-            <button onClick={onClose}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-medium text-white bg-[#238636] hover:bg-[#2ea043] border border-[#238636] transition-all">
-              Done
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Render: Main Form ──────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="create-branch-dialog w-[440px]" onClick={e => e.stopPropagation()}>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-background/40 backdrop-blur-md"
+        />
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-2">
-          <h3 className="text-[14px] font-semibold text-[#e6edf3] flex items-center gap-2">
-            <GitBranch size={16} className="text-[#3fb950]" />
-            Create Branch
-          </h3>
-          <button onClick={onClose} className="text-[#484f58] hover:text-[#8b949e] transition-colors p-1">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Mode selector — segmented control */}
-        <div className="px-5 pt-2 pb-3">
-          <div className="branch-segmented-control">
-            {([
-              { key: 'local' as const, icon: <Monitor size={12} />, label: 'Local Only' },
-              { key: 'push' as const, icon: <ArrowUpRight size={12} />, label: 'Create + Push' },
-              { key: 'remote' as const, icon: <Globe size={12} />, label: 'From Remote' },
-            ]).map(m => (
-              <button
-                key={m.key}
-                onClick={() => setMode(m.key)}
-                className={`branch-segmented-item ${mode === m.key ? 'active' : ''}`}
-              >
-                {m.icon}
-                <span>{m.label}</span>
-              </button>
-            ))}
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[480px] flex flex-col overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-border/30 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center gap-4">
+              <div className="p-2.5 rounded-xl bg-primary/10">
+                <GitBranch size={20} className="text-primary" />
+              </div>
+              <div>
+                <h2 className="text-[17px] font-bold text-foreground tracking-tight">Create Branch</h2>
+                <p className="text-[12px] text-muted-foreground/60">Initialize a new branch from a source</p>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground/40 hover:text-foreground">
+              <X size={16} />
+            </Button>
           </div>
-        </div>
 
-        {/* ── Mode A & B: Name + Source ─────────────────────────── */}
-        {mode !== 'remote' && (
-          <>
-            {/* Branch name input */}
-            <div className="px-5 pb-1">
-              <label className="text-[11px] font-medium text-[#8b949e] uppercase tracking-wide mb-1.5 block">Branch Name</label>
-              <div className="relative">
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && canSubmit) handleSubmit();
-                    if (e.key === 'Escape') onClose();
-                  }}
-                  placeholder="feat/my-feature"
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 pr-8 text-[13px] text-[#e6edf3] placeholder-[#484f58] outline-none focus:border-[#388bfd] focus:ring-1 focus:ring-[#388bfd]/30 transition-all font-mono"
-                />
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                  {isValidating && <Loader2 size={14} className="animate-spin text-[#484f58]" />}
-                  {!isValidating && validation?.valid && <Check size={14} className="text-[#3fb950]" />}
-                  {!isValidating && validation && !validation.valid && <X size={14} className="text-[#f85149]" />}
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {formState === 'success' && result ? (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-8 py-10 text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-dracula-green/10 border border-dracula-green/20 flex items-center justify-center mx-auto mb-6">
+                  <Check size={32} className="text-dracula-green" />
                 </div>
-              </div>
+                <h3 className="text-xl font-bold text-foreground mb-2">Branch Created!</h3>
+                <p className="text-[14px] text-muted-foreground mb-8">
+                  {mode === 'push' ? 'Created locally and pushed to remote' : mode === 'remote' ? 'Now tracking remote branch' : 'Created locally'}
+                </p>
 
-              {/* Validation message */}
-              {validation && !validation.valid && (
-                <div className="mt-1.5 text-[11px] text-[#f85149] flex items-start gap-1.5">
-                  <AlertTriangle size={11} className="mt-0.5 shrink-0" />
-                  <div>
-                    {validation.error}
-                    {validation.suggestion && (
-                      <button
-                        onClick={() => setName(validation.suggestion!)}
-                        className="ml-1 text-[#79c0ff] hover:underline"
-                      >
-                        Use "{validation.suggestion}"?
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Source selector */}
-            <div className="px-5 py-2">
-              <label className="text-[11px] font-medium text-[#8b949e] uppercase tracking-wide mb-1.5 block">Source (from)</label>
-              <div className="relative">
-                <button
-                  onClick={() => setSourceOpen(!sourceOpen)}
-                  className="w-full flex items-center justify-between bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#e6edf3] hover:border-[#484f58] transition-all"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <GitBranch size={12} className="text-[#8b949e] shrink-0" />
-                    <span className="truncate font-mono text-[12px]">
-                      {sourceLabel || selectedSource || activeBranch || 'HEAD'}
-                    </span>
-                    {sourceItems.find(s => s.value === selectedSource)?.isHead && (
-                      <span className="text-[9px] bg-[#238636]/30 text-[#3fb950] px-1 py-0 rounded font-sans">HEAD</span>
-                    )}
-                  </div>
-                  <ChevronDown size={14} className={`text-[#484f58] transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Source dropdown */}
-                {sourceOpen && (
-                  <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-[100] branch-source-dropdown">
-                    <div className="p-2 border-b border-[#21262d]">
-                      <div className="relative">
-                        <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#484f58]" />
-                        <input
-                          type="text"
-                          value={sourceFilter}
-                          onChange={e => setSourceFilter(e.target.value)}
-                          placeholder="Filter branches..."
-                          className="w-full bg-[#161b22] border border-[#30363d] rounded px-2 py-1 pl-7 text-[11px] text-[#e6edf3] placeholder-[#484f58] outline-none focus:border-[#388bfd]"
-                          autoFocus
-                        />
-                      </div>
+                <div className="bg-secondary/30 rounded-xl border border-border/30 p-5 mb-8 text-left">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-1.5 rounded-lg bg-dracula-green/20">
+                      <GitBranch size={16} className="text-dracula-green" />
                     </div>
-                    <div className="max-h-[200px] overflow-y-auto custom-scrollbar p-1">
-                      {filteredSources.length === 0 && (
-                        <div className="text-[11px] text-[#484f58] text-center py-3">No matching branches</div>
-                      )}
-                      {filteredSources.map(s => (
-                        <button
-                          key={s.value}
-                          onClick={() => {
-                            setSelectedSource(s.value);
-                            setSourceLabel(s.label);
-                            setSourceOpen(false);
-                            setSourceFilter('');
-                          }}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[12px] transition-colors ${
-                            selectedSource === s.value ? 'bg-[#388bfd]/15 text-[#79c0ff]' : 'text-[#c9d1d9] hover:bg-[#21262d]'
-                          }`}
-                        >
-                          {s.type === 'branch' && <GitBranch size={11} className="shrink-0 text-[#8b949e]" />}
-                          {s.type === 'commit' && <span className="text-[10px] text-[#f0883e] shrink-0">SHA</span>}
-                          {s.type === 'tag' && <span className="text-[10px] text-[#d2a8ff] shrink-0">TAG</span>}
-                          <span className="truncate font-mono">{s.label}</span>
-                          {s.isHead && <span className="text-[9px] bg-[#238636]/30 text-[#3fb950] px-1 rounded ml-auto">HEAD</span>}
-                          {selectedSource === s.value && <Check size={12} className="ml-auto text-[#3fb950] shrink-0" />}
-                        </button>
-                      ))}
-                    </div>
+                    <code className="text-[15px] font-mono text-primary font-bold">{result.name}</code>
                   </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* ── Mode C: Remote Branch Selector ────────────────────── */}
-        {mode === 'remote' && (
-          <div className="px-5 py-2">
-            <label className="text-[11px] font-medium text-[#8b949e] uppercase tracking-wide mb-1.5 block">Remote Branch</label>
-            {formState === 'fetching' ? (
-              <div className="flex items-center gap-2 text-[12px] text-[#8b949e] py-3">
-                <Loader2 size={14} className="animate-spin" />
-                Fetching remote branches...
-              </div>
-            ) : (
-              <>
-                <div className="relative mb-2">
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#484f58]" />
-                  <input
-                    type="text"
-                    value={remoteFilter}
-                    onChange={e => setRemoteFilter(e.target.value)}
-                    placeholder="Filter remote branches..."
-                    className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 pl-8 text-[12px] text-[#e6edf3] placeholder-[#484f58] outline-none focus:border-[#388bfd] transition-all font-mono"
-                    autoFocus
-                  />
-                </div>
-                <div className="max-h-[180px] overflow-y-auto custom-scrollbar bg-[#0d1117] border border-[#21262d] rounded-lg">
-                  {filteredRemoteBranches.length === 0 && (
-                    <div className="text-[11px] text-[#484f58] text-center py-4">
-                      {remoteBranches.length === 0 ? 'No remote branches found' : 'No matching branches'}
+                  {result.short_oid && (
+                    <div className="flex items-center gap-2 text-[12px] text-muted-foreground ml-1">
+                      <span>HEAD pointing at</span>
+                      <Badge variant="secondary" className="font-mono">{result.short_oid}</Badge>
                     </div>
                   )}
-                  {filteredRemoteBranches.map(b => (
-                    <button
-                      key={`${b.remote}/${b.name}`}
-                      onClick={() => setSelectedRemoteBranch(b.name)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[12px] transition-colors border-b border-[#21262d] last:border-0 ${
-                        selectedRemoteBranch === b.name ? 'bg-[#388bfd]/15 text-[#79c0ff]' : 'text-[#c9d1d9] hover:bg-[#161b22]'
-                      }`}
-                    >
-                      <Globe size={11} className="shrink-0 text-[#8b949e]" />
-                      <span className="truncate font-mono">{b.remote}/{b.name}</span>
-                      {selectedRemoteBranch === b.name && <Check size={12} className="ml-auto text-[#3fb950] shrink-0" />}
-                    </button>
-                  ))}
                 </div>
-              </>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <Button variant="outline" onClick={handleCopyName} className="gap-2 font-bold">
+                    <Copy size={14} /> Copy
+                  </Button>
+                  <Button variant="outline" onClick={() => { openTerminal(); onClose(); }} className="gap-2 font-bold">
+                    <Terminal size={14} /> Terminal
+                  </Button>
+                  <Button variant="primary" onClick={onClose} className="font-bold">
+                    Done
+                  </Button>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="px-8 py-6 space-y-6">
+                {/* Mode selector */}
+                <div className="space-y-3">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Creation Mode</label>
+                  <div className="grid grid-cols-3 p-1.5 bg-secondary/30 rounded-xl border border-border/20">
+                    {([
+                      { key: 'local' as const, icon: <Monitor size={14} />, label: 'Local' },
+                      { key: 'push' as const, icon: <ArrowUpRight size={14} />, label: 'Push' },
+                      { key: 'remote' as const, icon: <Globe size={14} />, label: 'Remote' },
+                    ]).map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => setMode(m.key)}
+                        className={cn(
+                          "flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-bold transition-all duration-200",
+                          mode === m.key 
+                            ? "bg-background shadow-lg shadow-black/20 text-primary scale-100" 
+                            : "text-muted-foreground hover:text-foreground hover:bg-background/40 scale-95 opacity-60"
+                        )}
+                      >
+                        {m.icon}
+                        <span>{m.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {mode !== 'remote' ? (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-6"
+                  >
+                    {/* Branch name input */}
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Branch Name</label>
+                      <div className="relative group">
+                        <input
+                          ref={nameInputRef}
+                          type="text"
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && canSubmit) handleSubmit();
+                          }}
+                          placeholder="feature/branch-name"
+                          className={cn(
+                            "w-full bg-secondary/40 border border-border/50 rounded-xl px-4 py-3.5 pr-10 text-[14px] text-foreground font-mono transition-all duration-300",
+                            "focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none",
+                            validation && !validation.valid && "border-destructive/50 focus:border-destructive focus:ring-destructive/10"
+                          )}
+                        />
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                          {isValidating ? (
+                            <Loader2 size={16} className="animate-spin text-muted-foreground/40" />
+                          ) : validation?.valid ? (
+                             <Check size={16} className="text-dracula-green" />
+                          ) : validation && !validation.valid ? (
+                            <AlertTriangle size={16} className="text-destructive" />
+                          ) : null}
+                        </div>
+                      </div>
+                      <AnimatePresence>
+                        {validation && !validation.valid && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="px-1 text-[12px] text-destructive flex items-start gap-2"
+                          >
+                            <span className="font-medium">• {validation.error}</span>
+                            {validation.suggestion && (
+                              <button
+                                onClick={() => setName(validation.suggestion!)}
+                                className="text-primary hover:underline font-bold"
+                              >
+                                Suggestion: {validation.suggestion}
+                              </button>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Source selector */}
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Base Source</label>
+                      <div className="relative">
+                        <button
+                          onClick={() => setSourceOpen(!sourceOpen)}
+                          className="w-full flex items-center justify-between bg-secondary/40 border border-border/50 rounded-xl px-4 py-3.5 hover:bg-secondary/60 hover:border-border transition-all group"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <GitBranch size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="truncate font-mono text-[14px] font-medium">
+                              {sourceLabel || selectedSource || activeBranch || 'HEAD'}
+                            </span>
+                            {sourceItems.find(s => s.value === selectedSource)?.isHead && (
+                              <Badge variant="secondary" className="bg-dracula-green/10 text-dracula-green border-dracula-green/20">HEAD</Badge>
+                            )}
+                          </div>
+                          <ChevronDown size={18} className={cn("text-muted-foreground transition-transform duration-300", sourceOpen && "rotate-180")} />
+                        </button>
+
+                        <AnimatePresence>
+                          {sourceOpen && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-[calc(100%+8px)] left-0 right-0 z-[100] bg-background/95 backdrop-blur-2xl border border-border shadow-2xl rounded-2xl overflow-hidden"
+                            >
+                              <div className="p-3 border-b border-border/50 bg-secondary/20">
+                                <div className="relative">
+                                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
+                                  <input
+                                    type="text"
+                                    value={sourceFilter}
+                                    onChange={e => setSourceFilter(e.target.value)}
+                                    placeholder="Search branches, tags, commits..."
+                                    className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 pl-9 text-[12px] text-foreground placeholder-muted-foreground/40 outline-none focus:border-primary transition-all"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                              <div className="max-h-[220px] overflow-y-auto custom-scrollbar p-1.5">
+                                {filteredSources.length === 0 ? (
+                                  <div className="py-8 text-center text-muted-foreground/40 text-[12px]">No matching sources found</div>
+                                ) : (
+                                  filteredSources.map(s => (
+                                    <button
+                                      key={s.value}
+                                      onClick={() => {
+                                        setSelectedSource(s.value);
+                                        setSourceLabel(s.label);
+                                        setSourceOpen(false);
+                                        setSourceFilter('');
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-[13px] transition-all duration-200 mb-1 last:mb-0",
+                                        selectedSource === s.value 
+                                          ? "bg-primary/10 text-primary font-bold" 
+                                          : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                                      )}
+                                    >
+                                      {s.type === 'branch' && <GitBranch size={14} className="shrink-0 opacity-60" />}
+                                      {s.type === 'commit' && <div className="w-5 h-5 flex items-center justify-center bg-dracula-orange/10 text-dracula-orange rounded text-[9px] font-bold border border-dracula-orange/20">SHA</div>}
+                                      {s.type === 'tag' && <div className="w-5 h-5 flex items-center justify-center bg-dracula-purple/10 text-dracula-purple rounded text-[9px] font-bold border border-dracula-purple/20">TAG</div>}
+                                      <span className="truncate font-mono">{s.label}</span>
+                                      {s.isHead && <Badge variant="secondary" className="bg-dracula-green/10 text-dracula-green ml-auto h-4 px-1 text-[8px]">HEAD</Badge>}
+                                      {selectedSource === s.value && <Check size={14} className="ml-auto text-primary" />}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Remote Branch</label>
+                      {formState === 'fetching' ? (
+                        <div className="flex flex-col items-center justify-center py-12 bg-secondary/20 rounded-xl border border-border/30 border-dashed gap-4">
+                          <Loader2 size={24} className="animate-spin text-primary" />
+                          <span className="text-[13px] font-medium text-muted-foreground">Fetching from origin...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
+                            <input
+                              type="text"
+                              value={remoteFilter}
+                              onChange={e => setRemoteFilter(e.target.value)}
+                              placeholder="Search remote branches..."
+                              className="w-full bg-secondary/40 border border-border/50 rounded-xl px-4 py-3.5 pl-11 text-[14px] text-foreground font-mono transition-all outline-none focus:bg-background focus:border-primary"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="max-h-[240px] overflow-y-auto custom-scrollbar bg-secondary/20 border border-border/30 rounded-xl overflow-hidden p-1.5">
+                            {filteredRemoteBranches.length === 0 ? (
+                              <div className="py-12 text-center">
+                                <div className="p-3 bg-secondary/50 rounded-full w-fit mx-auto mb-4">
+                                  <Globe size={24} className="text-muted-foreground/20" />
+                                </div>
+                                <span className="text-[12px] text-muted-foreground/40 font-medium">No remote branches available</span>
+                              </div>
+                            ) : (
+                              filteredRemoteBranches.map(b => (
+                                <button
+                                  key={`${b.remote}/${b.name}`}
+                                  onClick={() => setSelectedRemoteBranch(b.name)}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 px-4 py-3 text-left text-[13px] rounded-lg transition-all duration-200 mb-1 last:mb-0 border border-transparent",
+                                    selectedRemoteBranch === b.name 
+                                      ? "bg-primary/10 border-primary/20 text-primary font-bold" 
+                                      : "text-muted-foreground hover:bg-background hover:text-foreground"
+                                  )}
+                                >
+                                  <Globe size={14} className="shrink-0 opacity-60" />
+                                  <span className="truncate font-mono">{b.remote}/{b.name}</span>
+                                  {selectedRemoteBranch === b.name && (
+                                    <div className="ml-auto w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                      <Check size={12} className="text-primary-foreground" />
+                                    </div>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Stash Warning / Error State */}
+                <AnimatePresence>
+                  {showStashWarning && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="bg-dracula-orange/10 border border-dracula-orange/20 rounded-xl p-5 space-y-4"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 rounded-lg bg-dracula-orange/20">
+                          <AlertTriangle size={18} className="text-dracula-orange" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[14px] text-dracula-orange font-bold">Uncommitted Changes</p>
+                          <p className="text-[12px] text-dracula-orange/70 mt-1 leading-relaxed">
+                            You have {treeCheck?.has_staged ? 'staged' : 'modified'} files. We recommend stashing them to avoid conflicts.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pl-12">
+                        <Button size="sm" variant="primary" className="bg-dracula-orange/80 hover:bg-dracula-orange text-dracula-bg border-none font-bold px-4" onClick={() => setStashDecision('stash')}>
+                          Stash & Continue
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-dracula-orange/60 hover:text-dracula-orange hover:bg-dracula-orange/10 font-bold" onClick={() => setStashDecision('skip')}>
+                          Skip Stashing
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {formState === 'error' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="bg-destructive/10 border border-destructive/20 rounded-xl p-5"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 rounded-lg bg-destructive/20">
+                          <X size={18} className="text-destructive" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] text-destructive font-bold">Action Failed</p>
+                          <p className="text-[12px] text-destructive/70 mt-1 font-mono break-all line-clamp-2">{errorMessage}</p>
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive/40 hover:text-destructive" onClick={() => { navigator.clipboard.writeText(errorMessage); toast.success('Error copied'); }}>
+                          <Copy size={14} />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
           </div>
-        )}
 
-        {/* ── Set upstream checkbox (mode B only) ───────────────── */}
-        {mode === 'push' && (
-          <div className="px-5 pb-2">
-            <label className="flex items-center gap-2 cursor-pointer group select-none">
-              <div
-                className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                  setUpstream ? 'bg-[#388bfd] border-[#388bfd]' : 'border-[#484f58] bg-transparent group-hover:border-[#8b949e]'
-                }`}
-                onClick={() => setSetUpstream(!setUpstream)}
-              >
-                {setUpstream && (
-                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+          {/* Footer */}
+          {formState !== 'success' && (
+            <div className="px-6 py-5 border-t border-border/30 bg-secondary/10 flex items-center justify-between">
+              <div className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-tighter flex items-center gap-2">
+                {mode === 'push' && <><ArrowUpRight size={10} /> Will push to origin</>}
+                {mode === 'local' && <><Monitor size={10} /> Local only</>}
+                {mode === 'remote' && <><Globe size={10} /> Tracks remote</>}
               </div>
-              <span className="text-[12px] text-[#8b949e] group-hover:text-[#c9d1d9] transition-colors" onClick={() => setSetUpstream(!setUpstream)}>
-                Set as upstream tracking
-              </span>
-            </label>
-          </div>
-        )}
-
-        {/* ── Stash Warning ────────────────────────────────────── */}
-        {showStashWarning && (
-          <div className="mx-5 mb-3 branch-warning-banner">
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={14} className="text-[#d29922] mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-[12px] text-[#e3b341] font-medium">Uncommitted changes detected</p>
-                <p className="text-[11px] text-[#8b949e] mt-0.5">
-                  {treeCheck?.has_staged ? 'Staged' : 'Modified'} files in your working tree.
-                  Stash them before creating the branch?
-                </p>
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" onClick={onClose} className="px-5 font-bold text-muted-foreground hover:text-foreground">
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSubmit}
+                  disabled={!canSubmit || formState === 'loading'}
+                  className="px-8 font-bold shadow-lg shadow-primary/20 min-w-[140px]"
+                  isLoading={formState === 'loading'}
+                >
+                  {mode === 'remote' ? 'Checkout' : 'Create Branch'}
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-2.5 pl-5">
-              <button
-                onClick={() => setStashDecision('stash')}
-                className="px-2.5 py-1 rounded text-[11px] font-medium text-white bg-[#d29922]/80 hover:bg-[#d29922] transition-all"
-              >
-                Stash & Continue
-              </button>
-              <button
-                onClick={() => setStashDecision('skip')}
-                className="px-2.5 py-1 rounded text-[11px] font-medium text-[#8b949e] hover:text-[#c9d1d9] bg-[#21262d] hover:bg-[#30363d] transition-all"
-              >
-                Skip
-              </button>
-              <button
-                onClick={onClose}
-                className="px-2.5 py-1 rounded text-[11px] font-medium text-[#484f58] hover:text-[#8b949e] transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Error state ──────────────────────────────────────── */}
-        {formState === 'error' && (
-          <div className="mx-5 mb-3 p-3 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg">
-            <div className="flex items-start gap-2">
-              <X size={14} className="text-[#f85149] mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <p className="text-[12px] text-[#f85149] font-medium">Error</p>
-                <p className="text-[11px] text-[#f85149]/80 mt-0.5 font-mono break-all">{errorMessage}</p>
-              </div>
-              <button
-                onClick={() => { navigator.clipboard.writeText(errorMessage); toast.success('Error copied'); }}
-                className="text-[#484f58] hover:text-[#8b949e] p-1"
-              >
-                <Copy size={12} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Footer: Submit ───────────────────────────────────── */}
-        <div className="px-5 pb-4 pt-2 flex items-center justify-between border-t border-[#21262d]">
-          <div className="text-[10px] text-[#484f58]">
-            {mode === 'local' && 'Branch will be created locally'}
-            {mode === 'push' && 'Branch will be pushed to origin'}
-            {mode === 'remote' && 'Will track selected remote branch'}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-[#8b949e] hover:text-[#e6edf3] bg-transparent hover:bg-[#21262d] border border-[#30363d] transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit || formState === 'loading'}
-              className="px-4 py-1.5 rounded-lg text-[12px] font-medium text-white bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 disabled:cursor-not-allowed border border-[#238636] hover:border-[#2ea043] transition-all flex items-center gap-1.5"
-            >
-              {formState === 'loading' && <Loader2 size={12} className="animate-spin" />}
-              {mode === 'remote' ? 'Checkout Branch' : 'Create Branch'}
-            </button>
-          </div>
-        </div>
+          )}
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

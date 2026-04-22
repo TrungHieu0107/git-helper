@@ -44,26 +44,26 @@ function ToastItem({ toast }: { toast: ToastType }) {
   };
 
   const icons = {
-    success: <CheckCircle2 size={18} className="text-emerald-400" />,
-    error: <XCircle size={18} className="text-rose-400" />,
-    info: <Info size={18} className="text-blue-400" />,
+    success: <CheckCircle2 size={18} className="text-dracula-green" />,
+    error: <XCircle size={18} className="text-dracula-red" />,
+    info: <Info size={18} className="text-dracula-cyan" />,
   };
 
   const colors = {
-    success: "border-emerald-500/20",
-    error: "border-rose-500/20",
-    info: "border-blue-500/20",
+    success: "border-dracula-green/20",
+    error: "border-dracula-red/20",
+    info: "border-dracula-cyan/20",
   };
 
   const progressColors = {
-    success: "bg-emerald-500/50",
-    error: "bg-rose-500/50",
-    info: "bg-blue-500/50",
+    success: "bg-dracula-green/50",
+    error: "bg-dracula-red/50",
+    info: "bg-dracula-cyan/50",
   };
 
   return (
     <div 
-      className={`pointer-events-auto min-w-[320px] max-w-[400px] bg-[#1c2128]/95 backdrop-blur-md border ${colors[toast.type]} rounded-lg shadow-2xl overflow-hidden transition-all duration-300 ease-out transform
+      className={`pointer-events-auto min-w-[320px] max-w-[400px] bg-dracula-bg/95 backdrop-blur-md border ${colors[toast.type]} rounded-lg shadow-2xl overflow-hidden transition-all duration-300 ease-out transform
         ${visible ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"}
       `}
     >
@@ -72,20 +72,20 @@ function ToastItem({ toast }: { toast: ToastType }) {
           {icons[toast.type]}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] text-[#e6edf3] leading-relaxed font-medium">
+          <p className="text-[13px] text-foreground leading-relaxed font-medium">
             {toast.message}
           </p>
         </div>
         <button 
           onClick={handleClose}
-          className="text-[#8b949e] hover:text-white transition-colors p-1 -mr-1"
+          className="text-muted-foreground hover:text-foreground transition-colors p-1 -mr-1"
         >
           <X size={14} />
         </button>
       </div>
 
       {toast.duration && (
-        <div className="h-[2px] bg-[#30363d] w-full">
+        <div className="h-[2px] bg-secondary/40 w-full">
           <div 
             className={`h-full ${progressColors[toast.type]} transition-all linear`}
             style={{ width: `${progress}%` }}

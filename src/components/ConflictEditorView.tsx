@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { 
-  resolveConflictFile 
-} from "../lib/repo";
+import { resolveConflictFile } from "../lib/repo";
 import { useAppStore } from "../store";
 import { toast } from "../lib/toast";
 import { Editor, useMonaco } from "@monaco-editor/react";
-import { CheckCircle, ArrowRight, ArrowLeft, X } from "lucide-react";
+import { CheckCircle, X, ShieldAlert, Zap, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { parseConflictMarkers, ParsedConflict, ConflictHunk } from "../lib/conflictParser";
 import { buildOursDecorations, buildTheirsDecorations, buildResultDecorations } from "../lib/monacoDecorations";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "../lib/utils";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
+import { Separator } from "./ui/Separator";
 
 export function ConflictEditorView() {
   const { 
@@ -17,7 +20,8 @@ export function ConflictEditorView() {
     conflictVersions, 
     isLoadingConflict, 
     cherryPickConflictedOid,
-    closeConflictEditor
+    closeConflictEditor,
+    fontSize
   } = useAppStore();
   
   const oursEditorRef = useRef<any>(null);
@@ -33,12 +37,6 @@ export function ConflictEditorView() {
   const [currentHunkIndex, setCurrentHunkIndex] = useState(0);
   const [remainingConflicts, setRemainingConflicts] = useState(0);
 
-  // Unmount models properly when closing
-  useEffect(() => {
-    return () => {
-    };
-  }, [activeConflictFile]);
-
   useEffect(() => {
     if (conflictVersions?.raw) {
       setParsed(parseConflictMarkers(conflictVersions.raw));
@@ -47,19 +45,15 @@ export function ConflictEditorView() {
     }
   }, [conflictVersions?.raw]);
 
-  // Set the initial result content natively so we can keep it uncontrolled but reset on file change
   useEffect(() => {
     if (parsed && resultEditorRef.current && monaco) {
       try {
         const editor = resultEditorRef.current;
-        editor.setValue(parsed.displayBase); // Use displayBase which is clean of raw git markers
-        
+        editor.setValue(parsed.displayBase);
         refreshHiddenAreas();
-        
         setRemainingConflicts(parsed.hunks.length);
         setCurrentHunkIndex(0);
         
-        // Listen to model changes to keep hidden areas updated if user types (e.g. presses Enter)
         const disposable = editor.onDidChangeModelContent(() => {
           refreshHiddenAreas();
           updateRemainingCount();
@@ -82,32 +76,19 @@ export function ConflictEditorView() {
   useEffect(() => {
     if (!parsed || !monaco) return;
     
-    if (oursEditorRef.current) {
-      const decs = buildOursDecorations(parsed.hunks, monaco.Range, currentHunkIndex);
-      if (oursEditorRef.current.createDecorationsCollection) {
-        oursDecsRef.current = oursEditorRef.current.createDecorationsCollection(decs);
+    const updateDecorations = (editor: any, decsRef: any, builder: any) => {
+      if (!editor) return;
+      const decs = builder(parsed.hunks, monaco.Range, currentHunkIndex);
+      if (editor.createDecorationsCollection) {
+        decsRef.current = editor.createDecorationsCollection(decs);
       } else {
-        oursEditorRef.current.deltaDecorations([], decs);
+        editor.deltaDecorations([], decs);
       }
-    }
-    
-    if (theirsEditorRef.current) {
-      const decs = buildTheirsDecorations(parsed.hunks, monaco.Range, currentHunkIndex);
-      if (theirsEditorRef.current.createDecorationsCollection) {
-        theirsDecsRef.current = theirsEditorRef.current.createDecorationsCollection(decs);
-      } else {
-        theirsEditorRef.current.deltaDecorations([], decs);
-      }
-    }
-    
-    if (resultEditorRef.current) {
-      const decs = buildResultDecorations(parsed.hunks, monaco.Range, currentHunkIndex);
-      if (resultEditorRef.current.createDecorationsCollection) {
-        resultDecsRef.current = resultEditorRef.current.createDecorationsCollection(decs);
-      } else {
-        resultEditorRef.current.deltaDecorations([], decs);
-      }
-    }
+    };
+
+    updateDecorations(oursEditorRef.current, oursDecsRef, buildOursDecorations);
+    updateDecorations(theirsEditorRef.current, theirsDecsRef, buildTheirsDecorations);
+    updateDecorations(resultEditorRef.current, resultDecsRef, buildResultDecorations);
   }, [parsed, monaco, mountedEditors, currentHunkIndex]);
 
   useEffect(() => {
@@ -116,13 +97,18 @@ export function ConflictEditorView() {
       const syncScroll = (source: string, e: any) => {
         if (isSyncing) return;
         isSyncing = true;
-        if (source !== 'ours') oursEditorRef.current?.setScrollTop(e.scrollTop);
-        if (source !== 'result') resultEditorRef.current?.setScrollTop(e.scrollTop);
-        if (source !== 'theirs') theirsEditorRef.current?.setScrollTop(e.scrollTop);
-        
-        if (source !== 'ours') oursEditorRef.current?.setScrollLeft(e.scrollLeft);
-        if (source !== 'result') resultEditorRef.current?.setScrollLeft(e.scrollLeft);
-        if (source !== 'theirs') theirsEditorRef.current?.setScrollLeft(e.scrollLeft);
+        const editors = [
+          { name: 'ours', ref: oursEditorRef },
+          { name: 'result', ref: resultEditorRef },
+          { name: 'theirs', ref: theirsEditorRef }
+        ];
+
+        editors.forEach(ed => {
+          if (ed.name !== source && ed.ref.current) {
+            ed.ref.current.setScrollTop(e.scrollTop);
+            ed.ref.current.setScrollLeft(e.scrollLeft);
+          }
+        });
         
         requestAnimationFrame(() => isSyncing = false);
       };
@@ -148,15 +134,18 @@ export function ConflictEditorView() {
     parsed.hunks.forEach((hunk) => {
       const id = `widget-${hunk.id}`;
       const domNode = document.createElement('div');
-      domNode.className = 'conflict-action-bar flex items-center gap-1 bg-[#161b22] border border-[#30363d] rounded shadow-lg p-1 z-50';
+      domNode.className = 'conflict-action-bar flex items-center gap-1.5 bg-background/90 backdrop-blur-md border border-border/50 rounded-xl shadow-2xl p-1.5 z-50';
       domNode.style.cssText = 'pointer-events: auto !important; z-index: 9999; position: relative;';
       
-      const btnClass = "px-2 py-0.5 text-[10px] font-bold uppercase rounded hover:bg-[#30363d] transition-colors";
-      
-      const createBtn = (label: string, color: string, type: 'ours' | 'theirs' | 'both') => {
+      const createBtn = (label: string, variant: string, type: 'ours' | 'theirs' | 'both') => {
         const btn = document.createElement('button');
         btn.innerText = label;
-        btn.className = `${btnClass} text-[${color}]`;
+        btn.className = cn(
+          "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all duration-200 active:scale-95",
+          variant === 'ours' ? "bg-dracula-green/20 text-dracula-green hover:bg-dracula-green/30" :
+          variant === 'theirs' ? "bg-dracula-orange/20 text-dracula-orange hover:bg-dracula-orange/30" :
+          "bg-dracula-cyan/20 text-dracula-cyan hover:bg-dracula-cyan/30"
+        );
         btn.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -165,16 +154,14 @@ export function ConflictEditorView() {
         return btn;
       };
 
-      domNode.appendChild(createBtn('Ours', '#3fb950', 'ours'));
-      domNode.appendChild(createBtn('Theirs', '#d29922', 'theirs'));
-      domNode.appendChild(createBtn('Both', '#58a6ff', 'both'));
+      domNode.appendChild(createBtn('Accept Ours', 'ours', 'ours'));
+      domNode.appendChild(createBtn('Accept Theirs', 'theirs', 'theirs'));
+      domNode.appendChild(createBtn('Both', 'both', 'both'));
 
       const widget = {
         getId: () => id,
         getDomNode: () => domNode,
         getPosition: () => ({
-          // Attach to the first line of oursContent (line after markerStartLine)
-          // so it remains visible even if markerStartLine is hidden
           position: { lineNumber: hunk.markerStartLine + 1, column: 1 },
           preference: [monaco.editor.ContentWidgetPositionPreference.ABOVE]
         })
@@ -191,16 +178,11 @@ export function ConflictEditorView() {
 
   if (!activeConflictFile || !conflictVersions || !activeRepoPath) return null;
 
-  const closeView = () => {
-    closeConflictEditor();
-  };
-
   const handleResolve = () => {
     if (!resultEditorRef.current || !activeConflictFile) return;
     const resolvedContent = resultEditorRef.current.getValue();
     resolveConflictFile(activeRepoPath!, activeConflictFile, resolvedContent);
     
-    // Auto populate commit message
     const store = useAppStore.getState();
     const currentMsg = store.commitMessage;
     const resolvedText = `Resolved conflict in ${activeConflictFile}`;
@@ -228,9 +210,9 @@ export function ConflictEditorView() {
   const revealHunk = (index: number) => {
     if (!parsed || !parsed.hunks[index]) return;
     const hunk = parsed.hunks[index];
-    resultEditorRef.current?.revealLineInCenter(hunk.markerStartLine);
-    oursEditorRef.current?.revealLineInCenter(hunk.markerStartLine);
-    theirsEditorRef.current?.revealLineInCenter(hunk.markerStartLine);
+    [resultEditorRef, oursEditorRef, theirsEditorRef].forEach(ref => {
+      ref.current?.revealLineInCenter(hunk.markerStartLine);
+    });
   };
 
   const resolveHunk = (hunk: ConflictHunk, type: 'ours' | 'theirs' | 'both') => {
@@ -239,8 +221,6 @@ export function ConflictEditorView() {
     if (!model) return;
 
     const currentContent = model.getValue();
-    
-    // Normalize về \n để xử lý, detect EOL của file
     const eol = currentContent.includes('\r\n') ? '\r\n' : '\n';
     const normalizedContent = currentContent.replace(/\r\n/g, '\n');
     const startMarker = `<<<<<<< CONFLICT ${hunk.id} >>>>>>>`;
@@ -250,11 +230,10 @@ export function ConflictEditorView() {
     const endIndex = normalizedContent.indexOf(endMarker);
 
     if (startIndex === -1 || endIndex === -1) {
-      toast.error('Could not find conflict block in the result editor. It may have been manually modified.');
+      toast.error('Conflict block not found. It may have been manually modified.');
       return;
     }
 
-    // Build newText với \n
     let newText = "";
     const hOurs = hunk.oursContent || "";
     const hTheirs = hunk.theirsContent || "";
@@ -263,18 +242,10 @@ export function ConflictEditorView() {
     else if (type === 'theirs') newText = hTheirs;
     else newText = hOurs + (hOurs && hTheirs ? "\n" : "") + hTheirs;
 
-    // Ghép lại và restore EOL (thay thế toàn bộ từ startMarker đến hết endMarker)
-    const newNormalized = 
-      normalizedContent.slice(0, startIndex) + 
-      newText + 
-      normalizedContent.slice(endIndex + endMarker.length);
-
-    const finalContent = eol === '\r\n' 
-      ? newNormalized.replace(/\n/g, '\r\n')
-      : newNormalized;
+    const newNormalized = normalizedContent.slice(0, startIndex) + newText + normalizedContent.slice(endIndex + endMarker.length);
+    const finalContent = eol === '\r\n' ? newNormalized.replace(/\n/g, '\r\n') : newNormalized;
 
     model.setValue(finalContent);
-    
     updateRemainingCount();
     goToNext();
   };
@@ -287,13 +258,11 @@ export function ConflictEditorView() {
 
     const hiddenAreas: any[] = [];
     const lines = model.getLinesContent();
-    
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].startsWith('<<<<<<< CONFLICT') || lines[i].startsWith('>>>>>>> END CONFLICT')) {
         hiddenAreas.push(new monaco.Range(i + 1, 1, i + 1, 1));
       }
     }
-    
     editor.setHiddenAreas(hiddenAreas);
   };
 
@@ -314,129 +283,150 @@ export function ConflictEditorView() {
     setMountedEditors((prev: number) => prev + 1);
   };
 
-  // Determine Monaco language heuristically from extension
-  const extension = activeConflictFile?.split('.').pop()?.toLowerCase();
-  const getLanguage = (ext: string | undefined) => {
-      switch(ext) {
-          case 'ts': case 'tsx': return 'typescript';
-          case 'js': case 'jsx': return 'javascript';
-          case 'json': return 'json';
-          case 'md': return 'markdown';
-          case 'html': return 'html';
-          case 'css': return 'css';
-          case 'rs': return 'rust';
-          case 'py': return 'python';
-          case 'go': return 'go';
-          case 'yaml': case 'yml': return 'yaml';
-          case 'sql': return 'sql';
-          case 'xml': return 'xml';
-          case 'sh': case 'bash': return 'shell';
-          default: return 'plaintext';
-      }
-  };
-  const language = getLanguage(extension);
+  const language = (() => {
+    const ext = activeConflictFile?.split('.').pop()?.toLowerCase();
+    switch(ext) {
+      case 'ts': case 'tsx': return 'typescript';
+      case 'js': case 'jsx': return 'javascript';
+      case 'json': return 'json';
+      case 'md': return 'markdown';
+      case 'html': return 'html';
+      case 'css': return 'css';
+      case 'rs': return 'rust';
+      case 'py': return 'python';
+      case 'go': return 'go';
+      case 'yaml': case 'yml': return 'yaml';
+      case 'sql': return 'sql';
+      case 'xml': return 'xml';
+      case 'sh': case 'bash': return 'shell';
+      default: return 'plaintext';
+    }
+  })();
 
   const sharedOptions = {
     minimap: { enabled: false },
     fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-    fontSize: 12,
+    fontSize: fontSize - 1,
     scrollBeyondLastLine: false,
     renderOverviewRuler: false,
     wordWrap: "off" as const,
+    lineNumbersMinChars: 3,
+    glyphMargin: true,
+    folding: true,
   };
 
-
-
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#0d1117] relative z-10 border-r border-[#30363d] overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-      
-      {/* Premium Glassmorphic Toolbar */}
-      <div className="h-[48px] px-4 shrink-0 flex items-center justify-between border-b border-[#30363d]/50 bg-[#161b22]/80 backdrop-blur-md shadow-sm">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex flex-col min-w-0">
-             <span className="text-[13px] font-mono text-[#e6edf3] font-semibold truncate drop-shadow-sm">
-               {activeConflictFile}
-             </span>
-             <span className="text-[10px] text-[#8b949e] uppercase tracking-tighter">
-                {activeConflictMode?.toLowerCase()} conflict
-             </span>
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="flex-1 flex flex-col min-w-0 bg-background relative z-10 border-r border-border/50 overflow-hidden"
+    >
+      {/* Premium Navigation Toolbar */}
+      <div className="h-[52px] px-6 shrink-0 flex items-center justify-between border-b border-border/30 bg-background/80 backdrop-blur-2xl shadow-sm z-30">
+        <div className="flex items-center gap-6 overflow-hidden">
+          <div className="flex flex-col gap-0.5 min-w-0">
+             <div className="flex items-center gap-2">
+                <span className="text-[13px] font-black text-foreground tracking-tight truncate">
+                  {activeConflictFile}
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 font-mono text-[10px] bg-secondary/50 border-border/20">
+                  {activeConflictMode}
+                </Badge>
+             </div>
+             <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-dracula-red animate-pulse shadow-[0_0_8px_rgba(255,85,85,0.5)]" />
+                <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
+                  Resolution required
+                </span>
+             </div>
           </div>
-          <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#d29922]/20 to-[#f85149]/20 text-[#d29922] border border-[#d29922]/30 uppercase tracking-widest shadow-[0_0_8px_rgba(210,153,34,0.15)] flex items-center gap-1.5 shrink-0">
-            <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full animate-pulse"></div>
-            {activeConflictMode === 'Merge' ? 'Merge Conflict' : 
-             activeConflictMode === 'Rebase' ? 'Rebase Conflict' : 
-             activeConflictMode === 'CherryPick' ? 'Cherry-Pick Conflict' : 'Unmerged Conflict'}
-          </span>
           
-          <div className="flex items-center gap-1 ml-4 px-2 py-1 bg-[#21262d] rounded-md border border-[#30363d]">
-            <button onClick={goToPrev} className="p-1 hover:text-white text-[#8b949e] transition-colors"><ArrowLeft size={14}/></button>
-            <span className="text-[11px] font-mono text-[#8b949e] min-w-[50px] text-center">
+          <Separator orientation="vertical" className="h-6 opacity-30" />
+          
+          <div className="flex items-center gap-1.5 bg-secondary/30 rounded-xl border border-border/20 p-1">
+            <Button variant="ghost" size="icon" onClick={goToPrev} className="h-7 w-7 text-muted-foreground hover:text-foreground">
+              <ChevronLeft size={14}/>
+            </Button>
+            <span className="text-[11px] font-mono font-black text-primary px-2 min-w-[50px] text-center">
               {parsed && parsed.hunks.length > 0 ? `${currentHunkIndex + 1} / ${parsed.hunks.length}` : '0 / 0'}
             </span>
-            <button onClick={goToNext} className="p-1 hover:text-white text-[#8b949e] transition-colors"><ArrowRight size={14}/></button>
+            <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7 text-muted-foreground hover:text-foreground">
+              <ChevronRight size={14}/>
+            </Button>
           </div>
           
           {remainingConflicts > 0 && (
-            <span className="text-[10px] text-[#f85149] font-bold animate-pulse">
-              {remainingConflicts} unresolved
-            </span>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="px-3 py-1 bg-dracula-red/10 text-dracula-red text-[11px] font-black rounded-full border border-dracula-red/20 flex items-center gap-2"
+            >
+              <ShieldAlert size={12} />
+              {remainingConflicts} REMAINING
+            </motion.div>
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0 ml-4">
-          <button 
-            onClick={useOurs}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#238636]/10 text-[#3fb950] border border-[#238636]/30 hover:bg-[#238636]/20 hover:border-[#3fb950]/50 transition-all duration-200 rounded-md text-[11px] font-bold uppercase hover:-translate-y-[0.5px] active:translate-y-[0.5px]"
-          >
-            <ArrowRight size={13} className="opacity-80" /> Use Ours
-          </button>
-          
-          <button 
-            onClick={useTheirs}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#d29922]/10 text-[#d29922] border border-[#d29922]/30 hover:bg-[#d29922]/20 hover:border-[#d29922]/50 transition-all duration-200 rounded-md text-[11px] font-bold uppercase hover:-translate-y-[0.5px] active:translate-y-[0.5px]"
-          >
-            <ArrowLeft size={13} className="opacity-80" /> Use Theirs
-          </button>
+        <div className="flex items-center gap-3 shrink-0 ml-4">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={useOurs}
+              className="text-dracula-green hover:text-dracula-green/80 hover:bg-dracula-green/10 border-dracula-green/20 font-bold px-4"
+            >
+              Take Ours
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={useTheirs}
+              className="text-dracula-orange hover:text-dracula-orange/80 hover:bg-dracula-orange/10 border-dracula-orange/20 font-bold px-4"
+            >
+              Take Theirs
+            </Button>
+          </div>
 
-          <div className="w-px h-5 bg-[#30363d] mx-2"></div>
+          <Separator orientation="vertical" className="h-6 opacity-30 mx-1" />
 
-          <button 
+          <Button 
+            variant="primary"
+            size="sm"
             onClick={handleResolve}
             disabled={remainingConflicts > 0}
-            className={`group flex items-center gap-2 px-4 py-1.5 transition-all duration-300 rounded-md text-[11px] font-bold uppercase tracking-wide shadow-sm relative overflow-hidden ${
-              remainingConflicts > 0 
-                ? 'bg-[#21262d] text-[#484f58] cursor-not-allowed border border-[#30363d]' 
-                : 'bg-gradient-to-b from-[#2ea043] to-[#238636] text-white hover:from-[#3fb950] hover:to-[#2ea043] shadow-[0_2px_10px_rgba(35,134,54,0.4)] hover:shadow-[0_4px_15px_rgba(35,134,54,0.6)] hover:-translate-y-0.5'
-            }`}
+            className={cn(
+              "font-black tracking-wide px-6 shadow-lg",
+              remainingConflicts > 0 ? "opacity-50 grayscale" : "shadow-primary/20"
+            )}
           >
-            <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></div>
-            <CheckCircle size={14} className="relative z-10 drop-shadow-md" /> 
-            <span className="relative z-10 drop-shadow-md">Mark Resolved</span>
-          </button>
+            {remainingConflicts > 0 ? <Zap size={14} className="mr-2" /> : <CheckCircle size={14} className="mr-2" />}
+            Mark Resolved
+          </Button>
 
-          <button 
-            onClick={closeView} 
-            className="ml-2 text-[#8b949e] hover:text-white hover:bg-[#30363d]/80 transition-all duration-200 p-1.5 rounded-md active:scale-95"
-            title="Close editor"
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={closeConflictEditor} 
+            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
           >
-            <X size={16} />
-          </button>
+            <X size={18} />
+          </Button>
         </div>
       </div>
 
-      {/* 3-Pane Layout with Premium Borders */}
-      <div className="flex-1 flex flex-row min-h-0 bg-[#0d1117] p-1 gap-1">
+      {/* Editor Grid */}
+      <div className="flex-1 grid grid-cols-3 gap-1.5 p-1.5 bg-secondary/10">
         
-        {/* Left Pane: Ours */}
-        <div className="flex-1 flex flex-col border border-[#30363d] rounded-lg overflow-hidden bg-[#161b22]/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.2)]">
-           <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#21262d] to-transparent border-b border-[#30363d]">
-             <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full shadow-[0_0_5px_rgba(63,185,80,0.8)]"></div>
-               <span className="text-[#3fb950] text-[11px] font-sans font-bold uppercase tracking-widest drop-shadow-sm">OURS</span>
+        {/* Ours Pane */}
+        <div className="flex flex-col border border-border/40 rounded-2xl overflow-hidden bg-background/50 shadow-inner group">
+           <div className="flex items-center justify-between px-4 py-2.5 bg-dracula-green/5 border-b border-dracula-green/10 transition-colors group-hover:bg-dracula-green/10">
+             <div className="flex items-center gap-2.5">
+               <div className="w-2 h-2 bg-dracula-green rounded-full shadow-[0_0_8px_rgba(80,250,123,0.4)]" />
+               <span className="text-dracula-green text-[11px] font-black tracking-[0.2em] uppercase">OURS</span>
              </div>
-             <span className="text-[#8b949e] text-[10px] font-mono bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d]">HEAD</span>
+             <Badge variant="outline" className="font-mono text-[9px] border-dracula-green/20 text-dracula-green/60 uppercase">LOCAL BRANCH</Badge>
            </div>
-           <div className="flex-1 relative pt-1">
+           <div className="flex-1 relative">
              <Editor
                value={parsed?.oursContent || ""}
                language={language}
@@ -447,24 +437,33 @@ export function ConflictEditorView() {
            </div>
         </div>
 
-        {/* Center Pane: Result (Elevated) */}
-        <div className="flex-1 flex flex-col border border-[#58a6ff]/40 rounded-lg overflow-hidden bg-[#0d1117] shadow-[0_0_20px_rgba(88,166,255,0.05),0_0_40px_rgba(0,0,0,0.5)] transform scale-[1.01] z-20">
-           <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#1f6feb]/20 to-[#161b22] border-b border-[#58a6ff]/30">
-             <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 bg-[#58a6ff] rounded-full shadow-[0_0_5px_rgba(88,166,255,0.8)]"></div>
-               <span className="text-[#e6edf3] text-[11px] font-sans font-extrabold uppercase tracking-widest drop-shadow-sm">RESULT</span>
+        {/* Result Pane (Active/Elevated) */}
+        <div className="flex flex-col border-2 border-primary/30 rounded-2xl overflow-hidden bg-background shadow-2xl z-20 scale-[1.01] transition-transform duration-500">
+           <div className="flex items-center justify-between px-4 py-2.5 bg-primary/10 border-b border-primary/20">
+             <div className="flex items-center gap-2.5">
+               <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_rgba(189,147,249,0.4)] animate-pulse" />
+               <span className="text-primary text-[11px] font-black tracking-[0.2em] uppercase">RESULT</span>
              </div>
-             <span className="text-[#8b949e] text-[10px] italic pr-1 opacity-70">Edit directly to resolve</span>
+             <div className="flex items-center gap-2">
+               <span className="text-[10px] text-muted-foreground font-bold italic opacity-60">Manual editing allowed</span>
+             </div>
            </div>
-           <div className="flex-1 relative pt-1">
-             {isLoadingConflict && (
-                <div className="absolute inset-0 z-50 bg-[#0d1117]/60 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-300">
-                   <div className="flex flex-col items-center gap-3">
-                     <div className="w-8 h-8 rounded-full border-t-2 border-b-2 border-[#58a6ff] animate-spin"></div>
-                     <span className="text-[11px] text-[#58a6ff] uppercase tracking-widest font-semibold animate-pulse">Loading Conflict Data...</span>
-                   </div>
-                </div>
-             )}
+           <div className="flex-1 relative">
+             <AnimatePresence>
+               {isLoadingConflict && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center"
+                  >
+                    <div className="flex flex-col items-center gap-4">
+                      <Loader2 size={32} className="animate-spin text-primary" />
+                      <span className="text-[11px] text-primary font-black uppercase tracking-widest animate-pulse">Syncing Conflict State...</span>
+                    </div>
+                  </motion.div>
+               )}
+             </AnimatePresence>
              <Editor
                defaultValue={parsed?.displayBase || ""}
                language={language}
@@ -475,18 +474,18 @@ export function ConflictEditorView() {
            </div>
         </div>
 
-        {/* Right Pane: Theirs */}
-        <div className="flex-1 flex flex-col border border-[#30363d] rounded-lg overflow-hidden bg-[#161b22]/50 shadow-[inset_0_0_10px_rgba(0,0,0,0.2)]">
-           <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-[#21262d] to-transparent border-b border-[#30363d]">
-             <div className="flex items-center gap-2">
-               <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full shadow-[0_0_5px_rgba(210,153,34,0.8)]"></div>
-               <span className="text-[#d29922] text-[11px] font-sans font-bold uppercase tracking-widest drop-shadow-sm">THEIRS</span>
+        {/* Theirs Pane */}
+        <div className="flex flex-col border border-border/40 rounded-2xl overflow-hidden bg-background/50 shadow-inner group">
+           <div className="flex items-center justify-between px-4 py-2.5 bg-dracula-orange/5 border-b border-dracula-orange/10 transition-colors group-hover:bg-dracula-orange/10">
+             <div className="flex items-center gap-2.5">
+               <div className="w-2 h-2 bg-dracula-orange rounded-full shadow-[0_0_8px_rgba(255,184,108,0.4)]" />
+               <span className="text-dracula-orange text-[11px] font-black tracking-[0.2em] uppercase">THEIRS</span>
              </div>
-             <span className="text-[#8b949e] text-[10px] font-mono bg-[#161b22] px-1.5 py-0.5 rounded border border-[#30363d] truncate max-w-[80px]">
-               {cherryPickConflictedOid ? cherryPickConflictedOid.substring(0, 7) : 'Incoming'}
-             </span>
+             <Badge variant="outline" className="font-mono text-[9px] border-dracula-orange/20 text-dracula-orange/60 uppercase">
+               {cherryPickConflictedOid ? cherryPickConflictedOid.substring(0, 7) : 'INCOMING'}
+             </Badge>
            </div>
-           <div className="flex-1 relative pt-1">
+           <div className="flex-1 relative">
              <Editor
                value={parsed?.theirsContent || ""}
                language={language}
@@ -497,6 +496,6 @@ export function ConflictEditorView() {
            </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

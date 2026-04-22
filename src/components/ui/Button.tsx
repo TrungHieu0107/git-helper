@@ -1,51 +1,75 @@
-import React from 'react';
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { motion, HTMLMotionProps } from "framer-motion";
+import { cn } from "../../lib/utils";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
-  isLoading?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-}
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = '', variant = 'secondary', size = 'md', isLoading, leftIcon, rightIcon, children, disabled, ...props }, ref) => {
-    const baseStyles = "inline-flex items-center justify-center rounded-md font-medium transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500";
-    
-    const variants = {
-      primary: "bg-blue-600 text-white hover:bg-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.4)]",
-      secondary: "bg-[#21262d] text-[#c9d1d9] border border-[#30363d] hover:bg-[#30363d] hover:border-[#8b949e]/30",
-      ghost: "bg-transparent text-[#8b949e] hover:bg-white/5 hover:text-[#e6edf3]",
-      danger: "bg-red-600/10 text-red-500 border border-red-500/20 hover:bg-red-600 hover:text-white",
-      success: "bg-green-600/10 text-green-500 border border-green-500/20 hover:bg-green-600 hover:text-white"
-    };
-    
-    const sizes = {
-      sm: "h-7 px-3 text-[11px] gap-1.5",
-      md: "h-9 px-4 text-[13px] gap-2",
-      lg: "h-11 px-6 text-base gap-2.5",
-      icon: "h-9 w-9 p-0"
-    };
-
-    return (
-      <button
-        ref={ref}
-        disabled={disabled || isLoading}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-        {...props}
-      >
-        {isLoading ? (
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <>
-            {leftIcon && <span className="shrink-0">{leftIcon}</span>}
-            {children}
-            {rightIcon && <span className="shrink-0">{rightIcon}</span>}
-          </>
-        )}
-      </button>
-    );
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20",
+        danger:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20",
+        outline:
+          "border border-border bg-transparent hover:bg-secondary hover:text-secondary-foreground backdrop-blur-sm",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+        primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20",
+        glass: "bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 text-foreground shadow-xl",
+      },
+      size: {
+        default: "h-9 px-4 py-2",
+        xs: "h-7 px-2 rounded-sm text-[11px]",
+        sm: "h-8 rounded-md px-3 text-xs",
+        lg: "h-10 rounded-md px-8",
+        icon: "h-9 w-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   }
 );
 
-Button.displayName = 'Button';
+import { Loader2 } from "lucide-react";
+
+export interface ButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof HTMLMotionProps<"button">>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  isLoading?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps & HTMLMotionProps<"button">>(
+  ({ className, variant, size, leftIcon, rightIcon, isLoading, children, disabled, ...props }, ref) => {
+    return (
+      <motion.button
+        className={cn(buttonVariants({ variant, size, className }), "gap-2")}
+        ref={ref}
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.98 }}
+        disabled={isLoading || disabled}
+        {...props}
+      >
+        {isLoading ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          leftIcon
+        )}
+        {children as React.ReactNode}
+        {!isLoading && rightIcon}
+      </motion.button>
+    );
+  }
+);
+Button.displayName = "Button";
+
+export { Button, buttonVariants };

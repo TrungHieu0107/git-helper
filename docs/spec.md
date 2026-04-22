@@ -1,6 +1,6 @@
 # Technical Specification
-## Version: 3.1.0
-## Last updated: 2026-04-21 – Feature specifications and implementation status.
+## Version: 3.4.0
+## Last updated: 2026-04-22 – High-Fidelity UI Modernization & Stability Hardening.
 ## Project: GitKit
 
 GitKit provides a robust set of Git features focused on developer productivity and visual clarity.
@@ -11,6 +11,7 @@ GitKit provides a robust set of Git features focused on developer productivity a
 - **Repository Initialization**: `[Implemented]` - Detecting and opening existing git repositories via [repo.ts](file:///d:/learn/git-helper/src/lib/repo.ts).
 - **Recent Repositories**: `[Implemented]` - Persistent list of previously opened repositories with "Last Opened" timestamps.
 - **State Restoration**: `[Implemented]` - Automatically restores active tabs, stash settings, and UI preferences on startup.
+- **Auto-Fetch**: `[Implemented]` - Background synchronization with remotes on startup, repo open, and tab switching to ensure status (ahead/behind) is always fresh.
 
 ### Visual Commit Graph
 - **Manhattan Routing**: `[Implemented]` - Curvy SVG-based edge routing to visualize complex branch topologies in [CommitGraph.tsx](file:///d:/learn/git-helper/src/components/CommitGraph.tsx).

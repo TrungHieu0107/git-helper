@@ -98,6 +98,9 @@ export interface UISlice {
   setFileHistory: (path: string | null) => void;
   openConflictEditor: (filePath: string, mode: ConflictMode) => void;
   closeConflictEditor: () => void;
+
+  fontSize: number;
+  setFontSize: (size: number) => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -176,4 +179,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   removeToast: (id) => set((state) => ({
     toasts: state.toasts.filter((t) => t.id !== id)
   })),
+
+  fontSize: 13,
+  setFontSize: (fontSize) => set(() => ({ fontSize })),
 });

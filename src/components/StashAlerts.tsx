@@ -1,90 +1,105 @@
 import { useAppStore } from "../store";
-import { AlertCircle, AlertTriangle, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, Layers } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
 
 export function StashAlerts() {
   const stashConflict = useAppStore(state => state.stashConflict);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (stashConflict) {
-      const timer = setTimeout(() => setVisible(true), 10);
-      return () => {
-          clearTimeout(timer);
-          setVisible(false);
-      };
-    } else {
-      setVisible(false);
-    }
-  }, [stashConflict]);
-
-  if (!stashConflict && !visible) return null;
 
   const handleCancel = () => {
-    setVisible(false);
-    setTimeout(() => {
-      useAppStore.setState({ stashConflict: null });
-    }, 300);
+    useAppStore.setState({ stashConflict: null });
   };
 
-  if (stashConflict) {
-    return (
-      <div 
-        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ease-out transform border-b bg-[#1c2128]/99 border-red-500/30 ${
-          visible ? "translate-x-0" : "translate-x-full"
-        } h-auto py-4`}
-      >
-        <div className="absolute inset-0 backdrop-blur-md" />
-        
-        <div className="relative h-full w-full flex flex-col px-4 justify-center select-none gap-4 max-w-5xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="bg-red-500/20 p-1.5 rounded-full flex items-center justify-center shrink-0">
-                <AlertCircle size={20} className="text-red-400" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-red-400 uppercase tracking-wide">
-                  Conflicts Detected during Stash {stashConflict.isPop ? "Pop" : "Apply"}
-                </span>
-                <span className="text-xs text-slate-400">
-                  {stashConflict.isPop 
-                    ? "The changes were applied successfully but conflicts occurred. The stash has NOT been dropped." 
-                    : "The changes were applied with conflicts. Please resolve them manually."}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={handleCancel}
-              className="h-7 px-3 bg-[#30363d] hover:bg-[#21262d] text-[#c9d1d9] text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1"
-            >
-              <X size={12} />
-              CLOSE
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Conflicted Files ({stashConflict.files.length})</span>
-            <div className="max-h-40 overflow-y-auto bg-black/30 rounded-lg p-3 border border-red-500/10 custom-scrollbar">
-              {stashConflict.files.map((f, i) => (
-                <div key={i} className="text-[11px] font-mono text-slate-300 py-1 flex items-center gap-2 border-b border-white/5 last:border-0">
-                  <span className="w-1 h-1 rounded-full bg-red-500" />
-                  {f}
+  return (
+    <AnimatePresence>
+      {stashConflict && (
+        <motion.div
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -100, opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="fixed top-0 left-0 right-0 z-[100] border-b border-dracula-red/30 bg-dracula-red/10 backdrop-blur-2xl shadow-2xl overflow-hidden"
+        >
+          {/* Main Content Area */}
+          <div className="max-w-5xl mx-auto w-full px-6 py-5 flex flex-col gap-6">
+            <div className="flex items-center justify-between gap-8">
+              {/* Context Info */}
+              <div className="flex items-center gap-5 flex-1 min-w-0">
+                <div className="p-3 rounded-2xl bg-dracula-red/20 text-dracula-red shadow-lg shadow-dracula-red/10 rotate-3 transition-transform duration-500 hover:rotate-0">
+                  <Layers size={22} />
                 </div>
-              ))}
+                
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[12px] font-black tracking-widest text-dracula-red/60 uppercase">
+                      Stash Conflict Detected
+                    </span>
+                    <Badge variant="secondary" className="px-3 py-0.5 bg-dracula-red/20 text-dracula-red font-bold border-dracula-red/10 shadow-sm">
+                      {stashConflict.isPop ? "POP" : "APPLY"}
+                    </Badge>
+                  </div>
+                  
+                  <p className="text-[14px] text-dracula-red/80 font-medium leading-relaxed max-w-2xl">
+                    {stashConflict.isPop 
+                      ? "The changes were applied successfully but conflicts occurred. The stash remains preserved in your list." 
+                      : "The changes were applied with conflicts. Manual resolution is required to finalize the state."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancel}
+                  className="font-bold text-dracula-red/40 hover:text-dracula-red hover:bg-dracula-red/10 px-4"
+                >
+                  Dismiss Alert
+                </Button>
+              </div>
+            </div>
+
+            {/* Conflicted Files List */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 px-1">
+                <label className="text-[10px] font-black text-dracula-red/40 uppercase tracking-[0.2em]">Conflicted Entities</label>
+                <div className="h-px flex-1 bg-dracula-red/10" />
+                <span className="text-[10px] font-bold text-dracula-red/60 font-mono tracking-tighter bg-dracula-red/10 px-2 py-0.5 rounded-full border border-dracula-red/10">
+                  {stashConflict.files.length} ITEMS
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto custom-scrollbar p-3 bg-background/40 border border-dracula-red/10 rounded-2xl shadow-inner">
+                {stashConflict.files.map((f, i) => (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.02 }}
+                    key={i} 
+                    className="flex items-center gap-3 px-4 py-2.5 bg-secondary/20 rounded-xl border border-border/10 group hover:border-dracula-red/30 transition-all duration-300"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-dracula-red/40 group-hover:bg-dracula-red transition-colors shadow-sm" />
+                    <span className="text-[12px] font-mono text-muted-foreground truncate group-hover:text-foreground transition-colors">{f}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Resolution Hint */}
+            <div className="flex items-center gap-3 bg-dracula-red/5 px-4 py-3 rounded-2xl border border-dracula-red/10 shadow-sm">
+              <AlertTriangle size={16} className="text-dracula-red/60" />
+              <span className="text-[12px] text-dracula-red/60 font-bold tracking-tight">
+                Please resolve these conflicts in your working tree before attempting further operations.
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-red-500/5 p-2 rounded border border-red-500/10">
-            <AlertTriangle size={14} className="text-red-400/70" />
-            <span className="text-[11px] text-slate-400">
-              Please resolve these conflicts in your working tree before committing.
-            </span>
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 h-[2px] bg-red-500/50 w-full" />
-      </div>
-    );
-  }
-
-  return null;
+          {/* Decorative Bottom Accent */}
+          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-dracula-red/40" />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }

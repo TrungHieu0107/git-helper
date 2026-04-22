@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Archive, X, Check, Loader2, AlertTriangle, FileText, Plus, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Archive, X, Check, AlertTriangle, FileText, Plus, Info } from 'lucide-react';
 import { useAppStore, FileStatus } from '../store';
 import { stashUnstaged, saveCurrentState } from '../lib/repo';
 import { toast } from '../lib/toast';
+import { cn } from '../lib/utils';
+import { Button } from './ui/Button';
 
 interface CreateStashDialogProps {
   onClose: () => void;
@@ -19,7 +22,7 @@ export function CreateStashDialog({ onClose }: CreateStashDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => inputRef.current?.focus(), 150);
   }, []);
 
   const unstagedModified = unstagedFiles.filter(f => f.status !== 'untracked');
@@ -53,172 +56,236 @@ export function CreateStashDialog({ onClose }: CreateStashDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-      <div 
-        className="w-[500px] bg-[#1c2128] border border-[#30363d] rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#30363d] bg-[#161b22]/50">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
-              <Archive size={18} />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-background/40 backdrop-blur-md"
+        />
+
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[520px] flex flex-col overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-border/30 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center gap-4">
+              <div className="p-2.5 rounded-xl bg-amber-500/10">
+                <Archive size={20} className="text-amber-500" />
+              </div>
+              <div>
+                <h2 className="text-[17px] font-bold text-foreground tracking-tight">Stash Changes</h2>
+                <p className="text-[12px] text-muted-foreground/60">Save current work to a temporary area</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-[14px] font-semibold text-[#e6edf3]">Stash Changes</h3>
-              <p className="text-[11px] text-[#8b949e]">Save current work to a temporary area</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-[#484f58] hover:text-[#8b949e] transition-colors p-1.5 hover:bg-[#30363d] rounded-md">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-5">
-          {/* Message Input */}
-          <div>
-            <label className="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider mb-2 block">Message (Optional)</label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              placeholder="e.g. work in progress on authentication"
-              className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-[13px] text-[#e6edf3] placeholder-[#484f58] outline-none focus:border-[#388bfd] focus:ring-1 focus:ring-[#388bfd]/30 transition-all font-sans"
-              onKeyDown={e => e.key === 'Enter' && canSubmit && handleSubmit()}
-            />
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground/40 hover:text-foreground">
+              <X size={16} />
+            </Button>
           </div>
 
-          {/* Stash Mode Selector */}
-          <div>
-            <label className="text-[11px] font-bold text-[#8b949e] uppercase tracking-wider mb-2 block">Stash Mode</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={() => {
-                  setMode('all');
-                  useAppStore.setState({ lastStashMode: 'all' });
-                  saveCurrentState();
-                }}
-                className={`flex flex-col items-start p-3 rounded-xl border transition-all text-left ${mode === 'all' ? 'bg-[#388bfd]/10 border-[#388bfd] text-[#79c0ff]' : 'bg-[#0d1117] border-[#30363d] text-[#8b949e] hover:border-[#484f58]'}`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Plus size={14} className={mode === 'all' ? 'text-blue-400' : 'text-slate-500'} />
-                  <span className="text-[13px] font-semibold">Stash All</span>
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="px-8 py-6 space-y-6">
+              {/* Message Input */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Message (Optional)</label>
+                <div className="relative group">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={message}
+                    onChange={e => setMessage(e.target.value)}
+                    placeholder="e.g. work in progress on authentication"
+                    className={cn(
+                      "w-full bg-secondary/40 border border-border/50 rounded-xl px-4 py-3.5 text-[14px] text-foreground transition-all duration-300",
+                      "focus:bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none"
+                    )}
+                    onKeyDown={e => e.key === 'Enter' && canSubmit && handleSubmit()}
+                  />
                 </div>
-                <span className="text-[10px] opacity-80 leading-relaxed">Everything including staged changes will be stashed</span>
-              </button>
-              <button 
-                onClick={() => {
-                  setMode('unstaged');
-                  useAppStore.setState({ lastStashMode: 'unstaged' });
-                  saveCurrentState();
-                }}
-                className={`flex flex-col items-start p-3 rounded-xl border transition-all text-left ${mode === 'unstaged' ? 'bg-[#388bfd]/10 border-[#388bfd] text-[#79c0ff]' : 'bg-[#0d1117] border-[#30363d] text-[#8b949e] hover:border-[#484f58]'}`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <FileText size={14} className={mode === 'unstaged' ? 'text-blue-400' : 'text-slate-500'} />
-                  <span className="text-[13px] font-semibold">Unstaged Only</span>
-                </div>
-                <span className="text-[10px] opacity-80 leading-relaxed">Only modified files NOT in the index will be stashed</span>
-              </button>
-            </div>
-          </div>
+              </div>
 
-          {/* Options */}
-          <div className="flex items-center gap-4">
-             <label className="flex items-center gap-2 cursor-pointer group select-none">
-                <div 
-                  className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${includeUntracked ? 'bg-[#388bfd] border-[#388bfd]' : 'border-[#484f58] bg-transparent group-hover:border-[#8b949e]'}`}
-                  onClick={() => {
-                    const nextValue = !includeUntracked;
-                    setIncludeUntracked(nextValue);
-                    useAppStore.setState({ lastIncludeUntracked: nextValue });
-                    saveCurrentState();
-                  }}
-                >
-                  {includeUntracked && <Check size={12} className="text-white" />}
-                </div>
-                <span className="text-[12px] text-[#8b949e] group-hover:text-[#c9d1d9] transition-colors" 
-                  onClick={() => {
-                    const nextValue = !includeUntracked;
-                    setIncludeUntracked(nextValue);
-                    useAppStore.setState({ lastIncludeUntracked: nextValue });
-                    saveCurrentState();
-                  }}>
-                  Include untracked files
-                </span>
-             </label>
-          </div>
+              {/* Stash Mode Selector */}
+              <div className="space-y-3">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Stash Mode</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => {
+                      setMode('all');
+                      useAppStore.setState({ lastStashMode: 'all' });
+                      saveCurrentState();
+                    }}
+                    className={cn(
+                      "flex flex-col items-start p-4 rounded-xl border transition-all text-left group",
+                      mode === 'all' 
+                        ? "bg-primary/5 border-primary ring-4 ring-primary/5 shadow-lg shadow-primary/5" 
+                        : "bg-secondary/30 border-border/50 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={cn(
+                        "p-1.5 rounded-lg transition-colors",
+                        mode === 'all' ? "bg-primary/20 text-primary" : "bg-muted/10 text-muted-foreground group-hover:text-foreground"
+                      )}>
+                        <Plus size={16} />
+                      </div>
+                      <span className={cn("text-[14px] font-bold", mode === 'all' ? "text-primary" : "text-foreground/80 group-hover:text-foreground")}>Stash All</span>
+                    </div>
+                    <p className="text-[11px] opacity-60 leading-relaxed font-medium">Everything including staged changes will be stashed</p>
+                  </button>
 
-          {/* Preview Section */}
-          <div className="space-y-3">
-             <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden">
-                <div className="px-3 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between">
-                   <span className="text-[11px] font-bold text-[#8b949e] uppercase">Files to be stashed ({filesToStash.length})</span>
+                  <button 
+                    onClick={() => {
+                      setMode('unstaged');
+                      useAppStore.setState({ lastStashMode: 'unstaged' });
+                      saveCurrentState();
+                    }}
+                    className={cn(
+                      "flex flex-col items-start p-4 rounded-xl border transition-all text-left group",
+                      mode === 'unstaged' 
+                        ? "bg-primary/5 border-primary ring-4 ring-primary/5 shadow-lg shadow-primary/5" 
+                        : "bg-secondary/30 border-border/50 text-muted-foreground hover:border-border hover:bg-secondary/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={cn(
+                        "p-1.5 rounded-lg transition-colors",
+                        mode === 'unstaged' ? "bg-primary/20 text-primary" : "bg-muted/10 text-muted-foreground group-hover:text-foreground"
+                      )}>
+                        <FileText size={16} />
+                      </div>
+                      <span className={cn("text-[14px] font-bold", mode === 'unstaged' ? "text-primary" : "text-foreground/80 group-hover:text-foreground")}>Unstaged Only</span>
+                    </div>
+                    <p className="text-[11px] opacity-60 leading-relaxed font-medium">Only modified files NOT in the index will be stashed</p>
+                  </button>
                 </div>
-                <div className="max-h-[120px] overflow-y-auto custom-scrollbar p-2 space-y-1">
-                   {filesToStash.length === 0 ? (
-                     <div className="text-[11px] text-[#484f58] italic py-2 px-1">Nothing to stash</div>
-                   ) : (
-                     filesToStash.map(f => <FileRow key={f.path} file={f} />)
-                   )}
-                </div>
-             </div>
+              </div>
 
-             {mode === 'unstaged' && filesRemaining.length > 0 && (
-                <div className="rounded-xl border border-[#30363d] bg-[#0d1117] overflow-hidden opacity-60">
-                   <div className="px-3 py-2 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#8b949e] uppercase">Remaining in index ({filesRemaining.length})</span>
-                      <Info size={12} className="text-[#8b949e]" />
-                   </div>
-                   <div className="max-h-[80px] overflow-y-auto custom-scrollbar p-2 space-y-1">
+              {/* Options */}
+              <div className="px-1">
+                <label className="flex items-center gap-3 cursor-pointer group select-none">
+                  <div 
+                    className={cn(
+                      "w-5 h-5 rounded-md border flex items-center justify-center transition-all duration-200",
+                      includeUntracked ? "bg-primary border-primary shadow-lg shadow-primary/20" : "border-border/60 bg-secondary/20 group-hover:border-border group-hover:bg-secondary/40"
+                    )}
+                    onClick={() => {
+                      const nextValue = !includeUntracked;
+                      setIncludeUntracked(nextValue);
+                      useAppStore.setState({ lastIncludeUntracked: nextValue });
+                      saveCurrentState();
+                    }}
+                  >
+                    {includeUntracked && <Check size={14} className="text-primary-foreground" strokeWidth={3} />}
+                  </div>
+                  <span className="text-[13px] font-medium text-muted-foreground group-hover:text-foreground transition-colors"
+                    onClick={() => {
+                      const nextValue = !includeUntracked;
+                      setIncludeUntracked(nextValue);
+                      useAppStore.setState({ lastIncludeUntracked: nextValue });
+                      saveCurrentState();
+                    }}>
+                    Include untracked files
+                  </span>
+                </label>
+              </div>
+
+              {/* Preview Section */}
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-border/40 bg-secondary/20 overflow-hidden shadow-inner">
+                  <div className="px-4 py-2.5 bg-secondary/40 border-b border-border/30 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">Files to be stashed ({filesToStash.length})</span>
+                  </div>
+                  <div className="max-h-[140px] overflow-y-auto custom-scrollbar p-1.5 space-y-1">
+                    {filesToStash.length === 0 ? (
+                      <div className="py-8 text-center flex flex-col items-center gap-2 opacity-30">
+                        <Archive size={24} />
+                        <span className="text-[11px] font-medium">Nothing to stash</span>
+                      </div>
+                    ) : (
+                      filesToStash.map(f => <FileRow key={f.path} file={f} />)
+                    )}
+                  </div>
+                </div>
+
+                {mode === 'unstaged' && filesRemaining.length > 0 && (
+                  <div className="rounded-2xl border border-border/30 bg-secondary/10 overflow-hidden opacity-50">
+                    <div className="px-4 py-2.5 bg-secondary/20 border-b border-border/20 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">Remaining in index ({filesRemaining.length})</span>
+                      <Info size={12} className="text-muted-foreground/40" />
+                    </div>
+                    <div className="max-h-[100px] overflow-y-auto custom-scrollbar p-1.5 space-y-1">
                       {filesRemaining.map(f => <FileRow key={f.path} file={f} dimmed />) }
-                   </div>
-                </div>
-             )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-[#30363d] bg-[#161b22]/50 flex items-center justify-between">
-          <div className="flex-1">
-            {!canSubmit && (
-               <div className="flex items-center gap-1.5 text-amber-500/80">
+          {/* Footer */}
+          <div className="px-6 py-5 border-t border-border/30 bg-secondary/10 flex items-center justify-between">
+            <div className="flex-1">
+              {!canSubmit && (
+                <div className="flex items-center gap-2 text-amber-500/80 px-1">
                   <AlertTriangle size={14} />
-                  <span className="text-[11px] font-medium">No changes to stash</span>
-               </div>
-            )}
+                  <span className="text-[11px] font-bold">No changes found</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost"
+                onClick={onClose}
+                className="px-5 font-bold text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="primary"
+                onClick={handleSubmit}
+                disabled={!canSubmit || isSubmitting}
+                isLoading={isSubmitting}
+                className="px-8 font-bold shadow-lg shadow-primary/20 min-w-[140px]"
+              >
+                {mode === 'all' ? 'Stash All' : 'Stash Unstaged'}
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-[13px] font-medium text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting}
-              className={`px-5 py-2 rounded-lg text-[13px] font-semibold flex items-center gap-2 transition-all ${!canSubmit || isSubmitting ? 'bg-[#30363d] text-[#484f58] cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20 active:scale-95'}`}
-            >
-              {isSubmitting && <Loader2 size={14} className="animate-spin" />}
-              {mode === 'all' ? 'Stash All' : 'Stash Unstaged'}
-            </button>
-          </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }
 
 function FileRow({ file, dimmed = false }: { file: FileStatus, dimmed?: boolean }) {
-  const statusColor = file.status === 'staged' ? 'text-emerald-400' : file.status === 'untracked' ? 'text-slate-400' : 'text-amber-400';
+  const statusColor = file.status === 'staged' ? 'bg-emerald-500/20 text-emerald-500' : file.status === 'untracked' ? 'bg-slate-500/20 text-slate-400' : 'bg-amber-500/20 text-amber-500';
+  const statusChar = file.status[0].toUpperCase();
+
   return (
-    <div className={`flex items-center gap-2 py-1 px-1 rounded hover:bg-white/5 group transition-colors ${dimmed ? 'opacity-50' : ''}`}>
-      <span className={`text-[10px] w-4 font-bold text-center uppercase ${statusColor}`}>
-        {file.status[0]}
-      </span>
-      <span className="text-[12px] text-slate-300 truncate flex-1 font-mono">{file.path}</span>
-    </div>
+    <motion.div 
+      initial={{ opacity: 0, x: -5 }}
+      animate={{ opacity: 1, x: 0 }}
+      className={cn(
+        "flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-background/40 group transition-all duration-200",
+        dimmed && "grayscale opacity-60"
+      )}
+    >
+      <div className={cn(
+        "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black shrink-0",
+        statusColor
+      )}>
+        {statusChar}
+      </div>
+      <span className="text-[13px] text-foreground/70 truncate flex-1 font-mono font-medium group-hover:text-foreground">{file.path}</span>
+    </motion.div>
   );
 }

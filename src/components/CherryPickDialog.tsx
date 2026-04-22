@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CommitNode, useAppStore } from '../store';
 import { invokeCherryPick } from '../lib/repo';
-import { GitCommit, AlertTriangle } from 'lucide-react';
+import { GitCommit, AlertTriangle, X, Check } from 'lucide-react';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 interface CherryPickDialogProps {
   commits: CommitNode[];
@@ -31,65 +34,104 @@ export function CherryPickDialog({ commits, onClose }: CherryPickDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-      <div 
-        className="bg-[#161b22] border border-[#30363d] rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-      >
-        <div className="px-5 py-4 border-b border-[#21262d] flex items-center gap-3 bg-[#0d1117]/50">
-          <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
-            <GitCommit size={18} />
-          </div>
-          <div>
-            <h2 className="text-[15px] font-semibold text-[#e6edf3]">Cherry-Pick Commits</h2>
-            <p className="text-xs text-[#8b949e]">Apply changes onto <span className="text-blue-400 font-mono font-medium">{activeBranch || 'HEAD'}</span></p>
-          </div>
-        </div>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={!isApplying ? onClose : undefined}
+          className="absolute inset-0 bg-background/40 backdrop-blur-md"
+        />
 
-        <div className="p-5 flex flex-col gap-4">
-           {hasMerge && (
-             <div className="px-3 py-2 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-start gap-2">
-                <AlertTriangle size={14} className="text-yellow-500 mt-0.5 shrink-0" />
-                <p className="text-[11px] text-yellow-200/90 leading-tight">
-                  One or more selected commits are merge commits. We will use the first parent as mainline.
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+        >
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-border/30 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center gap-4">
+              <div className="p-2.5 rounded-xl bg-primary/10">
+                <GitCommit size={20} className="text-primary" />
+              </div>
+              <div>
+                <h2 className="text-[17px] font-bold text-foreground tracking-tight">Cherry-Pick Commits</h2>
+                <p className="text-[12px] text-muted-foreground/60">
+                  Target branch: <span className="text-primary font-mono font-bold">{activeBranch || 'HEAD'}</span>
                 </p>
-             </div>
-           )}
-
-           <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto custom-scrollbar border border-[#30363d] rounded bg-[#0d1117] p-2">
-              {commits.map(c => (
-                <div key={c.oid} className="flex items-center gap-3 py-1">
-                   <span className="font-mono text-xs text-[#79c0ff] bg-[#1e293b] px-1.5 py-0.5 rounded shrink-0">{c.short_oid}</span>
-                   <span className="text-sm text-[#c9d1d9] truncate">{c.message}</span>
-                </div>
-              ))}
-           </div>
-           
-           <p className="text-xs text-[#8b949e]">
-              This will apply the changes from {commits.length === 1 ? 'this commit' : 'these commits'} onto your current working tree and automatically commit them if there are no conflicts.
-           </p>
-        </div>
-
-        <div className="px-5 py-3 border-t border-[#21262d] bg-[#0d1117]/50 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            disabled={isApplying}
-            className="px-4 py-1.5 rounded-md text-sm font-medium text-[#c9d1d9] hover:bg-[#21262d] transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={isApplying}
-            className="px-4 py-1.5 rounded-md text-sm font-medium bg-[#238636] text-white hover:bg-[#2ea043] transition-colors border border-[#2ea043]/40 flex items-center gap-2 disabled:opacity-50"
-          >
-            {isApplying ? (
-               <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Applying...</>
-            ) : (
-               'Cherry-pick'
+              </div>
+            </div>
+            {!isApplying && (
+              <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground/40 hover:text-foreground">
+                <X size={16} />
+              </Button>
             )}
-          </button>
-        </div>
+          </div>
+
+          <div className="p-8 flex flex-col gap-6">
+            {hasMerge && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3"
+              >
+                <AlertTriangle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[12px] text-amber-500/80 leading-relaxed font-medium">
+                  One or more selected commits are merge commits. Git will use the first parent as mainline.
+                </p>
+              </motion.div>
+            )}
+
+            <div className="space-y-3">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Selected Commits</label>
+              <div className="flex flex-col gap-1.5 max-h-[220px] overflow-y-auto custom-scrollbar border border-border/30 rounded-xl bg-secondary/20 p-2">
+                {commits.map(c => (
+                  <motion.div 
+                    key={c.oid} 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center gap-3 py-2 px-3 hover:bg-secondary/40 rounded-lg transition-colors group"
+                  >
+                    <Badge variant="secondary" className="font-mono text-[10px] bg-primary/10 text-primary border-primary/20">{c.short_oid}</Badge>
+                    <span className="text-[13px] text-foreground/80 truncate font-medium group-hover:text-foreground">{c.message}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+            
+            <p className="text-[13px] text-muted-foreground/70 leading-relaxed px-1">
+              This will apply the changes from {commits.length === 1 ? 'this commit' : 'these commits'} onto your current branch. New commits will be created automatically if there are no conflicts.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-5 border-t border-border/30 bg-secondary/10 flex justify-end gap-3">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              disabled={isApplying}
+              className="px-5 font-bold text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleConfirm}
+              disabled={isApplying}
+              className="px-8 font-bold shadow-lg shadow-primary/20 min-w-[140px]"
+              isLoading={isApplying}
+              leftIcon={!isApplying && <Check size={16}/>}
+            >
+              Cherry-pick
+            </Button>
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

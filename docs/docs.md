@@ -1,6 +1,6 @@
 # Documentation
-## Version: 3.1.0
-## Last updated: 2026-04-21 – Development setup and technical implementation notes.
+## Version: 3.4.0
+## Last updated: 2026-04-22 – High-Fidelity UI Modernization & Stability Hardening.
 ## Project: GitKit
 
 ## Development Setup

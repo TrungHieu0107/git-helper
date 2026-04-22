@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { GitMerge } from 'lucide-react';
+import { GitMerge, X, AlertTriangle, Play, Loader2, GitPullRequest, RotateCw } from 'lucide-react';
 import { useAppStore } from '../store';
 import { abortMerge, continueMerge, abortCherryPick, continueCherryPick, abortRebase, continueRebase } from '../lib/repo';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../lib/utils';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 export function MergeBanner() {
   const cherryPickState = useAppStore(state => state.cherryPickState);
@@ -12,8 +16,8 @@ export function MergeBanner() {
 
   const [isWorking, setIsWorking] = useState(false);
 
-  // Only show if we are in a conflict/busy state (Merge/CherryPick/Rebase)
-  if (!['conflict', 'continuing', 'aborting'].includes(cherryPickState) || !conflictSource) return null;
+  const isActive = ['conflict', 'continuing', 'aborting'].includes(cherryPickState) && !!conflictSource;
+  if (!isActive) return null;
 
   const handleAbort = async () => {
     if (!activeRepoPath) return;
@@ -60,50 +64,123 @@ export function MergeBanner() {
   };
 
   const conflictCount = conflictFiles.length;
-  const title = conflictSource === 'merge' ? 'MERGE IN PROGRESS' 
-              : conflictSource === 'cherry_pick' ? 'CHERRY-PICK IN PROGRESS' 
-              : 'REBASE IN PROGRESS';
+  const hasConflicts = conflictCount > 0;
+
+  const getSourceConfig = () => {
+    switch (conflictSource) {
+      case 'merge':
+        return { label: 'Merge', icon: GitMerge, color: 'dracula-cyan' };
+      case 'rebase':
+        return { label: 'Rebase', icon: RotateCw, color: 'dracula-purple' };
+      case 'cherry_pick':
+        return { label: 'Cherry-Pick', icon: GitPullRequest, color: 'dracula-orange' };
+      default:
+        return { label: 'Operation', icon: AlertTriangle, color: 'dracula-cyan' };
+    }
+  };
+
+  const config = getSourceConfig();
 
   return (
-    <div className="bg-gradient-to-r from-[#0d1a2d] via-[#0f2440] to-[#0d1a2d] border-b border-[#388bfd]/40 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-[0_4px_12px_rgba(56,139,253,0.05)] relative overflow-hidden">
-      {/* Background Glow */}
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#388bfd]/50 to-transparent"></div>
-
-      <div className="flex items-center gap-3.5 overflow-hidden relative z-10">
-        <div className="p-1.5 bg-[#388bfd]/10 text-[#388bfd] border border-[#388bfd]/20 rounded-full shrink-0 shadow-[0_0_10px_rgba(56,139,253,0.15)] relative">
-          <GitMerge size={18} className="animate-pulse" />
+    <AnimatePresence>
+      <motion.div
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -50, opacity: 0 }}
+        className={cn(
+          "fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-2xl px-6 py-3 flex items-center justify-between shrink-0 shadow-lg",
+          config.color === 'dracula-cyan' ? "bg-dracula-cyan/10 border-dracula-cyan/30" : 
+          config.color === 'dracula-purple' ? "bg-dracula-purple/10 border-dracula-purple/30" :
+          "bg-dracula-orange/10 border-dracula-orange/30"
+        )}
+      >
+        {/* Progress Indication */}
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-background/20">
+          <motion.div 
+            className={cn(
+              "h-full",
+              config.color === 'dracula-cyan' ? "bg-dracula-cyan/60" : 
+              config.color === 'dracula-purple' ? "bg-dracula-purple/60" :
+              "bg-dracula-orange/60"
+            )}
+            initial={{ width: "0%" }}
+            animate={{ width: isWorking ? "100%" : "0%" }}
+            transition={{ duration: isWorking ? 2 : 0.5 }}
+          />
         </div>
-        <div className="flex flex-col min-w-0 pt-0.5">
-          <div className="flex items-center gap-2 text-[13px] text-[#e6edf3] font-bold tracking-wide truncate uppercase">
-            {title}
+
+        <div className="flex items-center gap-5 overflow-hidden">
+          <div className={cn(
+            "p-2.5 rounded-xl shadow-lg transition-transform duration-500",
+            config.color === 'dracula-cyan' ? "bg-dracula-cyan/20 text-dracula-cyan shadow-dracula-cyan/10" : 
+            config.color === 'dracula-purple' ? "bg-dracula-purple/20 text-dracula-purple shadow-dracula-purple/10" :
+            "bg-dracula-orange/20 text-dracula-orange shadow-dracula-orange/10"
+          )}>
+            <config.icon size={20} className={cn(isWorking && "animate-spin")} />
           </div>
-          <span className="text-[11.5px] text-[#8b949e]">
-            {conflictCount > 0
-              ? <><strong className="text-[#388bfd] font-semibold">{conflictCount}</strong> conflict{conflictCount === 1 ? '' : 's'} remaining. Resolve them all to continue.</>
-              : <span className="text-[#3fb950] font-semibold bg-[#238636]/10 px-1 rounded">All conflicts resolved! Ready to proceed.</span>}
-          </span>
+          
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-3">
+              <span className={cn(
+                "text-[12px] font-black tracking-widest uppercase",
+                config.color === 'dracula-cyan' ? "text-dracula-cyan/60" : 
+                config.color === 'dracula-purple' ? "text-dracula-purple/60" :
+                "text-dracula-orange/60"
+              )}>
+                {config.label} Active
+              </span>
+              <Badge variant="secondary" className="px-2 py-0 text-[10px] font-bold border-border/20">
+                PENDING COMMIT
+              </Badge>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {hasConflicts ? (
+                <p className="text-[13px] text-foreground/80 font-medium">
+                  Workspace blocked: <span className={cn("font-bold text-foreground", `text-${config.color}`)}>{conflictCount} files</span> require resolution.
+                </p>
+              ) : (
+                <p className="text-[13px] text-dracula-green font-bold flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-dracula-green animate-pulse" />
+                  All conflicts resolved. Ready to continue the {config.label.toLowerCase()}.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-3 shrink-0 ml-4 relative z-10">
-        <button
-          className="px-3.5 py-1.5 text-[11px] uppercase tracking-wide font-bold border border-[#30363d] rounded text-[#8b949e] hover:text-[#c9d1d9] hover:bg-[#21262d] hover:border-[#8b949e] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleAbort}
-          disabled={isWorking}
-        >
-          {isWorking && conflictSource === 'rebase' ? 'Aborting...' : 'Abort'}
-        </button>
-        <button
-          className="group relative overflow-hidden px-4 py-1.5 text-[11px] uppercase tracking-wider font-extrabold border border-[#388bfd]/40 bg-gradient-to-b from-[#388bfd] to-[#1f6feb] text-white hover:from-[#58a6ff] hover:to-[#1f6feb] rounded shadow-[0_2px_8px_rgba(56,139,253,0.4)] hover:shadow-[0_4px_12px_rgba(56,139,253,0.6)] transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed disabled:shadow-none hover:-translate-y-0.5 active:translate-y-0"
-          onClick={handleContinue}
-          disabled={isWorking || conflictCount > 0}
-        >
-          <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></div>
-          <span className="relative z-10 drop-shadow-md">
-            {isWorking && conflictSource === 'rebase' ? 'Continuing...' : 'Continue'}
-          </span>
-        </button>
-      </div>
-    </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleAbort}
+            disabled={isWorking}
+            className="font-bold text-muted-foreground hover:text-dracula-red hover:bg-dracula-red/10 transition-all px-4"
+          >
+            {isWorking ? <Loader2 size={14} className="animate-spin mr-2" /> : <X size={14} className="mr-2" />}
+            Abort
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleContinue}
+            disabled={isWorking || hasConflicts}
+            isLoading={isWorking}
+            className={cn(
+              "font-bold px-6 shadow-lg transition-all min-w-[120px]",
+              hasConflicts 
+                ? "bg-secondary text-muted-foreground border-border/50 shadow-none" 
+                : config.color === 'dracula-cyan' ? "bg-dracula-cyan/80 hover:bg-dracula-cyan text-dracula-bg shadow-dracula-cyan/20" :
+                  config.color === 'dracula-purple' ? "bg-dracula-purple/80 hover:bg-dracula-purple text-dracula-bg shadow-dracula-purple/20" :
+                  "bg-dracula-orange/80 hover:bg-dracula-orange text-dracula-bg shadow-dracula-orange/20"
+            )}
+          >
+            {!isWorking && <Play size={14} className="mr-2 fill-current" />}
+            Continue
+          </Button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -36,6 +36,7 @@ pub struct AppStateData {
     pub include_untracked: Option<bool>,
     #[serde(default = "default_pull_strategy")]
     pub pull_strategy: String,
+    pub font_size: Option<i32>,
 }
 
 fn default_pull_strategy() -> String {
@@ -63,6 +64,7 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
             stash_mode: Some("all".to_string()),
             include_untracked: Some(false),
             pull_strategy: default_pull_strategy(),
+            font_size: Some(13),
         });
 
     }
@@ -73,6 +75,7 @@ pub fn get_app_state(app: tauri::AppHandle) -> Result<AppStateData, String> {
         stash_mode: Some("all".to_string()),
         include_untracked: Some(false),
         pull_strategy: default_pull_strategy(),
+        font_size: Some(13),
     });
 
     Ok(state)

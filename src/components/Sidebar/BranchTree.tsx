@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ChevronDown, Folder, GitBranch, Cloud, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, Folder, GitBranch, Cloud, MoreHorizontal, CheckCircle2 } from 'lucide-react';
 import { Highlight } from './utils';
 import { safeSwitchBranch } from '../../lib/repo';
 import { Button } from '../ui/Button';
 import { useAppStore } from '../../store';
-
+import { cn } from '../../lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export interface BranchNode {
   name: string;
@@ -66,33 +67,42 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
             await safeSwitchBranch(fullRef);
           }
         }}
-        className={`flex items-center group h-[26px] px-1.5 mx-1 rounded-md transition-all cursor-pointer whitespace-nowrap
-          ${isHead ? 'bg-blue-500/10 border-l-2 border-blue-500' : 'hover:bg-white/5 border-l-2 border-transparent'}
-        `}
-        style={{ paddingLeft: `${Math.max(6, level * 16 + 6)}px` }}
+        className={cn(
+          "flex items-center group h-7 px-2 rounded-md transition-all cursor-pointer whitespace-nowrap",
+          isHead ? "bg-primary/10 text-primary" : "hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
+        )}
+        style={{ marginLeft: `${level * 12}px` }}
       >
-        <div className="flex items-center gap-2 overflow-hidden flex-1 group">
+        <div className="flex items-center gap-2 overflow-hidden flex-1 group/inner">
           {hasChildren ? (
             <div className="flex items-center gap-1.5 shrink-0">
-              <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${expanded ? '' : '-rotate-90'}`} />
-              <Folder size={14} className="text-blue-500 opacity-70" />
+              <motion.div
+                animate={{ rotate: expanded ? 0 : -90 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ChevronDown size={12} className="opacity-40" />
+              </motion.div>
+              <Folder size={14} className="text-primary/70 fill-primary/10" />
             </div>
           ) : (
-            <div className="shrink-0 w-4 flex justify-center">
+            <div className="shrink-0 w-4 flex justify-center items-center">
                {remotePrefix ? (
-                 <Cloud size={14} className={isHead ? "text-blue-400" : "text-[#6e7681] group-hover:text-[#e6edf3]"} />
+                 <Cloud size={14} className={cn("opacity-50", isHead && "opacity-100 text-primary")} />
                ) : (
-                 <GitBranch size={14} className={isHead ? "text-blue-400" : "text-[#6e7681] group-hover:text-[#e6edf3]"} />
+                 <GitBranch size={14} className={cn("opacity-50", isHead && "opacity-100 text-primary")} />
                )}
             </div>
           )}
           
-          <span className={`text-[12px] truncate flex-1 group-hover:text-[#e6edf3] transition-colors ${isHead ? 'text-[#e6edf3] font-semibold' : 'text-[#8b949e]'}`}>
+          <span className={cn(
+            "text-[var(--app-font-size)] truncate flex-1 tracking-tight transition-colors",
+            isHead && "font-semibold"
+          )}>
             <Highlight text={node.name} query={filter} />
           </span>
 
           {isHead && (
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+            <CheckCircle2 size={12} className="text-primary mr-1" />
           )}
         </div>
         
@@ -100,33 +110,42 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
           <Button 
             variant="ghost" 
             size="icon"
-            className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+            className="opacity-0 group-hover:opacity-100 h-5 w-5 p-0 hover:bg-primary/20 hover:text-primary transition-all"
             onClick={(e) => {
               e.stopPropagation();
               const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
               setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: fullRef });
             }}
           >
-            <MoreHorizontal size={14} />
+            <MoreHorizontal size={12} />
           </Button>
         )}
       </div>
 
-      {hasChildren && expanded && (
-        <div className="flex flex-col">
-          {children.map(child => (
-            <BranchTreeItem 
-              key={child.fullPath} 
-              node={child} 
-              activeBranch={activeBranch} 
-              level={level + 1} 
-              filter={filter} 
-              setBranchContextMenu={setBranchContextMenu} 
-              remotePrefix={remotePrefix} 
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {hasChildren && expanded && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col">
+              {children.map(child => (
+                <BranchTreeItem 
+                  key={child.fullPath} 
+                  node={child} 
+                  activeBranch={activeBranch} 
+                  level={level + 1} 
+                  filter={filter} 
+                  setBranchContextMenu={setBranchContextMenu} 
+                  remotePrefix={remotePrefix} 
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

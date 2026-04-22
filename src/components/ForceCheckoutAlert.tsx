@@ -1,141 +1,159 @@
 import { useAppStore } from "../store";
 import { forceCheckout, confirmForceCheckoutWithStash } from "../lib/repo";
-import { AlertTriangle, Info, RefreshCw, X, Check, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertTriangle, RefreshCw, ShieldAlert, Layers, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "../lib/utils";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
 
 export function ForceCheckoutAlert() {
   const target = useAppStore(state => state.forceCheckoutTarget);
   const phase = useAppStore(state => state.forceCheckoutPhase);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (target && phase !== 'idle') {
-      const timer = setTimeout(() => setVisible(true), 10);
-      return () => {
-        clearTimeout(timer);
-        setVisible(false);
-      };
-    } else {
-      setVisible(false);
-    }
-  }, [target, phase]);
-
-  const isRemoteTarget = target?.startsWith('origin/');
-  const localName = isRemoteTarget ? target.replace('origin/', '') : target;
-  const remoteRef = isRemoteTarget ? target : `origin/${target}`;
-
-  if (!target || phase === 'idle' || (!visible && phase !== 'processing')) return null;
-
 
   const handleCancel = () => {
-    setVisible(false);
-    setTimeout(() => {
-      useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
-    }, 300);
+    useAppStore.setState({ forceCheckoutTarget: null, forceCheckoutPhase: 'idle' });
   };
 
   const handleForceCheckout = () => {
-    forceCheckout(target);
+    if (target) forceCheckout(target);
   };
 
   const handleStashAndCheckout = () => {
-    confirmForceCheckoutWithStash(target);
+    if (target) confirmForceCheckoutWithStash(target);
   };
 
+  if (!target || phase === 'idle') return null;
+
+  const isRemoteTarget = target.startsWith('origin/');
+  const localName = isRemoteTarget ? target.replace('origin/', '') : target;
+  const remoteRef = isRemoteTarget ? target : `origin/${target}`;
+
   return (
-    <div 
-      className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ease-out transform border-b ${
-        visible ? "translate-x-0" : "translate-x-full"
-      } ${
-        phase === 'confirm_reset' ? "bg-red-950/95 border-red-500/30" : 
-        phase === 'confirm_stash' ? "bg-amber-950/95 border-amber-500/30" :
-        "bg-[#1c2128]/95 border-blue-500/30"
-      } h-auto min-h-[56px] py-2`}
-    >
-      <div className="absolute inset-0 backdrop-blur-xl bg-gradient-to-r from-transparent via-red-500/5 to-transparent" />
-      
-      <div className="relative h-full w-full flex flex-col px-4 justify-center select-none gap-2 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between w-full gap-4">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className={`
-              ${phase === 'confirm_reset' ? "bg-red-500/20 text-red-400" : 
-                phase === 'confirm_stash' ? "bg-amber-500/20 text-amber-400" :
-                "bg-blue-500/20 text-blue-400"} 
-              p-2 rounded-full flex items-center justify-center shrink-0
-            `}>
-              {phase === 'confirm_reset' && <AlertTriangle size={20} />}
-              {phase === 'confirm_stash' && <Info size={20} />}
-              {phase === 'processing' && <RefreshCw size={20} className="animate-spin" />}
-              {phase === 'stash_conflict' && <AlertTriangle size={20} />}
+    <AnimatePresence>
+      <motion.div
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -100, opacity: 0 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className={cn(
+          "fixed top-0 left-0 right-0 z-[100] border-b shadow-2xl backdrop-blur-2xl overflow-hidden",
+          phase === 'confirm_reset' ? "bg-dracula-red/10 border-dracula-red/30" : 
+          phase === 'confirm_stash' ? "bg-dracula-orange/10 border-dracula-orange/30" :
+          "bg-dracula-cyan/10 border-dracula-cyan/30"
+        )}
+      >
+        <div className="max-w-6xl mx-auto w-full px-6 py-4">
+          <div className="flex items-center justify-between gap-8">
+            {/* Context Info */}
+            <div className="flex items-center gap-5 flex-1 min-w-0">
+              <div className={cn(
+                "p-2.5 rounded-xl shadow-lg transition-all duration-500",
+                phase === 'confirm_reset' ? "bg-dracula-red/20 text-dracula-red shadow-dracula-red/10 rotate-3" : 
+                phase === 'confirm_stash' ? "bg-dracula-orange/20 text-dracula-orange shadow-dracula-orange/10" :
+                "bg-dracula-cyan/20 text-dracula-cyan shadow-dracula-cyan/10"
+              )}>
+                {phase === 'confirm_reset' && <ShieldAlert size={22} />}
+                {phase === 'confirm_stash' && <Layers size={22} />}
+                {phase === 'processing' && <RefreshCw size={22} className="animate-spin" />}
+                {phase === 'stash_conflict' && <AlertTriangle size={22} />}
+              </div>
+
+              <div className="flex flex-col gap-1 min-w-0">
+                <div className="flex items-center gap-3">
+                  <span className={cn(
+                    "text-[12px] font-black tracking-widest uppercase",
+                    phase === 'confirm_reset' ? "text-dracula-red/60" : 
+                    phase === 'confirm_stash' ? "text-dracula-orange/60" : 
+                    "text-dracula-cyan/60"
+                  )}>
+                    {phase === 'confirm_reset' && "Critical Action Required"}
+                    {phase === 'confirm_stash' && "Local changes detected"}
+                    {phase === 'processing' && "Synchronizing State"}
+                    {phase === 'stash_conflict' && "Restore completed with issues"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="px-2 py-0 font-mono font-bold bg-background/50 border-border/20">{localName}</Badge>
+                    <ArrowRight size={12} className="text-muted-foreground/40" />
+                    <Badge variant="secondary" className="px-2 py-0 font-mono font-bold bg-background/50 border-border/20 text-primary">{remoteRef}</Badge>
+                  </div>
+                </div>
+                
+                <div className="text-[13px] leading-relaxed font-medium">
+                  {phase === 'confirm_reset' && (
+                    <span className="text-dracula-red/80">
+                      Resetting to match the remote branch. <span className="font-bold underline decoration-dracula-red/30 underline-offset-4">Your local commits will be permanently lost.</span>
+                    </span>
+                  )}
+                  {phase === 'confirm_stash' && (
+                    <span className="text-dracula-orange/80">
+                      Changes will be stashed and automatically reapplied after the reset operation.
+                    </span>
+                  )}
+                  {phase === 'processing' && (
+                    <span className="text-dracula-cyan/80">
+                      Hard-resetting the branch and preparing workspace synchronization...
+                    </span>
+                  )}
+                  {phase === 'stash_conflict' && (
+                    <span className="text-dracula-red/80">
+                      Reset successful, but stashed changes could not be automatically restored. Manual resolution required.
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col min-w-0">
-              <span className={`text-[13px] font-bold uppercase tracking-wider ${
-                phase === 'confirm_reset' ? "text-red-400" : 
-                phase === 'confirm_stash' ? "text-amber-400" : 
-                "text-blue-400"
-              }`}>
-                {phase === 'confirm_reset' && "Force Reset to Origin?"}
-                {phase === 'confirm_stash' && "Local Changes Detected"}
-                {phase === 'processing' && "Resetting Branch..."}
-                {phase === 'stash_conflict' && "Reset Complete with Conflicts"}
-              </span>
-              <span className="text-[12px] text-slate-300 truncate">
-                {phase === 'confirm_reset' && (
-                  <>Local commits on <span className="font-mono font-bold text-white px-1.5 py-0.5 bg-white/5 rounded border border-white/10 mx-1">{localName}</span> will be permanently lost to match <span className="font-mono font-bold text-blue-400 px-1.5 py-0.5 bg-blue-500/10 rounded border border-blue-500/20 mx-1">{remoteRef}</span>.</>
-                )}
-                {phase === 'confirm_stash' && (
-                  <>Your changes will be stashed automatically and restored after resetting to {remoteRef}.</>
-                )}
-                {phase === 'processing' && (
-                  <>Hard-resetting {localName} to {remoteRef}...</>
-                )}
-                {phase === 'stash_conflict' && (
-                  <>Branch was reset to {remoteRef}, but stashed changes could not be fully restored due to conflicts.</>
-                )}
-              </span>
+            {/* Actions */}
+            <div className="flex items-center gap-3 shrink-0">
+              {phase === 'confirm_reset' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleForceCheckout}
+                  className="bg-dracula-red/80 hover:bg-dracula-red text-dracula-bg font-bold px-6 shadow-lg shadow-dracula-red/20"
+                >
+                  Confirm Force
+                </Button>
+              )}
+
+              {phase === 'confirm_stash' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleStashAndCheckout}
+                  className="bg-dracula-orange/80 hover:bg-dracula-orange text-dracula-bg font-bold px-6 shadow-lg shadow-dracula-orange/20"
+                >
+                  Stash & Continue
+                </Button>
+              )}
+
+              {phase !== 'processing' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancel}
+                  className="font-bold text-muted-foreground hover:text-foreground"
+                >
+                  {phase === 'stash_conflict' ? "Dismiss" : "Cancel"}
+                </Button>
+              )}
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {phase === 'confirm_reset' && (
-              <button
-                onClick={handleForceCheckout}
-                className="h-8 px-4 bg-red-600 hover:bg-red-500 text-white text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1.5 shadow-lg shadow-red-900/20"
-              >
-                <Check size={14} />
-                YES, FORCE CHECKOUT
-              </button>
-            )}
-
-            {phase === 'confirm_stash' && (
-              <button
-                onClick={handleStashAndCheckout}
-                className="h-8 px-4 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1.5 shadow-lg shadow-amber-900/20"
-              >
-                <Save size={14} />
-                STASH & SWITCH
-              </button>
-            )}
-
-            {phase !== 'processing' && (
-              <button
-                onClick={handleCancel}
-                className="h-8 px-4 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[11px] font-bold rounded transition-all active:scale-95 flex items-center gap-1.5"
-              >
-                <X size={14} />
-                {phase === 'stash_conflict' ? "DISMISS" : "CANCEL"}
-              </button>
-            )}
           </div>
         </div>
-      </div>
 
-      <div className={`absolute bottom-0 left-0 h-[2px] w-full ${
-        phase === 'confirm_reset' ? "bg-red-500/50" : 
-        phase === 'confirm_stash' ? "bg-amber-500/50" : 
-        "bg-blue-500/50"
-      }`} />
-    </div>
+        {/* Decorative Progress Accent */}
+        <motion.div 
+          className={cn(
+            "absolute bottom-0 left-0 h-[3px] bg-white/20",
+            phase === 'confirm_reset' ? "bg-dracula-red/50" : 
+            phase === 'confirm_stash' ? "bg-dracula-orange/50" : 
+            "bg-dracula-cyan/50"
+          )}
+          initial={{ width: "0%" }}
+          animate={{ width: phase === 'processing' ? "100%" : "0%" }}
+          transition={{ duration: phase === 'processing' ? 3 : 0.5 }}
+        />
+      </motion.div>
+    </AnimatePresence>
   );
 }

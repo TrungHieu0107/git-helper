@@ -1,36 +1,39 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, CommitNode } from '../store';
 import { loadMoreCommits } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { CommitRow, WipRow, SkeletonRow } from './CommitGraph/CommitRow';
 import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
+import { cn } from '../lib/utils';
+import { AlertCircle, Search } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────
-const ROW_H = 30;
-const LANE_W = 18;
-const NODE_R = 10;
+const ROW_H = 32;
+const LANE_W = 20;
+const NODE_R = 9;
 const MERGE_DOT_R = 4;
-const LANE_PAD = NODE_R + 8;
-const DEF_LABEL_W = 150;
-const DEF_HASH_W = 72;
-const DEF_AUTHOR_W = 110;
+const LANE_PAD = NODE_R + 10;
+const DEF_LABEL_W = 160;
+const DEF_HASH_W = 80;
+const DEF_AUTHOR_W = 120;
 
+// Dracula Theme colors for lanes
 const COLORS = [
-  '#00d4ff', // cyan  — lane 0 (main/HEAD)
-  '#a855f7', // purple
-  '#ef4444', // red
-  '#f97316', // orange
-  '#ec4899', // pink
-  '#22c55e', // green
-  '#eab308', // yellow
-  '#6b7280', // gray
+  '#8be9fd', // cyan
+  '#bd93f9', // purple
+  '#ff79c6', // pink
+  '#ffb86c', // orange
+  '#50fa7b', // green
+  '#6272a4', // comment (indigo-ish)
+  '#ff5555', // red
+  '#f1fa8c', // yellow
 ];
 
 const color = (i: number) => COLORS[i % COLORS.length];
 const lx = (lane: number) => LANE_PAD + lane * LANE_W;
 const ly = (row: number) => row * ROW_H + ROW_H / 2;
-const hue = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h); return Math.abs(h) % 360; };
 
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
@@ -45,7 +48,6 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
   const dirY = Math.sign(dy);
 
   if (type === 'merge') {
-    // Horizontal first, then Vertical down
     const arcStartX = x2 - dirX * rad;
     const arcStartY = y1;
     const arcEndX = x2;
@@ -53,7 +55,6 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
     const sweep = (dirX * dirY > 0) ? 1 : 0;
     return `M ${x1} ${y1} L ${arcStartX} ${arcStartY} A ${rad} ${rad} 0 0 ${sweep} ${arcEndX} ${arcEndY} L ${x2} ${y2}`;
   } else {
-    // Vertical down first, then Horizontal
     const arcStartX = x1;
     const arcStartY = y2 - dirY * rad;
     const arcEndX = x1 + dirX * rad;
@@ -65,12 +66,9 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
 
 function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number): Edge[] {
   const out: Edge[] = [];
-  
-  // Use a map for O(1) row lookups instead of findIndex (O(N))
   const oidMap = new Map<string, number>();
   commits.forEach((c, i) => oidMap.set(c.oid, i));
 
-  // WIP → first commit (skipping stashes)
   const firstCommitIdx = commits.findIndex(c => c.node_type === 'commit');
   if (wip && firstCommitIdx !== -1 && minIdx <= 0) {
     const target = commits[firstCommitIdx];
@@ -87,8 +85,6 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
     });
   }
 
-  // Only process commits that could have visible edges
-  // We buffer the range significantly to ensure long merge lines are captured
   const start = Math.max(0, minIdx - 50);
   const end = Math.min(commits.length, maxIdx + 50);
 
@@ -105,7 +101,6 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
       const type = pi === 0 ? 'branch-off' : 'merge';
 
       if (targetIdx === undefined) {
-        // Parent not in current batch/view
         const tl = e?.to_lane ?? c.lane;
         const x2 = lx(tl), y2 = ly(row + 5);
         out.push({ 
@@ -120,7 +115,6 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
       }
 
       const pRow = targetIdx + off;
-      // Only add edge if it's within or entering the visible range
       if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
         const x2 = lx(commits[targetIdx].lane), y2 = ly(pRow);
         out.push({ 
@@ -175,7 +169,6 @@ function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, max
   return out;
 }
 
-
 // ── Main Component ───────────────────────────────────────────────────
 export function CommitGraph() {
   const commitLog = useAppStore(s => s.commitLog);
@@ -184,7 +177,6 @@ export function CommitGraph() {
   const status = useAppStore(s => s.repoStatus);
   const isLoadingMore = useAppStore(s => s.isLoadingMore);
   const hasMoreCommits = useAppStore(s => s.hasMoreCommits);
-
   const commitSearchInput = useAppStore(s => s.commitSearchInput);
 
   const [debouncedSearch, setDebouncedSearch] = useState(commitSearchInput);
@@ -217,14 +209,13 @@ export function CommitGraph() {
   }, [filteredCommits]);
 
   const gw = LANE_PAD * 2 + maxLane * LANE_W;
-
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
     count: totalRows,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 30,
-    overscan: 20,
+    estimateSize: () => ROW_H,
+    overscan: 25,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
@@ -237,15 +228,13 @@ export function CommitGraph() {
   const activeOids = useMemo(() => {
     const set = new Set<string>();
     if (!filteredCommits || filteredCommits.length === 0) return set;
-    
     if (hasWip) set.add('WIP');
     const map = new Map<string, CommitNode>();
     filteredCommits.forEach((c: CommitNode) => map.set(c.oid, c));
-    
     let current: string | undefined = filteredCommits.find((c: CommitNode) => c.refs.includes('HEAD'))?.oid || filteredCommits[0].oid;
     while (current) {
       set.add(current);
-      current = map.get(current)?.parents?.[0]; // follow main lineage
+      current = map.get(current)?.parents?.[0];
     }
     return set;
   }, [filteredCommits, hasWip]);
@@ -253,86 +242,101 @@ export function CommitGraph() {
   const [hov, setHov] = useState<number | null>(null);
   const sel = useAppStore(s => s.selectedRowIndex);
   const setSel = (index: number | null) => useAppStore.setState({ selectedRowIndex: index });
+  
   const { widths: cw, onMouseDown } = useResizableColumns(
     { label: DEF_LABEL_W, hash: DEF_HASH_W, author: DEF_AUTHOR_W },
-    { label: 80, hash: 50, author: 60 },
+    { label: 100, hash: 60, author: 80 },
   );
 
-  // ── Context Menu State ──────────────────────────────────────────
   const [ctxMenu, setCtxMenu] = useState<{ commit: CommitNode; pos: ContextMenuPosition } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, commit: CommitNode) => {
     e.preventDefault();
-    e.stopPropagation();
     setCtxMenu({ commit, pos: { x: e.clientX, y: e.clientY } });
   }, []);
 
   const closeContextMenu = useCallback(() => setCtxMenu(null), []);
   
-  // ── Virtualization Setup (already called above) ───────────────────
-
-  // Trigger loading more when we approach the bottom of the virtual list
   useEffect(() => {
     const lastItem = virtualItems[virtualItems.length - 1];
     if (!lastItem) return;
-
-    if (hasMoreCommits && !isLoadingMore && lastItem.index >= totalRows - 10) {
+    if (hasMoreCommits && !isLoadingMore && lastItem.index >= totalRows - 12) {
       loadMoreCommits();
     }
   }, [virtualItems, totalRows, hasMoreCommits, isLoadingMore]);
 
-
-
-
   return (
-    <main className="flex-1 flex flex-col bg-[#0d1117] h-full overflow-hidden text-sm">
+    <motion.main 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex-1 flex flex-col bg-background h-full overflow-hidden text-sm selection:bg-primary/20"
+    >
       {/* Header */}
-      <div className="h-7 flex items-center border-b border-[#30363d] bg-[#161b22] sticky top-0 z-30 min-w-max shadow-sm">
-        <div className="pl-4 section-header-text" style={{ width: cw.label }}>BRANCH / TAG</div>
+      <div className="h-9 flex items-center border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm px-1">
+        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60" style={{ width: cw.label }}>
+          Branches / Tags
+        </div>
         <ResizeHandle onMouseDown={onMouseDown('label')} />
-        <div className="pl-2 section-header-text" style={{ width: gw }}>GRAPH</div>
-        <div className="flex-1 pl-4 section-header-text">MESSAGE</div>
+        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60" style={{ width: gw }}>
+          Graph
+        </div>
+        <div className="flex-1 pl-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+          Commit Message
+        </div>
         <ResizeHandle onMouseDown={onMouseDown('hash')} />
-        <div className="pl-4 section-header-text" style={{ width: cw.hash }}>HASH</div>
+        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60" style={{ width: cw.hash }}>
+          Hash
+        </div>
         <ResizeHandle onMouseDown={onMouseDown('author')} />
-        <div className="pl-4 section-header-text" style={{ width: cw.author }}>AUTHOR</div>
+        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pr-4" style={{ width: cw.author }}>
+          Author
+        </div>
       </div>
 
-      {/* Scroll */}
       {/* Scroll Container */}
       <div 
         ref={parentRef}
-        className="flex-1 overflow-auto custom-scrollbar bg-[#0d1117] relative"
+        className="flex-1 overflow-auto custom-scrollbar relative bg-background/30"
       >
-        {showSearchWarning && (
-          <div className="sticky top-2 right-6 float-right z-[100] px-3 py-1.5 bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg backdrop-blur-md flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300 shadow-xl pointer-events-none">
-            <div className="w-2 h-2 bg-[#d29922] rounded-full animate-pulse shadow-[0_0_8px_rgba(210,153,34,0.5)]" />
-            <span className="text-[11px] font-medium text-[#d29922]">
-              Searching {commitLog.length.toLocaleString()} commits — results may be slow
-            </span>
-          </div>
-        )}
+        <AnimatePresence>
+          {showSearchWarning && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="sticky top-4 right-8 float-right z-[100] px-4 py-2 bg-dracula-orange/10 border border-dracula-orange/20 rounded-2xl backdrop-blur-2xl flex items-center gap-3 shadow-[0_10px_40px_rgba(0,0,0,0.2)] pointer-events-none"
+            >
+              <div className="p-1.5 bg-dracula-orange/20 rounded-lg">
+                <AlertCircle size={14} className="text-dracula-orange" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-black text-dracula-orange/90 leading-tight">
+                  SEARCHING {commitLog.length.toLocaleString()} COMMITS
+                </span>
+                <span className="text-[9px] font-medium text-dracula-orange/60">Performance may be impacted</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div 
           className="relative min-w-max" 
           style={{ height: `${virtualizer.getTotalSize()}px` }}
         >
-          {/* ═══ Background Layer ═══ */}
+          {/* ═══ Background Highlight Layer ═══ */}
           {virtualItems.map((virtualRow) => {
             const row = virtualRow.index;
-            const isWip = row === 0 && hasWip;
             const isSel = sel === row;
             const isHov = hov === row;
-            
             if (!isSel && !isHov) return null;
-
-            let bgClass = "";
-            if (isHov) bgClass = isWip ? "bg-[#1e293b]/40" : "bg-[#1f2937]";
-            else if (isSel) bgClass = isWip ? "bg-[#3b82f6]/10" : "bg-[#1d2d3e]";
 
             return (
               <div 
                 key={`bg-${row}`}
-                className={`absolute left-0 w-full pointer-events-none transition-colors duration-150 z-[5] ${bgClass}`}
+                className={cn(
+                  "absolute left-0 w-full pointer-events-none transition-all duration-200 z-[5]",
+                  isSel ? "bg-primary/10 border-y border-primary/10" : "bg-secondary/40"
+                )}
                 style={{ height: ROW_H, transform: `translateY(${virtualRow.start}px)` }}
               />
             );
@@ -341,50 +345,37 @@ export function CommitGraph() {
           {/* ═══ SVG Graph Layer ═══ */}
           <svg 
             className="absolute pointer-events-none z-[10]"
-            style={{ 
-              left: cw.label + 5, 
-              top: 0 
-            }} 
+            style={{ left: cw.label, top: 0 }} 
             width={gw} 
             height={virtualizer.getTotalSize()}
           >
-            {/* Layer 1: Stash connection lines */}
-            {(() => {
-              const minVis = virtualItems[0]?.index ?? 0;
-              const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
-              return stashEdges
-                .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
-                .map((e, i) => (
-                  <path key={`se-${i}`} d={e.path} fill="none"
-                    stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.6}
-                    strokeDasharray="5 4" strokeLinecap="round" strokeLinejoin="round" />
-                ));
-            })()}
+            {/* Stash connections */}
+            {stashEdges
+              .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
+              .map((e, i) => (
+                <path key={`se-${i}`} d={e.path} fill="none"
+                  stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.4}
+                  strokeDasharray="4 4" strokeLinecap="round" strokeLinejoin="round" />
+              ))}
 
-            {/* Layer 2: Manhattan-routed connections */}
-            {(() => {
-              const minVis = virtualItems[0]?.index ?? 0;
-              const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
-              return edges
-                .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
-                .map((e: Edge, i: number) => (
-                  <path key={`e-${i}`} d={e.path} fill="none"
-                    stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-                    strokeDasharray={e.dashed ? '6 4' : 'none'} />
-                ));
-            })()}
+            {/* Commit connections */}
+            {edges
+              .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
+              .map((e: Edge, i: number) => (
+                <path key={`e-${i}`} d={e.path} fill="none"
+                  stroke={color(e.colorIdx)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+                  strokeDasharray={e.dashed ? '6 4' : 'none'} opacity={0.8} />
+              ))}
 
-            {/* Layer 3: WIP node */}
+            {/* WIP node */}
             {hasWip && (
-              <g opacity={1}>
-                <circle cx={lx(0)} cy={ly(0)} r={NODE_R}
-                  fill="#0d1117" stroke="#58a6ff" strokeWidth={2} strokeDasharray="4 3" />
-                <text x={lx(0)} y={ly(0)} textAnchor="middle" dominantBaseline="central"
-                  fill="#58a6ff" fontSize={10} fontWeight={700}>W</text>
+              <g transform={`translate(${lx(0)}, ${ly(0)})`}>
+                <circle r={NODE_R} fill="#191a21" stroke="#bd93f9" strokeWidth={2} strokeDasharray="3 2" className="animate-pulse" />
+                <text textAnchor="middle" dominantBaseline="central" fill="#bd93f9" fontSize={10} fontWeight={900}>W</text>
               </g>
             )}
 
-            {/* Layer 4: Commit nodes — Rendered in virtual view only */}
+            {/* Commit nodes */}
             {virtualItems.map((virtualRow) => {
               const row = virtualRow.index;
               const n = row === 0 && hasWip ? null : filteredCommits[row - off];
@@ -392,41 +383,39 @@ export function CommitGraph() {
 
               const cx = lx(n.lane), cy = ly(row);
               const c = color(n.color_idx);
-              const h = hue(n.author);
-              const isMerge = n.parents.length > 1;
+              const isMerge = (n.parents?.length ?? 0) > 1;
               const r = isMerge ? MERGE_DOT_R : NODE_R;
 
               if (n.node_type === 'stash') {
                 return (
-                  <g key={n.oid}>
-                    <rect x={cx - NODE_R} y={cy - NODE_R} width={NODE_R * 2} height={NODE_R * 2} rx={4}
-                      fill={`hsl(${h}, 30%, 20%)`} stroke={c} strokeWidth={2} strokeDasharray="3 2" />
-                    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                      fill="#fff" fontSize={9} fontWeight={700} style={{ userSelect: 'none', pointerEvents: 'none' }}>
-                      S
-                    </text>
+                  <g key={n.oid} transform={`translate(${cx}, ${cy})`}>
+                    <rect x={-NODE_R} y={-NODE_R} width={NODE_R * 2} height={NODE_R * 2} rx={5}
+                      fill="#21222c" stroke={c} strokeWidth={2} strokeDasharray="3 2" />
+                    <text textAnchor="middle" dominantBaseline="central" fill="#fff" fontSize={9} fontWeight={900}>S</text>
                   </g>
                 );
               }
 
               if (isMerge) {
-                return <circle key={n.oid} cx={cx} cy={cy} r={r} fill={c} />;
+                return <circle key={n.oid} cx={cx} cy={cy} r={r} fill={c} className="shadow-lg" />;
               }
 
+              const isActive = activeOids.has(n.oid);
               return (
-                <g key={n.oid}>
-                  <circle cx={cx} cy={cy} r={r} fill={`hsl(${h}, 40%, 25%)`} stroke={c} strokeWidth={2} />
-                  <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                    fill="#fff" fontSize={10} fontWeight={600} style={{ userSelect: 'none', pointerEvents: 'none' }}>
-                    {(n.author || '?')[0].toUpperCase()}
-                  </text>
+                <g key={n.oid} transform={`translate(${cx}, ${cy})`}>
+                  <circle r={r} fill={isActive ? c : "#21222c"} stroke={c} strokeWidth={isActive ? 3 : 2} className={cn(isActive && "shadow-[0_0_12px_rgba(255,255,255,0.2)]")} />
+                  {!isActive && (
+                    <text textAnchor="middle" dominantBaseline="central" fill={c} fontSize={10} fontWeight={900} opacity={0.9}>
+                      {(n.author?.[0] ?? '?').toUpperCase()}
+                    </text>
+                  )}
                 </g>
               );
             })}
           </svg>
 
           {/* ═══ HTML Rows ═══ */}
-           {virtualItems.map((virtualRow) => {
+          {virtualItems.map((virtualRow) => {
             const row = virtualRow.index;
             const isWip = row === 0 && hasWip;
             const n = isWip ? null : filteredCommits[row - off];
@@ -472,21 +461,24 @@ export function CommitGraph() {
           })}
 
           {(!filteredCommits?.length && !isLoadingMore) && (
-            <div className="flex items-center justify-center p-8 text-[#8b949e]">
-              No commits found.
+            <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-40">
+              <Search size={40} className="text-muted-foreground/20" />
+              <span className="text-[14px] font-black uppercase tracking-widest text-muted-foreground/60">No commits matched</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* ═══ Context Menu ═══ */}
-      {ctxMenu && (
-        <CommitContextMenu
-          commit={ctxMenu.commit}
-          position={ctxMenu.pos}
-          onClose={closeContextMenu}
-        />
-      )}
-    </main>
+      {/* Context Menu */}
+      <AnimatePresence>
+        {ctxMenu && (
+          <CommitContextMenu
+            commit={ctxMenu.commit}
+            position={ctxMenu.pos}
+            onClose={closeContextMenu}
+          />
+        )}
+      </AnimatePresence>
+    </motion.main>
   );
 }

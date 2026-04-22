@@ -1,11 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, GitMerge, CloudSync, Trash2, ChevronsDown, RotateCcw } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, GitMerge, CloudSync, Trash2, ChevronsDown, RotateCcw, X, MessageSquare } from 'lucide-react';
 import { CommitNode, useAppStore } from '../store';
 import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, dropStash, findMergableBranch } from '../lib/repo';
 import { confirm } from './ui/ConfirmDialog';
 import { toast } from '../lib/toast';
 import { CreateBranchDialog } from './CreateBranchDialog';
 import { CherryPickDialog } from './CherryPickDialog';
+import { cn } from '../lib/utils';
+import { Separator } from './ui/Separator';
+import { Badge } from './ui/Badge';
 
 // ── Types ────────────────────────────────────────────────────────────
 export interface ContextMenuPosition {
@@ -18,7 +23,6 @@ export interface CommitContextMenuProps {
   position: ContextMenuPosition;
   onClose: () => void;
 }
-
 
 // ── Main Context Menu ────────────────────────────────────────────────
 export function CommitContextMenu({ commit, position, onClose }: CommitContextMenuProps) {
@@ -40,10 +44,10 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     const vh = window.innerHeight;
     let { x, y } = position;
 
-    if (x + rect.width > vw - 8) x = vw - rect.width - 8;
-    if (y + rect.height > vh - 8) y = vh - rect.height - 8;
-    if (x < 8) x = 8;
-    if (y < 8) y = 8;
+    if (x + rect.width > vw - 10) x = vw - rect.width - 10;
+    if (y + rect.height > vh - 10) y = vh - rect.height - 10;
+    if (x < 10) x = 10;
+    if (y < 10) y = 10;
 
     setMenuPos({ x, y });
   }, [position]);
@@ -86,7 +90,6 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
   }, [commit.oid, onClose]);
 
   const handleCheckoutHere = useCallback(async () => {
-    // Checkout detached HEAD at this commit
     await safeSwitchBranch(commit.oid);
     onClose();
   }, [commit.oid, onClose]);
@@ -111,7 +114,12 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       const ok = await confirm({
         title: 'Delete Stash',
         message: 'Are you sure you want to delete this stash entry? This action cannot be undone.',
-        detail: <span className="text-xs text-[#8b949e] font-mono italic">"{commit.message}"</span>,
+        detail: (
+          <div className="flex items-center gap-2 text-xs bg-secondary/30 p-2 rounded-md border border-border/50">
+            <MessageSquare size={12} className="text-muted-foreground" />
+            <span className="text-muted-foreground italic truncate">"{commit.message}"</span>
+          </div>
+        ),
         confirmLabel: 'Delete',
         variant: 'danger'
       });
@@ -132,7 +140,7 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
   if (showCherryPick) {
     return (
       <CherryPickDialog
-        commits={[commit]} // For now, single commit
+        commits={[commit]}
         onClose={onClose}
       />
     );
@@ -144,7 +152,6 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
 
   const remoteRefs = commit.refs.filter(r => r.startsWith('origin/'));
 
-
   const menuItems = [
     {
       id: 'merge-branch',
@@ -152,7 +159,7 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       label: mergableBranch
         ? `Merge '${mergableBranch}' into '${repoInfo?.head_branch}'`
         : 'Merge Branch into HEAD...',
-      color: 'text-[#388bfd]',
+      className: 'text-primary hover:bg-primary/10',
       action: () => {
         if (mergableBranch) {
           useAppStore.getState().setMergeTarget(mergableBranch);
@@ -166,14 +173,14 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       id: 'cherry-pick',
       icon: <GitCommit size={14} />,
       label: 'Cherry-pick This Commit...',
-      color: 'text-[#d29922]',
+      className: 'text-amber-500 hover:bg-amber-500/10',
       action: () => setShowCherryPick(true),
     },
     {
       id: 'reset-here',
       icon: <RotateCcw size={14} />,
       label: 'Reset to this commit...',
-      color: 'text-purple-400',
+      className: 'text-purple-400 hover:bg-purple-400/10',
       action: () => {
         useAppStore.getState().setResetToCommitTarget(commit);
         onClose();
@@ -184,7 +191,7 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       id: `force-checkout-${ref}`,
       icon: <RotateCcw size={14} />,
       label: `Force reset local to '${ref}'`,
-      color: 'text-red-400',
+      className: 'text-destructive hover:bg-destructive/10',
       action: () => {
         useAppStore.setState({ forceCheckoutTarget: ref, forceCheckoutPhase: 'confirm_reset' });
         onClose();
@@ -196,14 +203,14 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       id: 'create-branch',
       icon: <GitBranch size={14} />,
       label: 'Create Branch Here',
-      color: 'text-[#3fb950]',
+      className: 'text-green-500 hover:bg-green-500/10',
       action: () => setShowCreateBranch(true),
     },
     {
       id: 'checkout-here',
       icon: <BookmarkPlus size={14} />,
       label: 'Checkout This Commit',
-      color: 'text-[#79c0ff]',
+      className: 'text-primary/80 hover:bg-primary/10',
       action: handleCheckoutHere,
     },
     { id: 'sep-1', separator: true },
@@ -211,14 +218,12 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       id: 'view-details',
       icon: <Eye size={14} />,
       label: 'View Commit Details',
-      color: 'text-[#8b949e]',
       action: handleViewDetails,
     },
     {
       id: 'copy-hash',
       icon: <Copy size={14} />,
       label: 'Copy Commit Hash',
-      color: 'text-[#8b949e]',
       action: handleCopyOid,
       shortcut: commit.short_oid,
     },
@@ -226,32 +231,30 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       id: 'copy-message',
       icon: <Copy size={14} />,
       label: 'Copy Commit Message',
-      color: 'text-[#8b949e]',
       action: handleCopyMessage,
     },
   ];
 
-  // If stash, add stash operations at the beginning
   const stashItems = isStash ? [
     {
       id: 'apply-stash',
       icon: <CloudSync size={14} />,
       label: 'Apply This Stash',
-      color: 'text-[#388bfd]',
+      className: 'text-primary hover:bg-primary/10',
       action: handleApplyStash,
     },
     {
       id: 'pop-stash',
       icon: <ChevronsDown size={14} />,
       label: 'Pop This Stash',
-      color: 'text-[#3fb950]',
+      className: 'text-green-500 hover:bg-green-500/10',
       action: handlePopStash,
     },
     {
       id: 'drop-stash',
       icon: <Trash2 size={14} />,
       label: 'Delete This Stash',
-      color: 'text-red-400',
+      className: 'text-destructive hover:bg-destructive/10',
       action: handleDropStash,
     },
     { id: 'stash-sep', separator: true },
@@ -259,46 +262,58 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
 
   const finalItems = [...stashItems, ...menuItems];
 
-  return (
-    <div
-      ref={menuRef}
-      className="commit-context-menu"
-      style={{
-        position: 'fixed',
-        left: menuPos.x,
-        top: menuPos.y,
-        zIndex: 9999,
-      }}
-    >
-      {/* Commit info header */}
-      <div className="commit-context-menu-header">
-        <div className="flex items-center gap-2">
-          <code className="text-[10px] font-mono text-[#79c0ff] bg-[#0d1117] px-1.5 py-0.5 rounded">{commit.short_oid}</code>
-          <span className="text-[11px] text-[#8b949e] truncate max-w-[180px]">{commit.message}</span>
-        </div>
-      </div>
-
-      {/* Menu items */}
-      <div className="py-1">
-        {finalItems.map((item: any) =>
-          item.separator ? (
-            <div key={item.id} className="my-1 border-t border-[#21262d]" />
-          ) : (
-            <button
-              key={item.id}
-              onClick={item.action}
-              className={`commit-context-menu-item ${item.disabled ? 'opacity-50 cursor-not-allowed grayscale-[0.5]' : ''}`}
-              disabled={!!item.disabled}
-            >
-              <span className={`shrink-0 ${item.color}`}>{item.icon}</span>
-              <span className="flex-1 text-left">{item.label}</span>
-              {item.shortcut && (
-                <span className="text-[10px] font-mono text-[#484f58] ml-2">{item.shortcut}</span>
-              )}
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="commit-context-menu"
+        ref={menuRef}
+        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+        transition={{ duration: 0.1, ease: 'easeOut' }}
+        className="fixed z-[9999] bg-background/80 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl py-1.5 min-w-[240px] overflow-hidden"
+        style={{ left: menuPos.x, top: menuPos.y }}
+      >
+        <div className="px-3.5 py-2 border-b border-border/30 mb-1.5 bg-secondary/20">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Badge variant="secondary" className="font-mono text-[10px] shrink-0">{commit.short_oid}</Badge>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 truncate max-w-[140px]">
+                {commit.message}
+              </span>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground/40 hover:text-foreground transition-colors shrink-0">
+              <X size={12} />
             </button>
-          )
-        )}
-      </div>
-    </div>
+          </div>
+        </div>
+
+        <div className="px-1 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          {finalItems.map((item: any, idx) =>
+            item.separator ? (
+              <Separator key={`sep-${idx}`} className="my-1.5 opacity-50" />
+            ) : (
+              <button
+                key={item.id}
+                onClick={item.action}
+                disabled={!!item.disabled}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 text-[12px] rounded-lg transition-all duration-200 text-left font-medium",
+                  item.disabled ? "opacity-30 cursor-not-allowed grayscale" : "hover:bg-secondary/80 hover:translate-x-1",
+                  item.className || 'text-foreground/80 hover:text-foreground'
+                )}
+              >
+                <span className="opacity-60">{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.shortcut && (
+                  <span className="text-[10px] font-mono text-muted-foreground/40 ml-2">{item.shortcut}</span>
+                )}
+              </button>
+            )
+          )}
+        </div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
   );
 }

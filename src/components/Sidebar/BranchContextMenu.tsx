@@ -65,10 +65,10 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
   return (
     <div 
       ref={menuRef}
-      className="fixed bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl py-1.5 z-[9999] min-w-[200px] animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
+      className="fixed bg-background/80 border border-border/40 rounded-lg shadow-2xl py-1.5 z-[9999] min-w-[200px] animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
       style={{ top: menuPos.y, left: menuPos.x }}
     >
-      <div className="px-3 py-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-[#30363d] mb-1 truncate">
+      <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider border-b border-border/20 mb-1 truncate">
         Branch: {branch}
       </div>
 
@@ -77,23 +77,23 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
         onClick={handleMerge}
         className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
           isCurrentBranch || isProcessing
-            ? 'text-slate-600 cursor-not-allowed'
-            : 'text-blue-400 hover:bg-blue-500/10 hover:text-blue-300'
+            ? 'text-muted-foreground/40 cursor-not-allowed'
+            : 'text-dracula-cyan hover:bg-dracula-cyan/10 hover:text-dracula-cyan/80'
         }`}
       >
         <GitMerge size={14} />
         Merge into current branch
       </button>
       
-      <div className="my-1 border-t border-[#21262d]" />
+      <div className="my-1 border-t border-border/20" />
 
       <button 
         disabled={!hasOrigin || isProcessing}
         onClick={handleForceCheckout}
         className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
           !hasOrigin || isProcessing 
-            ? 'text-slate-600 cursor-not-allowed' 
-            : 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
+            ? 'text-muted-foreground/40 cursor-not-allowed' 
+            : 'text-dracula-red hover:bg-dracula-red/10 hover:text-dracula-red/80'
         }`}
       >
         <RotateCcw size={14} />
@@ -101,7 +101,7 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
       </button>
 
       {!hasOrigin && (
-        <div className="px-3 py-1 text-[10px] text-slate-500 italic">
+        <div className="px-3 py-1 text-[10px] text-muted-foreground/50 italic">
           No tracking branch on origin
         </div>
       )}

@@ -1,78 +1,88 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #3b82f6;
+  /* Dracula High Contrast - Optimized for Accessibility & Premium Feel */
+  --color-background: #0b0e14;
+  --color-foreground: #ffffff;
+  
+  --color-card: rgba(17, 18, 25, 0.85); /* Solid & Dark */
+  --color-muted-foreground: #cbd5f0; /* Significantly brighter than standard comments */
+  --color-card-foreground: #ffffff;
+  
+  --color-primary: #caadff; /* High-vibrancy Purple */
+  --color-primary-foreground: #0b0e14;
+  
+  --color-secondary: #1e1f29; /* Darker secondary for depth */
+  --color-secondary-foreground: #ffffff;
+  
+  --color-accent: #ff9de1; /* Vibrant Pink */
+  --color-accent-foreground: #0b0e14;
+  
+  --color-destructive: #ff6e6e; /* More vivid Red */
+  --color-destructive-foreground: #ffffff;
+  
+  --color-border: rgba(139, 153, 204, 0.25); /* More visible border tokens */
+  --color-input: #0b0e14;
+  --color-ring: rgba(202, 173, 255, 0.7);
+  --color-ring-offset: #0b0e14;
+
+  /* Explicit Dracula High-Contrast Palette */
+  --color-dracula-bg: #0b0e14;
+  --color-dracula-bg-soft: #16171d;
+  --color-dracula-fg: #ffffff;
+  --color-dracula-selection: #3d4455;
+  --color-dracula-comment: #a5b3e0;
+  --color-dracula-cyan: #a1efff;
+  --color-dracula-green: #69ff94;
+  --color-dracula-orange: #ffd1a0;
+  --color-dracula-pink: #ff9de1;
+  --color-dracula-purple: #caadff;
+  --color-dracula-red: #ff6e6e;
+  --color-dracula-yellow: #ffffa5;
+
+  /* Radius & Shadows */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  
+  --shadow-glass: 0 16px 64px 0 rgba(0, 0, 0, 0.6);
 }
 
 @layer base {
+  /* Monaco Conflict Resolution Styles */
+  .conflict-ours-highlight { background-color: rgba(59, 130, 246, 0.15); }
+  .conflict-ours-marker { background-color: rgba(59, 130, 246, 0.35); font-weight: bold; }
+  .conflict-theirs-highlight { background-color: rgba(249, 115, 22, 0.15); }
+  .conflict-theirs-marker { background-color: rgba(249, 115, 22, 0.35); font-weight: bold; }
+  .conflict-result-empty { background-color: rgba(255, 255, 255, 0.05); }
+  .conflict-active-hunk {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    box-shadow: inset 2px 0 0 oklch(65% 0.2 250);
+  }
+  .conflict-action-bar { pointer-events: auto; }
 
-/* Monaco Conflict Resolution Styles */
-.conflict-ours-highlight {
-  background-color: rgba(59, 130, 246, 0.15);
-}
-.conflict-ours-marker {
-  background-color: rgba(59, 130, 246, 0.35);
-  font-weight: bold;
-}
-.conflict-theirs-highlight {
-  background-color: rgba(249, 115, 22, 0.15);
-}
-.conflict-theirs-marker {
-  background-color: rgba(249, 115, 22, 0.35);
-  font-weight: bold;
-}
-.conflict-result-empty {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-.conflict-active-hunk {
-  background-color: rgba(59, 130, 246, 0.25) !important;
-  box-shadow: inset 2px 0 0 var(--accent-primary);
-}
-.conflict-action-bar {
-  pointer-events: auto;
-}
   :root {
-    /* Background Hierarchy - Refined HSL */
-    --bg-main: hsl(210, 20%, 6%);
-    --bg-panel: hsl(210, 20%, 9%);
-    --bg-elevated: hsl(210, 18%, 14%);
-    --bg-glass: rgba(22, 27, 34, 0.7);
+    --bg-glass: rgba(15, 18, 23, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-highlight: rgba(255, 255, 255, 0.03);
     
-    --border-subtle: hsla(210, 15%, 25%, 0.4);
-    --border-bright: hsla(210, 15%, 40%, 0.4);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+    /* Sizing & Gaps - Pro Layout Density */
+    --app-font-size: 13px;
+    --app-gap-xs: 2px;
+    --app-gap-sm: 4px;
+    --app-gap-md: 6px; /* Tightened from 8px */
+    --app-gap-lg: 12px; /* Tightened from 16px */
     
-    /* Text Colors */
-    --text-primary: hsl(210, 30%, 94%);
-    --text-secondary: hsl(210, 15%, 65%);
-    --text-muted: hsl(210, 10%, 45%);
-    --text-header: hsl(210, 12%, 55%);
-    
-    /* Accents - Vibrant & Balanced */
-    --accent-primary: hsl(217, 91%, 60%);
-    --accent-primary-hover: hsl(217, 91%, 65%);
-    --accent-success: hsl(142, 69%, 45%);
-    --accent-warning: hsl(38, 92%, 50%);
-    --accent-danger: hsl(0, 84%, 60%);
-    
-    /* System Colors */
-    --row-hover: hsla(210, 20%, 25%, 0.3);
-    --row-active: hsla(217, 91%, 60%, 0.15);
-    
-    /* Spacing & Sizing */
-    --row-height: 28px;
-    --text-xs: 11px;
-    --text-sm: 13px;
-    --text-base: 14px;
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --row-height: 28px; /* High-density row height */
+    --toolbar-height: 42px;
     
     /* Animation Tokens */
-    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-    --transition-fast: 150ms var(--ease-out);
-    --transition-normal: 250ms var(--ease-out);
-    
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-premium: 300ms var(--ease-out-expo);
   }
 }
 
@@ -80,10 +90,10 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--bg-main);
-  color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: var(--text-base);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-size: var(--app-font-size);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -124,27 +134,27 @@ body {
 /* ── Typography Scale ────────────────────────────────────────────── */
 
 .section-header-text {
-  font-size: 9px;
+  font-size: calc(var(--app-font-size) * 0.7); /* Relative sizing */
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: var(--text-header);
+  color: var(--color-muted-foreground);
   font-weight: 700;
 }
 
 .branch-name-text {
-  font-size: 13px;
-  color: var(--text-primary);
+  font-size: var(--app-font-size);
+  color: var(--color-foreground);
 }
 
 .hash-mono-text {
-  font-size: 12px;
+  font-size: calc(var(--app-font-size) * 0.9);
   font-family: var(--font-mono);
-  color: var(--text-secondary);
+  color: var(--color-dracula-comment);
 }
 
 .commit-msg-text {
-  font-size: 13px;
-  color: var(--text-primary);
+  font-size: var(--app-font-size);
+  color: var(--color-foreground);
 }
 
 /* ── Interactive States ──────────────────────────────────────────── */

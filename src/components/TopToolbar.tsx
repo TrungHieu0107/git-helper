@@ -1,26 +1,45 @@
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Undo, Redo, ArrowDown, ArrowUp, GitBranch, Archive, Navigation, Terminal, RotateCw, Download, Loader2, ChevronDown, FolderOpen, Plus, Monitor } from "lucide-react";
+import { 
+  Undo, Redo, GitBranch, Archive, 
+  Navigation, Terminal, RotateCw, Loader2, 
+  ChevronDown, Plus, Settings, Search,
+  Zap, CloudDownload, CloudUpload, History, Layers, Layout,
+  Globe, Command
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, RecentRepo } from "../store";
-import { pullRepo, pushCurrentBranch, fetchAllRepo, popStash, undoLastCommit, openTerminal, loadRepo } from "../lib/repo";
+import { pullRepo, fetchAllRepo, pushCurrentBranch } from "../services/git/remoteService";
+import { popStash } from "../services/git/stashService";
+import { undoLastCommit } from "../services/git/branchService";
+import { loadRepo, openTerminal, autoFetch } from "../services/git/repoService";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { CreateStashDialog } from "./CreateStashDialog";
+import { Button } from "./ui/Button";
+import { Separator } from "./ui/Separator";
+import { Badge } from "./ui/Badge";
+import { cn } from "../lib/utils";
+import { toast } from "../lib/toast";
 
 export function TopToolbar() {
-  const { activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, isLoadingPull, pullStrategy, setPullStrategy } = useAppStore();
+  const { 
+    activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, 
+    isLoadingPull, pullStrategy, setPullStrategy, isLoadingPush, 
+    lastCommitWasAmend, activeBranch, setActiveTabId
+  } = useAppStore();
+  
   const [fetching, setFetching] = useState(false);
   const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [showPullDropdown, setShowPullDropdown] = useState(false);
   const [showPushDropdown, setShowPushDropdown] = useState(false);
+  
   const pullDropdownRef = useRef<HTMLDivElement>(null);
   const pushDropdownRef = useRef<HTMLDivElement>(null);
-  const { isLoadingPush, lastCommitWasAmend } = useAppStore();
-
 
   const handleFetch = async () => {
     setFetching(true);
-    try { await fetchAllRepo(); } finally { setFetching(false); }
+    try { await fetchAllRepo(); toast.success("Fetch completed"); } finally { setFetching(false); }
   };
 
   const handlePull = async (strategy?: any) => {
@@ -31,369 +50,454 @@ export function TopToolbar() {
     await pullRepo(strategy);
   };
 
-  useEffect(() => {
-    if (showPullDropdown) {
-      const handleClickOutside = (e: MouseEvent) => {
-        if (pullDropdownRef.current && !pullDropdownRef.current.contains(e.target as Node)) {
-          setShowPullDropdown(false);
-        }
-      };
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setShowPullDropdown(false);
-      };
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleEsc);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        document.removeEventListener("keydown", handleEsc);
-      };
-    }
-  }, [showPullDropdown]);
-
-  useEffect(() => {
-    if (showPushDropdown) {
-      const handleClickOutside = (e: MouseEvent) => {
-        if (pushDropdownRef.current && !pushDropdownRef.current.contains(e.target as Node)) {
-          setShowPushDropdown(false);
-        }
-      };
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setShowPushDropdown(false);
-      };
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleEsc);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        document.removeEventListener("keydown", handleEsc);
-      };
-    }
-  }, [showPushDropdown]);
-
-
-
-
   const handleRefresh = async () => {
-    if (activeRepoPath) {
-      await loadRepo(activeRepoPath);
-    }
+    if (activeRepoPath) await loadRepo(activeRepoPath);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pullDropdownRef.current && !pullDropdownRef.current.contains(e.target as Node)) setShowPullDropdown(false);
+      if (pushDropdownRef.current && !pushDropdownRef.current.contains(e.target as Node)) setShowPushDropdown(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
-    <div className="h-[46px] w-full bg-[#1c2128] border-b border-[#30363d] flex items-center px-6 shrink-0 justify-between select-none shadow-md">
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="h-[var(--toolbar-height)] w-full bg-background/60 backdrop-blur-3xl border-b border-border/40 flex items-center px-6 shrink-0 justify-between select-none shadow-[0_1px_10px_rgba(0,0,0,0.1)] z-50 overflow-visible"
+    >
       
-      {/* Left: Repo Selector Dropdown */}
-      <div className="flex-1 flex items-center min-w-0">
+      {/* Left: Repo Selector & Navigation */}
+      <div className="flex-1 flex items-center min-w-0 gap-4">
         <RepoSelector />
+        <Separator orientation="vertical" className="h-4 opacity-20" />
+        <div className="flex items-center gap-1">
+          <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 transition-colors gap-1.5 px-2.5 py-0.5">
+            <GitBranch size={10} className="opacity-70" />
+            <span className="font-mono text-[11px] font-black">{activeBranch || 'No Branch'}</span>
+          </Badge>
+          {repoStatus && (repoStatus.ahead > 0 || repoStatus.behind > 0) && (
+            <div className="flex items-center gap-1 ml-1 scale-90 origin-left">
+              {repoStatus.ahead > 0 && <Badge className="bg-dracula-cyan/10 text-dracula-cyan border-dracula-cyan/20 px-1.5">↑{repoStatus.ahead}</Badge>}
+              {repoStatus.behind > 0 && <Badge className="bg-dracula-orange/10 text-dracula-orange border-dracula-orange/20 px-1.5">↓{repoStatus.behind}</Badge>}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Middle: Git Actions (Centered) */}
-      <div className="flex-[2] flex items-center justify-center space-x-5">
-        
-        {/* Undo / Redo */}
-        <div className="flex items-center gap-4">
-          <ToolbarButton icon={<Undo size={16} />} label="Undo" onClick={undoLastCommit} />
-          <ToolbarButton icon={<Redo size={16} />} label="Redo" disabled />
-        </div>
-
-        <div className="w-px h-6 bg-[#30363d] mx-2" />
-        
-        {/* Fetch / Pull / Push */}
-        <div className="flex items-center gap-4 text-[#58a6ff]">
-          <DownloadButton loading={fetching} onClick={handleFetch} count={0} icon={<Download size={16} />} label="Fetch" />
+      {/* Middle: Git Actions Grouped */}
+      <div className="flex-[2] flex items-center justify-center">
+        <div className="flex items-center gap-1 p-1 bg-secondary/20 backdrop-blur-md rounded-2xl border border-border/30 shadow-inner">
           
-          {/* Split Pull Button */}
-          <div className="relative flex items-center" ref={pullDropdownRef}>
-            <ToolbarButton 
-              icon={<ArrowDown size={16} />} 
-              label="Pull" 
-              onClick={() => handlePull()} 
-              loading={isLoadingPull} 
-              count={repoStatus?.behind || 0} 
-              title={repoStatus ? `↑${repoStatus.ahead} ↓${repoStatus.behind}` : undefined}
+          {/* History Group */}
+          <div className="flex items-center">
+            <ToolbarAction 
+              icon={<Undo size={14} />} 
+              label="Undo" 
+              onClick={undoLastCommit} 
+              tooltip="Undo last commit (Soft Reset)"
+              className="text-dracula-orange hover:bg-dracula-orange/10"
             />
-            <div 
-              onClick={() => !isLoadingPull && setShowPullDropdown(!showPullDropdown)}
-              className={`h-8 flex items-center px-1 hover:bg-white/5 rounded-md cursor-pointer ml-1 ${isLoadingPull ? 'opacity-20 pointer-events-none' : ''}`}
-            >
-              <ChevronDown size={14} className={`text-[#6e7681] transition-transform ${showPullDropdown ? 'rotate-180' : ''}`} />
-            </div>
-
-            {showPullDropdown && (
-              <div className="absolute top-full left-0 mt-3 w-56 bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[250] p-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-2 py-1.5 text-[10px] font-bold text-[#6e7681] uppercase border-b border-[#30363d] mb-1 tracking-wider">
-                  Pull Strategy
-                </div>
-                {(['fast_forward_only', 'fast_forward_or_merge', 'rebase'] as const).map(s => (
-                  <div 
-                    key={s}
-                    onClick={() => handlePull(s)}
-                    className={`px-3 py-2 rounded-md flex flex-col hover:bg-[#1f2937] cursor-pointer transition-colors ${pullStrategy === s ? 'bg-[#388bfd]/10' : ''}`}
-                  >
-                    <div className="flex items-center justify-between">
-                       <span className={`text-[12px] font-semibold ${pullStrategy === s ? 'text-[#388bfd]' : 'text-[#e6edf3]'}`}>
-                         {s === 'fast_forward_only' ? 'Fast-Forward Only' : s === 'fast_forward_or_merge' ? 'Merge (FF or Merge)' : 'Rebase'}
-                       </span>
-                       {pullStrategy === s && <div className="w-1.5 h-1.5 bg-[#388bfd] rounded-full shadow-[0_0_8px_rgba(56,139,253,0.6)]" />}
-                    </div>
-                    <span className="text-[10px] text-[#6e7681]">
-                      {s === 'fast_forward_only' ? 'Fails if branches have diverged' : s === 'fast_forward_or_merge' ? 'Merges if FF is not possible' : 'Rebases local commits on remote'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ToolbarAction 
+              icon={<Redo size={14} />} 
+              label="Redo" 
+              disabled 
+              tooltip="Redo operation (Coming soon)"
+            />
           </div>
 
-          {/* Split Push Button */}
-          <div className="relative flex items-center" ref={pushDropdownRef}>
-            <ToolbarButton 
-              icon={<ArrowUp size={16} className={lastCommitWasAmend ? "text-[#e3b341] drop-shadow-[0_0_8px_rgba(227,179,65,0.3)]" : ""} />} 
-              label={lastCommitWasAmend ? "Force Push" : "Push"} 
-              onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
-              loading={isLoadingPush} 
-              count={repoStatus?.ahead || 0} 
-              title={lastCommitWasAmend ? "Changes were amended. Force push may be required." : (repoStatus ? `↑${repoStatus.ahead} commits ahead` : undefined)}
+          <Separator orientation="vertical" className="h-6 mx-1.5 opacity-30" />
+          
+          {/* Sync Group */}
+          <div className="flex items-center">
+            <ToolbarAction 
+              icon={<RotateCw size={14} />} 
+              label="Fetch" 
+              onClick={handleFetch} 
+              loading={fetching}
+              tooltip="Fetch all remotes"
+              className="text-dracula-cyan hover:bg-dracula-cyan/10"
             />
-            <div 
-              onClick={() => !isLoadingPush && setShowPushDropdown(!showPushDropdown)}
-              className={`h-8 flex items-center px-1 hover:bg-white/5 rounded-md cursor-pointer ml-1 ${isLoadingPush ? 'opacity-20 pointer-events-none' : ''}`}
-            >
-              <ChevronDown size={14} className={`text-[#6e7681] transition-transform ${showPushDropdown ? 'rotate-180' : ''}`} />
-            </div>
-
-            {showPushDropdown && (
-              <div className="absolute top-full left-0 mt-3 w-56 bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[250] p-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-2 py-1.5 text-[10px] font-bold text-[#6e7681] uppercase border-b border-[#30363d] mb-1 tracking-wider">
-                  Push Mode
-                </div>
-                
-                <div 
-                  onClick={() => { pushCurrentBranch(activeRepoPath!, 'normal'); setShowPushDropdown(false); }}
-                  className="px-3 py-2 rounded-md flex flex-col hover:bg-[#1f2937] cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                     <span className="text-[12px] font-semibold text-[#e6edf3]">Normal Push</span>
-                  </div>
-                  <span className="text-[10px] text-[#6e7681]">Fast-forward to remote</span>
-                </div>
-
-                <div 
-                  onClick={() => { pushCurrentBranch(activeRepoPath!, 'force_with_lease'); setShowPushDropdown(false); }}
-                  className={`px-3 py-2 rounded-md flex flex-col hover:bg-[#1f2937] cursor-pointer transition-colors ${lastCommitWasAmend ? 'bg-[#e3b341]/10' : ''}`}
-                >
-                  <div className="flex items-center justify-between">
-                     <span className={`text-[12px] font-semibold ${lastCommitWasAmend ? 'text-[#e3b341]' : 'text-[#e6edf3]'}`}>
-                       Force Push (with lease)
-                     </span>
-                  </div>
-                  <span className="text-[10px] text-[#6e7681]">Rewrites history securely</span>
-                </div>
-              </div>
-            )}
             
-            {lastCommitWasAmend && (
-              <div className="absolute -top-1 right-8 w-2 h-2 bg-[#e3b341] rounded-full animate-pulse border border-[#1c2128]" />
-            )}
+            <div className="relative flex items-center" ref={pullDropdownRef}>
+              <ToolbarAction 
+                icon={<CloudDownload size={14} />} 
+                label="Pull" 
+                onClick={() => handlePull()} 
+                loading={isLoadingPull}
+                badge={repoStatus?.behind}
+                tooltip={`Pull changes (${pullStrategy})`}
+                className="text-dracula-green hover:bg-dracula-green/10 rounded-r-none pr-1"
+              />
+              <button 
+                onClick={() => setShowPullDropdown(!showPullDropdown)}
+                className={cn(
+                  "h-10 px-1 hover:bg-dracula-green/10 rounded-r-xl transition-all duration-200 border-l border-dracula-green/10 group",
+                  showPullDropdown && "bg-dracula-green/10"
+                )}
+              >
+                <ChevronDown size={12} className={cn("text-dracula-green/40 group-hover:text-dracula-green transition-transform duration-300", showPullDropdown && "rotate-180")} />
+              </button>
+
+              <AnimatePresence>
+                {showPullDropdown && (
+                  <DropdownMenu 
+                    title="Pull Strategy"
+                    items={[
+                      { id: 'fast_forward_only', label: 'Fast-Forward Only', desc: 'Fails if diverged', active: pullStrategy === 'fast_forward_only', icon: <Zap size={14} /> },
+                      { id: 'fast_forward_or_merge', label: 'Merge (Default)', desc: 'Creates merge commit if needed', active: pullStrategy === 'fast_forward_or_merge', icon: <Layers size={14} /> },
+                      { id: 'rebase', label: 'Rebase', desc: 'Rebases local on remote', active: pullStrategy === 'rebase', icon: <History size={14} /> },
+                    ]}
+                    onSelect={(id) => handlePull(id)}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="relative flex items-center" ref={pushDropdownRef}>
+              <ToolbarAction 
+                icon={<CloudUpload size={14} className={lastCommitWasAmend ? "animate-bounce" : ""} />} 
+                label={lastCommitWasAmend ? "Force" : "Push"} 
+                onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
+                loading={isLoadingPush}
+                badge={repoStatus?.ahead}
+                tooltip={lastCommitWasAmend ? "Force push required due to amend" : "Push commits to remote"}
+                className={cn("rounded-r-none pr-1 transition-all", lastCommitWasAmend ? "text-dracula-red hover:bg-dracula-red/10" : "text-dracula-cyan hover:bg-dracula-cyan/10")}
+              />
+              <button 
+                onClick={() => setShowPushDropdown(!showPushDropdown)}
+                className={cn(
+                  "h-10 px-1 transition-all duration-200 border-l rounded-r-xl group",
+                  lastCommitWasAmend ? "hover:bg-dracula-red/10 border-dracula-red/10" : "hover:bg-dracula-cyan/10 border-dracula-cyan/10",
+                  showPushDropdown && (lastCommitWasAmend ? "bg-dracula-red/10" : "bg-dracula-cyan/10")
+                )}
+              >
+                <ChevronDown size={12} className={cn("transition-transform duration-300", lastCommitWasAmend ? "text-dracula-red/40 group-hover:text-dracula-red" : "text-dracula-cyan/40 group-hover:text-dracula-cyan", showPushDropdown && "rotate-180")} />
+              </button>
+
+              <AnimatePresence>
+                {showPushDropdown && (
+                  <DropdownMenu 
+                    title="Push Mode"
+                    items={[
+                      { id: 'normal', label: 'Normal Push', desc: 'Standard fast-forward', icon: <CloudUpload size={14} /> },
+                      { id: 'force_with_lease', label: 'Force with Lease', desc: 'Secure history overwrite', color: 'text-dracula-red', icon: <Zap size={14} /> },
+                    ]}
+                    onSelect={(id) => {
+                      pushCurrentBranch(activeRepoPath!, id as any);
+                      setShowPushDropdown(false);
+                    }}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
-        </div>
+          <Separator orientation="vertical" className="h-6 mx-1.5 opacity-30" />
 
-        <div className="w-px h-6 bg-[#30363d] mx-2" />
-
-        {/* Branch / Stash / Pop */}
-        <div className="flex items-center gap-4 text-[#e6edf3]">
-          <ToolbarButton 
-            icon={<GitBranch size={16} />} 
-            label="Branch" 
-            onClick={() => setShowCreateBranch(true)} 
-          />
-          <ToolbarButton 
-            icon={<Archive size={16} />} 
-            label="Stash" 
-            onClick={() => useAppStore.setState({ showCreateStash: true })} 
-          />
-          <ToolbarButton icon={<Navigation size={16} />} label="Pop" onClick={() => popStash(0)} />
-        </div>
-
-        <div className="w-px h-6 bg-[#30363d] mx-2" />
-
-        {/* Terminal */}
-        <div className="flex items-center">
-          <ToolbarButton icon={<Terminal size={16} />} label="Terminal" onClick={openTerminal} />
-        </div>
-        
-      </div>
-
-      {/* Right: Refresh / Meta */}
-      <div className="flex-1 flex items-center justify-end space-x-2">
-        <div className="flex items-center gap-1 cursor-pointer hover:bg-[#30363d]/50 p-2 rounded text-[#adbac7]">
-           <span className="text-[12px] font-medium">Actions ▾</span>
-        </div>
-        <div 
-          onClick={handleRefresh}
-          className={`cursor-pointer p-2 transition-all duration-300 ${isLoadingRepo ? 'text-blue-400' : 'text-[#768390] hover:text-[#adbac7]'}`}
-          title="Reload state (Ctrl+R)"
-        >
-           <RotateCw size={18} className={isLoadingRepo ? "animate-spin" : ""} />
+          {/* Workflow Group */}
+          <div className="flex items-center">
+            <ToolbarAction 
+              icon={<GitBranch size={14} />} 
+              label="Branch" 
+              onClick={() => setShowCreateBranch(true)} 
+              tooltip="Create new branch"
+              className="text-primary hover:bg-primary/10"
+            />
+            <ToolbarAction 
+              icon={<Archive size={14} />} 
+              label="Stash" 
+              onClick={() => useAppStore.setState({ showCreateStash: true })} 
+              tooltip="Stash local changes"
+              className="text-dracula-orange hover:bg-dracula-orange/10"
+            />
+            <ToolbarAction 
+              icon={<Navigation size={14} />} 
+              label="Pop" 
+              onClick={() => popStash(0)} 
+              tooltip="Apply and drop latest stash"
+              className="text-dracula-green hover:bg-dracula-green/10"
+            />
+          </div>
         </div>
       </div>
 
-      {showCreateBranch && (
-        <CreateBranchDialog onClose={() => setShowCreateBranch(false)} />
-      )}
-      {showCreateStash && (
-        <CreateStashDialog onClose={() => useAppStore.setState({ showCreateStash: false })} />
-      )}
+      {/* Right: Meta Actions */}
+      <div className="flex-1 flex items-center justify-end gap-2">
+        <div className="flex items-center gap-1 bg-secondary/10 p-1 rounded-xl border border-border/20">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95" onClick={() => toast.info("Search coming soon")}>
+            <Search size={16} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn("h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95", isLoadingRepo && "text-primary")}
+            onClick={handleRefresh}
+          >
+            <RotateCw size={16} className={cn(isLoadingRepo && "animate-spin")} />
+          </Button>
+          <Separator orientation="vertical" className="h-4 mx-0.5 opacity-20" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95"
+            onClick={openTerminal}
+          >
+            <Terminal size={16} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setActiveTabId('settings')}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95"
+          >
+            <Settings size={16} />
+          </Button>
+        </div>
+      </div>
 
-    </div>
+      <AnimatePresence>
+        {showCreateBranch && (
+          <CreateBranchDialog onClose={() => setShowCreateBranch(false)} />
+        )}
+        {showCreateStash && (
+          <CreateStashDialog onClose={() => useAppStore.setState({ showCreateStash: false })} />
+        )}
+      </AnimatePresence>
+
+    </motion.div>
+  );
+}
+
+function ToolbarAction({ 
+  icon, label, onClick, disabled, loading, badge, tooltip, className 
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  onClick?: () => void; 
+  disabled?: boolean; 
+  loading?: boolean;
+  badge?: number;
+  tooltip?: string;
+  className?: string;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={disabled || loading}
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-0.5 h-10 py-1.5 px-3 relative min-w-[56px] rounded-xl transition-all duration-200 group active:scale-95",
+        className
+      )}
+      title={tooltip}
+    >
+      <motion.div 
+        whileHover={{ scale: 1.15, y: -1 }}
+        className="relative"
+      >
+        {loading ? <Loader2 size={15} className="animate-spin" /> : icon}
+        <AnimatePresence>
+          {badge !== undefined && badge > 0 && (
+            <motion.span 
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              className="absolute -top-1.5 -right-2.5 bg-primary text-primary-foreground text-[8px] font-black px-1 rounded-full border border-background shadow-sm"
+            >
+              {badge}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.div>
+      <span className="text-[9px] uppercase font-black tracking-tighter opacity-50 group-hover:opacity-100 transition-opacity whitespace-nowrap">{label}</span>
+    </Button>
+  );
+}
+
+function DropdownMenu({ title, items, onSelect }: { 
+  title: string; 
+  items: { id: string; label: string; desc?: string; active?: boolean; color?: string; icon?: React.ReactNode }[];
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
+      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      exit={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
+      className="absolute top-[calc(100%+8px)] left-0 w-64 bg-background/90 backdrop-blur-2xl border border-border shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-[100] p-2 rounded-2xl overflow-hidden"
+    >
+      <div className="px-3 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] opacity-40 mb-1">
+        {title}
+      </div>
+      <div className="space-y-1">
+        {items.map(item => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item.id)}
+            className={cn(
+              "w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-secondary flex flex-col group relative overflow-hidden",
+              item.active && "bg-primary/10 border border-primary/20"
+            )}
+          >
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className={cn("p-1.5 rounded-lg bg-secondary/50 transition-colors group-hover:bg-background", item.active && "text-primary bg-primary/20")}>
+                  {item.icon}
+                </div>
+                <span className={cn("text-[13px] font-bold text-foreground/80 group-hover:text-foreground", item.color)}>
+                  {item.label}
+                </span>
+              </div>
+              {item.active && (
+                <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_8px_rgba(189,147,249,0.6)]" />
+              )}
+            </div>
+            {item.desc && (
+              <span className="text-[10px] text-muted-foreground group-hover:text-foreground/60 ml-9 mt-0.5 leading-tight">
+                {item.desc}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </motion.div>
   );
 }
 
 function RepoSelector() {
   const { repoInfo, activeRepoPath } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [recent, setRecent] = useState<any[]>([]);
+  const [recent, setRecent] = useState<RecentRepo[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
+      const fetchRecent = async () => {
+        try {
+          const repos = await invoke<RecentRepo[]>('get_recent_repos');
+          setRecent(repos);
+        } catch (e) { console.error(e); }
+      };
       fetchRecent();
       const handleClickOutside = (e: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-          setIsOpen(false);
-        }
+        if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setIsOpen(false);
       };
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isOpen]);
 
-  const fetchRecent = async () => {
-    try {
-      const repos = await invoke<RecentRepo[]>('get_recent_repos');
-      setRecent(repos);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handlePickRepo = async () => {
     setIsOpen(false);
     try {
       const selected = await open({ directory: true, multiple: false, title: 'Open Repository' });
-      if (selected) await loadRepo(selected as string);
-    } catch (e) {
-      console.error(e);
-    }
+      if (selected) {
+        await loadRepo(selected as string);
+        autoFetch(selected as string);
+      }
+    } catch (e) { console.error(e); }
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <div 
+      <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-3 py-1 hover:bg-[#1f2937] rounded-lg cursor-pointer group transition-all min-w-0 border border-transparent hover:border-[#30363d]"
+        className="flex items-center gap-3 px-3 py-1.5 hover:bg-secondary/40 rounded-xl transition-all duration-300 group border border-transparent hover:border-border/30 active:scale-95"
       >
-        <div className="w-5.5 h-5.5 bg-[#388bfd] rounded-md flex items-center justify-center text-white font-black text-[10px] shrink-0 shadow-lg">
+        <div className="w-7 h-7 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center text-primary-foreground font-black text-[12px] shadow-[0_4px_12px_rgba(189,147,249,0.3)] group-hover:shadow-[0_4px_20px_rgba(189,147,249,0.5)] transition-all group-hover:-translate-y-0.5">
           {repoInfo?.name[0]?.toUpperCase() || 'G'}
         </div>
-        <div className="flex flex-col min-w-0">
+        <div className="flex flex-col text-left min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold text-[#e6edf3] truncate tracking-tight">
+            <span className="text-[14px] font-black tracking-tight text-foreground/90 truncate max-w-[120px]">
               {repoInfo?.name || 'GitKit'}
             </span>
-            <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={14} className={cn("text-muted-foreground/40 transition-transform duration-300", isOpen && "rotate-180")} />
           </div>
         </div>
-      </div>
+      </button>
 
-      {isOpen && (
-        <div className="absolute top-[calc(100%+8px)] left-0 w-[280px] bg-[#1c2128] border border-[#30363d] rounded-lg shadow-2xl z-[200] overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="p-2 border-b border-[#30363d] bg-[#161b22]/50">
-            <div className="text-[10px] uppercase font-bold text-[#768390] px-2 mb-1 flex items-center gap-1.5">
-               <FolderOpen size={10} /> Recent Repositories
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
+            className="absolute top-[calc(100%+12px)] left-0 w-[320px] bg-background/90 backdrop-blur-3xl border border-border/50 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-[100] overflow-hidden flex flex-col"
+          >
+            <div className="px-4 py-3 border-b border-border/30 bg-secondary/20 text-[10px] uppercase font-black text-muted-foreground/60 tracking-[0.2em] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History size={12} /> RECENT REPOS
+              </div>
+              <Badge variant="outline" className="text-[9px] opacity-40 font-mono">WORKSPACE</Badge>
             </div>
-          </div>
-          
-          <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
-            {recent.length === 0 ? (
-              <div className="text-[11px] text-[#768390] italic text-center py-4">No recent repositories</div>
-            ) : (
-              recent.map(repo => (
-                <div 
-                  key={repo.path}
-                  onClick={() => {
-                    loadRepo(repo.path);
-                    setIsOpen(false);
-                  }}
-                  className={`flex flex-col px-3 py-2 rounded-md cursor-pointer transition-all hover:bg-[#30363d]/40 group ${activeRepoPath === repo.path ? 'bg-[#3b82f6]/10' : ''}`}
-                >
-                  <div className="flex items-center gap-2">
-                     <Monitor size={12} className={activeRepoPath === repo.path ? 'text-sky-400' : 'text-[#768390]'} />
-                     <span className={`text-[12px] font-semibold truncate ${activeRepoPath === repo.path ? 'text-sky-400' : 'text-[#adbac7] group-hover:text-white'}`}>
-                       {repo.name}
-                     </span>
+            
+            <div className="max-h-[340px] overflow-y-auto custom-scrollbar p-2 space-y-1">
+              {recent.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="p-4 bg-secondary/30 rounded-full">
+                    <Globe size={24} className="text-muted-foreground/20" />
                   </div>
-                  <span className="text-[10px] text-[#768390] truncate ml-5" title={repo.path}>{repo.path}</span>
+                  <span className="text-[12px] text-muted-foreground/40 font-bold uppercase tracking-widest">No recent history</span>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                recent.map(repo => (
+                  <button 
+                    key={repo.path}
+                    onClick={async () => { 
+                      await loadRepo(repo.path); 
+                      setIsOpen(false);
+                      autoFetch(repo.path);
+                    }}
+                    className={cn(
+                      "w-full flex flex-col px-4 py-3 rounded-2xl text-left transition-all duration-200 group relative overflow-hidden",
+                      activeRepoPath === repo.path 
+                        ? "bg-primary/10 border border-primary/20" 
+                        : "hover:bg-secondary/60"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 relative z-10">
+                       <div className={cn("p-2 rounded-xl transition-colors", activeRepoPath === repo.path ? "bg-primary/20 text-primary" : "bg-secondary/40 text-muted-foreground group-hover:text-foreground")}>
+                         <Layout size={14} />
+                       </div>
+                       <div className="flex flex-col min-w-0">
+                         <span className={cn("text-[14px] font-black truncate tracking-tight", activeRepoPath === repo.path ? 'text-primary' : 'text-foreground/80')}>
+                           {repo.name}
+                         </span>
+                         <span className="text-[10px] text-muted-foreground truncate opacity-40 font-mono" title={repo.path}>{repo.path}</span>
+                       </div>
+                       {activeRepoPath === repo.path && (
+                         <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-black tracking-widest uppercase">
+                            Active
+                         </div>
+                       )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
 
-          <div className="p-1.5 bg-[#161b22]/50 border-t border-[#30363d]">
-            <button 
-              onClick={handlePickRepo}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-[12px] font-medium text-[#adbac7] hover:text-white hover:bg-[#30363d] transition-all"
-            >
-              <Plus size={14} className="text-sky-400" />
-              Open local repository...
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="p-3 bg-secondary/10 border-t border-border/30">
+              <button 
+                onClick={handlePickRepo}
+                className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-2xl bg-primary text-primary-foreground text-[13px] font-black shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all active:scale-95 group"
+              >
+                <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                Open Repository
+                <div className="ml-auto opacity-40 flex items-center gap-1 scale-75">
+                  <Command size={12} /> O
+                </div>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
-function ToolbarButton({ 
-  icon, 
-  label, 
-  disabled = false, 
-  loading = false, 
-  onClick,
-  count = 0,
-  title,
-  className
-}: { 
-  icon: React.ReactNode, 
-  label: string, 
-  disabled?: boolean, 
-  loading?: boolean, 
-  onClick?: () => void,
-  count?: number,
-  title?: string,
-  className?: string
-}) {
-  const isDisabled = disabled || loading;
-  return (
-    <div 
-      onClick={() => !isDisabled && onClick?.()}
-      title={title}
-      className={`flex flex-col items-center justify-center cursor-pointer group relative transition-all duration-200 hover:scale-[1.03] ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''} ${className || ''}`}
-    >
-       <div className={`py-1 px-2 rounded-lg transition-all ${!isDisabled ? 'group-hover:bg-white/5 group-hover:shadow-inner' : ''} ${!isDisabled ? 'text-[#e6edf3]' : 'text-[#6e7681]'}`}>
-         {loading ? <Loader2 size={16} className="animate-spin text-[#388bfd]" /> : icon}
-       </div>
-       
-       {count > 0 && (
-         <div className="absolute top-0 -right-2 bg-[#388bfd] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border-2 border-[#1c2128] shadow-lg transform scale-90">
-           {count}
-         </div>
-       )}
-
-       <span className="text-[9px] font-bold text-[#6e7681] mt-0.5 uppercase tracking-tighter group-hover:text-[#e6edf3] transition-colors">{label}</span>
-    </div>
-  );
-}
-
-const DownloadButton = ToolbarButton;
 

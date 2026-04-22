@@ -412,6 +412,26 @@ export async function fetchAllRepo() {
   }, "Fetching all remotes...", 1000);
 }
 
+/**
+ * Background auto-fetch that doesn't show intrusive UI overlays.
+ * Used for lifecycle events like startup, tab switching, and opening repos.
+ */
+export async function autoFetch(path: string) {
+  if (!path) return;
+  
+  try {
+    console.log(`[AutoFetch] Starting for ${path}`);
+    // Direct invoke without withLoading to keep it silent
+    await invoke('fetch_all_remotes', { repoPath: path });
+    // Reload repo data to update status (ahead/behind), branches, and log
+    await loadRepo(path);
+    console.log(`[AutoFetch] Success for ${path}`);
+  } catch (e) {
+    // Silent failure for auto-fetch to avoid interrupting the user's flow
+    console.error(`[AutoFetch] Failed:`, e);
+  }
+}
+
 export async function pullRepo(strategy?: PullStrategy) {
   const state = useAppStore.getState();
   const path = state.activeRepoPath;
@@ -859,6 +879,7 @@ export async function switchTab(tabId: string) {
 
   // If repo is already open, just switch tab and load its data
   await loadRepo(tabId);
+  autoFetch(tabId);
 }
 
 export function closeRepoTab(path: string) {
@@ -911,6 +932,7 @@ export async function restoreAppState() {
         if (state.active_tab) {
             console.log("[Repo] Restoring active tab:", state.active_tab);
             await loadRepo(state.active_tab);
+            autoFetch(state.active_tab);
         } else {
             useAppStore.setState({ activeTabId: 'home' });
         }

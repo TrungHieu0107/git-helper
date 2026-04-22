@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { FolderOpen, GitBranch, X, Clock, Monitor } from 'lucide-react';
+import { FolderOpen, GitBranch, X, Clock, Monitor, Plus, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, RecentRepo } from '../store';
-import { loadRepo, switchTab, closeRepoTab } from '../lib/repo';
+import { loadRepo, switchTab, closeRepoTab, autoFetch } from '../services/git/repoService';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/Card';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 export function WelcomeScreen() {
   const [recent, setRecent] = useState<RecentRepo[]>([]);
@@ -27,6 +31,7 @@ export function WelcomeScreen() {
       const selected = await open({ directory: true, multiple: false, title: 'Open Repository' });
       if (!selected) return;
       await loadRepo(selected as string);
+      autoFetch(selected as string);
     } catch (e) {
       console.error(e);
     }
@@ -45,129 +50,180 @@ export function WelcomeScreen() {
   const timeAgo = (timestamp: number) => {
     const seconds = Math.floor(Date.now() / 1000 - timestamp);
     let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
+    if (interval > 1) return Math.floor(interval) + "y";
     interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
+    if (interval > 1) return Math.floor(interval) + "mo";
     interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
+    if (interval > 1) return Math.floor(interval) + "d";
     interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
+    if (interval > 1) return Math.floor(interval) + "h";
     interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
+    if (interval > 1) return Math.floor(interval) + "m";
+    return Math.floor(seconds) + "s";
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center py-12 bg-[#282c34] h-full text-white overflow-y-auto custom-scrollbar">
-      <div className="w-[600px] flex flex-col gap-6">
+    <div className="flex-1 flex flex-col items-center py-16 bg-background h-full text-foreground overflow-y-auto custom-scrollbar">
+      <div className="w-[640px] flex flex-col gap-8">
         
-        {/* Header Block */}
-        <div className="bg-[#1e2227] rounded-lg shadow-xl shadow-black/40 border border-[#3e4451] overflow-hidden flex flex-col">
-          <div className="flex items-center gap-3 p-6 border-b border-[#3e4451]">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
-              <GitBranch size={28} className="text-white transform -rotate-3" />
+        {/* Header Hero */}
+        <Card className="overflow-hidden border-none shadow-2xl bg-gradient-to-br from-card to-background/50">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-primary),transparent_50%)] opacity-10" />
+          <CardHeader className="flex-row items-center gap-6 p-8 relative">
+            <motion.div 
+              initial={{ rotate: -10, scale: 0.9 }}
+              animate={{ rotate: 0, scale: 1 }}
+              className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/40"
+            >
+              <GitBranch size={36} className="text-primary-foreground" />
+            </motion.div>
+            <div className="flex-1">
+              <CardTitle className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
+                GitKit <span className="text-primary">Pro</span>
+              </CardTitle>
+              <CardDescription className="text-base font-medium opacity-60">
+                The next-generation Git workflow for professionals.
+              </CardDescription>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-gray-100">GitKit</h1>
-              <p className="text-sm text-gray-400">Desktop Git Client</p>
-            </div>
-          </div>
+          </CardHeader>
 
-          <div className="p-6 flex gap-3 bg-[#21262d]/50">
-             <button 
+          <CardContent className="p-8 pt-0 flex gap-4 relative">
+             <Button 
                 onClick={pickRepo}
-                className="flex items-center justify-center gap-2 flex-1 py-3 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 transition-colors rounded-md text-sm font-semibold shadow-sm"
+                size="lg"
+                className="flex-1 gap-2 text-base font-bold shadow-xl shadow-primary/20"
              >
-                <FolderOpen size={18} />
+                <Plus size={20} />
                 Open Repository
-             </button>
-             <button 
-                onClick={() => alert('Coming soon!')}
-                className="flex items-center justify-center gap-2 flex-1 py-3 bg-[#3e4451]/50 hover:bg-[#3e4451] transition-colors rounded-md text-sm font-medium text-gray-300 shadow-sm"
+             </Button>
+             <Button 
+                variant="glass"
+                size="lg"
+                className="flex-1 gap-2 text-base font-bold"
+                onClick={() => {}}
              >
-                <GitBranch size={18} />
-                Clone Repository
-             </button>
-          </div>
+                <Download size={20} />
+                Clone Remote
+             </Button>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-8">
+          {/* Currently Open */}
+          <AnimatePresence>
+            {repos.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col gap-4"
+              >
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                    <Monitor size={12} />
+                    Active Sessions
+                  </h2>
+                  <Badge variant="glass">{repos.length} Open</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {repos.map((repo, idx) => (
+                    <motion.div
+                      key={repo.path}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <Card 
+                        className="group hover:border-primary/50 cursor-pointer transition-all bg-secondary/30 border-dashed"
+                        onClick={() => switchTab(repo.path)}
+                      >
+                        <CardContent className="p-4 flex flex-col gap-1 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-destructive"
+                              onClick={(e) => { e.stopPropagation(); closeRepoTab(repo.path); }}
+                            >
+                              <X size={12} />
+                            </Button>
+                          </div>
+                          <span className="text-[13px] font-black truncate pr-6">{repo.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate opacity-60 font-mono tracking-tight">{repo.path}</span>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
+
+          {/* Recent List */}
+          <section className="flex flex-col gap-4">
+             <div className="px-2">
+               <h2 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                 <Clock size={12} />
+                 Recent History
+               </h2>
+             </div>
+             
+             <Card className="bg-transparent border-none shadow-none">
+               <div className="flex flex-col gap-2">
+                  {recent.length === 0 ? (
+                    <div className="text-sm text-muted-foreground italic text-center py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
+                      Your recent repositories will appear here.
+                    </div>
+                  ) : (
+                    recent.map((repo, idx) => (
+                      <motion.div
+                        key={repo.path}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: idx * 0.02 }}
+                        className="group"
+                      >
+                        <div 
+                          onClick={() => {
+                            loadRepo(repo.path);
+                            autoFetch(repo.path);
+                          }}
+                          className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-secondary transition-all cursor-pointer border border-transparent hover:border-border/50"
+                        >
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                              <FolderOpen size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                               <span className="text-[14px] font-bold text-foreground truncate tracking-tight">{repo.name}</span>
+                               <span className="text-[11px] text-muted-foreground truncate opacity-50 font-mono" title={repo.path}>{repo.path}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 shrink-0">
+                             <Badge variant="glass" className="opacity-0 group-hover:opacity-100 transition-opacity font-mono text-[10px]">
+                               {timeAgo(repo.last_opened)}
+                             </Badge>
+                             <Button 
+                               variant="ghost" 
+                               size="icon"
+                               onClick={(e) => removeRecent(e, repo.path)}
+                               className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all hover:bg-destructive/10"
+                             >
+                               <X size={14} />
+                             </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))
+                  )}
+               </div>
+             </Card>
+          </section>
         </div>
 
-        {/* Currently Open Repositories */}
-        {repos.length > 0 && (
-          <div className="bg-[#1e2227] rounded-lg shadow-xl shadow-black/40 border border-[#3e4451] overflow-hidden flex flex-col p-6 animate-in slide-in-from-bottom-2 duration-300">
-            <h2 className="text-xs font-semibold text-sky-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Monitor size={14} />
-              Currently Open
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {repos.map(repo => (
-                <div 
-                  key={repo.path}
-                  onClick={() => switchTab(repo.path)}
-                  className="group flex flex-col p-3 rounded-lg bg-[#2c313a]/50 hover:bg-[#2c313a] border border-[#3e4451]/50 hover:border-blue-500/50 cursor-pointer transition-all relative"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-bold text-gray-100 truncate">{repo.name}</span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); closeRepoTab(repo.path); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
-                    >
-                      <X size={12} className="text-gray-500" />
-                    </button>
-                  </div>
-                  <span className="text-[10px] text-gray-500 truncate">{repo.path}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Recent Repos */}
-        <div className="p-6 flex-1 flex flex-col min-h-0">
-           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
-             <Clock size={14} />
-             Recent Repositories
-           </h2>
-           
-           <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-2">
-              {recent.length === 0 ? (
-                <div className="text-sm text-gray-500 italic text-center py-8">
-                  No recent repositories
-                </div>
-              ) : (
-                recent.map(repo => (
-                  <div 
-                    key={repo.path} 
-                    onClick={() => loadRepo(repo.path)}
-                    className="flex items-center justify-between group px-3 py-2.5 rounded-md hover:bg-[#2c313a] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 pr-4">
-                      <FolderOpen size={16} className="text-blue-400 shrink-0 opacity-80" />
-                      <div className="flex flex-col min-w-0">
-                         <span className="text-sm font-medium text-gray-200 truncate">{repo.name}</span>
-                         <span className="text-[11px] text-gray-500 truncate" title={repo.path}>{repo.path}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 shrink-0">
-                       <span className="text-[11px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                         {timeAgo(repo.last_opened)}
-                       </span>
-                       <button 
-                         onClick={(e) => removeRecent(e, repo.path)}
-                         className="p-1 rounded bg-[#3e4451]/0 group-hover:bg-[#3e4451]/50 hover:!bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                         title="Remove from recent"
-                       >
-                         <X size={14} />
-                       </button>
-                    </div>
-                  </div>
-                ))
-              )}
-           </div>
-           
-           <div className="mt-6 text-center border-t border-[#3e4451]/50 pt-4">
-             <p className="text-xs font-medium text-gray-500 opacity-60">Or drag and drop a folder here</p>
-           </div>
+        <div className="mt-8 text-center border-t border-border/50 pt-8">
+          <p className="text-[11px] font-bold text-muted-foreground tracking-widest uppercase opacity-40">GitKit Open Source Project</p>
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppStore, CommitDetail } from "../store";
-import { selectFileDiff } from "../lib/repo";
+import { selectFileDiff } from "../services/git/repoService";
 import { FileContextMenu } from "./FileContextMenu";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   GitCommit, 
   Clock, 
@@ -11,12 +12,18 @@ import {
   Plus, 
   Minus, 
   ArrowRight, 
-  Eye, 
   Folder, 
   ChevronRight, 
-  ChevronDown, 
-  ChevronsRight 
+  ChevronsRight,
+  ExternalLink,
+  MessageSquare,
+  FileText
 } from "lucide-react";
+import { Button } from "./ui/Button";
+import { Badge } from "./ui/Badge";
+import { Card } from "./ui/Card";
+import { Spinner } from "./ui/Loading";
+import { cn } from "../lib/utils";
 
 interface CommitDetailPanelProps {
   onCollapse?: () => void;
@@ -25,15 +32,15 @@ interface CommitDetailPanelProps {
 function formatDate(ts: number) {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) 
-    + ' @ ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function statusIcon(s: string) {
   switch (s) {
-    case 'added': return <Plus size={12} className="text-[#3fb950]" />;
-    case 'deleted': return <Minus size={12} className="text-[#f85149]" />;
-    case 'renamed': return <ArrowRight size={12} className="text-[#58a6ff]" />;
-    default: return <Edit2 size={12} className="text-[#d29922]" />;
+    case 'added': return <Plus size={12} className="text-dracula-green" />; 
+    case 'deleted': return <Minus size={12} className="text-dracula-red" />; 
+    case 'renamed': return <ArrowRight size={12} className="text-dracula-cyan" />; 
+    default: return <Edit2 size={12} className="text-dracula-yellow" />; 
   }
 }
 
@@ -48,11 +55,6 @@ function statusCount(files: CommitDetail['files']) {
   return counts;
 }
 
-function avatarHue(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
-  return Math.abs(h) % 360;
-}
 
 interface TreeNode {
   name: string;
@@ -122,7 +124,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
   const virtualizer = useVirtualizer({
     count: detail?.files.length || 0,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 28,
+    estimateSize: () => 32,
     overscan: 10,
   });
 
@@ -130,9 +132,8 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-[#5c6370] gap-3">
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs">Loading commit...</span>
+      <div className="flex flex-col items-center justify-center h-full bg-background/20 backdrop-blur-md z-20">
+        <Spinner label="Analysing commit..." />
       </div>
     );
   }
@@ -140,7 +141,6 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
   if (!detail) return null;
 
   const counts = statusCount(detail.files);
-  const hue = avatarHue(detail.author);
 
   const toggleFolder = (path: string) => {
     const newSet = new Set(expandedFolders);
@@ -160,8 +160,8 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
         return (
           <div key={child.fullPath}>
             <div 
-              className="flex items-center gap-1.5 py-1 px-2 hover:bg-[#2c313a] rounded cursor-pointer group"
-              style={{ paddingLeft: `${depth * 12 + 8}px` }}
+              className="flex items-center gap-2.5 py-1.5 px-2.5 hover:bg-secondary/40 rounded-xl cursor-pointer group transition-all duration-200 border border-transparent hover:border-border/40"
+              style={{ paddingLeft: `${depth * 14 + 10}px` }}
               onClick={() => child.isFolder ? toggleFolder(child.fullPath) : selectFileDiff(child.fullPath, false, detail.oid)}
               onContextMenu={(e) => {
                 if (!child.isFolder) {
@@ -179,159 +179,209 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
             >
               {child.isFolder ? (
                 <>
-                  {isExpanded ? <ChevronDown size={12} className="text-[#8b949e]" /> : <ChevronRight size={12} className="text-[#8b949e]" />}
-                  <Folder size={12} className="text-[#58a6ff] opacity-80" />
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="text-muted-foreground/40"
+                  >
+                    <ChevronRight size={14} />
+                  </motion.div>
+                  <Folder size={14} className="text-primary/60" />
                 </>
               ) : (
-                <>
+                <div className="w-4 h-4 flex items-center justify-center">
                   {statusIcon(child.status!)}
-                </>
+                </div>
               )}
-              <span className={`text-[12px] truncate font-mono ${child.isFolder ? 'text-[#8b949e]' : 'text-[#e6edf3]'}`}>
+              <span className={cn(
+                "text-[12px] truncate font-mono tracking-tight transition-colors",
+                child.isFolder ? 'text-muted-foreground font-black uppercase tracking-widest text-[9px]' : 'text-foreground/90 group-hover:text-foreground'
+              )}>
                 {child.name}
               </span>
             </div>
-            {child.isFolder && isExpanded && renderTree(child, depth + 1)}
+            <AnimatePresence>
+              {child.isFolder && isExpanded && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  {renderTree(child, depth + 1)}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       });
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <motion.div 
+      initial={{ x: 20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      className="flex flex-col h-full bg-background/30 backdrop-blur-sm border-l border-border relative overflow-hidden"
+    >
       {/* Header */}
-      <header className="h-[36px] border-b border-[#181a1f] flex items-center px-3 justify-between bg-[#21252b] z-10 shrink-0">
-        <div className="flex items-center gap-2">
+      <header className="h-11 border-b border-border/40 flex items-center px-4 justify-between bg-background/80 backdrop-blur-xl z-10 shrink-0 shadow-sm">
+        <div className="flex items-center gap-3">
           {onCollapse && (
-            <button onClick={onCollapse} className="p-1 hover:bg-[#2c313a] rounded text-[#a0a6b1] hover:text-white transition-colors" title="Collapse Right Panel">
+            <Button variant="ghost" size="icon" onClick={onCollapse} className="h-8 w-8 text-muted-foreground/60 hover:text-foreground rounded-xl">
               <ChevronsRight size={16} />
-            </button>
+            </Button>
           )}
-          <GitCommit size={14} className="text-blue-400 ml-1" />
-          <span className="text-[11px] uppercase tracking-wider text-[#d7dae0] font-semibold">
-            {detail.files.length} file changes in this commit
-          </span>
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-primary/10 rounded-lg">
+              <GitCommit size={14} className="text-primary" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+              Commit Detail
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              useAppStore.setState({ selectedRowIndex: 0, selectedCommitDetail: null });
-            }}
-            className="text-[10px] bg-[#238636]/20 text-[#3fb950] border border-[#238636]/40 px-2 py-0.5 rounded hover:bg-[#238636]/30 transition-colors font-medium"
-          >
-            View Changes
-          </button>
+          <Badge variant="secondary" className="h-6 px-2 font-mono text-[10px] bg-secondary/50 border-border/30 text-primary">
+            {detail.short_oid}
+          </Badge>
         </div>
       </header>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col bg-background/40">
 
         {/* Commit Info Block */}
-        <div className="px-4 py-3 border-b border-[#181a1f] shrink-0">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] text-[#8b949e] font-mono">commit:</span>
-            <span className="text-[13px] text-[#58a6ff] font-mono font-semibold">{detail.short_oid}</span>
-          </div>
-
-          {/* Message */}
-          <div className="bg-[#1e2227] border border-[#30363d] rounded px-3 py-2 mb-3">
-            <p className="text-[13px] text-[#e6edf3] leading-relaxed whitespace-pre-wrap">{detail.message}</p>
-          </div>
-
+        <div className="px-6 py-5 border-b border-border/20 shrink-0">
           {/* Author & Metadata */}
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-4 mb-4">
             <div 
-              className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-white text-sm font-bold"
-              style={{ background: `linear-gradient(135deg, hsl(${hue}, 60%, 35%), hsl(${hue + 40}, 50%, 25%))` }}
+              className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center text-background text-lg font-black shadow-2xl border border-white/10"
+              style={{ background: `linear-gradient(135deg, #bd93f9, #ff79c6)` }}
             >
-              {detail.author[0]?.toUpperCase() || '?'}
+              {(detail.author?.[0] || '?').toUpperCase()}
             </div>
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-[13px] text-[#e6edf3] font-semibold truncate">{detail.author}</span>
-              <div className="flex items-center gap-1.5 text-[11px] text-[#8b949e]">
-                <Clock size={10} />
-                <span>authored {formatDate(detail.timestamp)}</span>
+            <div className="flex flex-col gap-1.5 min-w-0 pt-0.5">
+              <span className="text-base text-foreground font-black truncate tracking-tight">{detail.author || 'Unknown Author'}</span>
+              <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground font-semibold">
+                <Clock size={12} className="opacity-40" />
+                <span>{formatDate(detail.timestamp)}</span>
               </div>
-              {detail.parent_short_oids.length > 0 && (
-                <div className="flex items-center gap-1.5 text-[11px] text-[#8b949e] mt-0.5">
-                  <GitBranch size={10} />
-                  <span>parent: </span>
+            </div>
+          </div>
+
+          {/* Message Card */}
+          <Card className="bg-secondary/10 border-border/20 p-3.5 mb-4 shadow-none rounded-2xl relative group/msg">
+            <div className="absolute -top-3 -left-2 p-1.5 bg-background border border-border/40 rounded-xl shadow-lg opacity-0 group-hover/msg:opacity-100 transition-opacity">
+              <MessageSquare size={12} className="text-primary" />
+            </div>
+            <p className="text-[13px] text-foreground/90 leading-relaxed whitespace-pre-wrap font-medium tracking-tight">
+              {detail.message || 'No commit message provided.'}
+            </p>
+          </Card>
+
+          {/* Parents & Actions */}
+          <div className="flex flex-wrap items-center gap-4">
+            {detail.parent_short_oids && detail.parent_short_oids.length > 0 && (
+              <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-secondary/30 border border-border/40 backdrop-blur-md">
+                <GitBranch size={12} className="text-muted-foreground/40" />
+                <span className="text-[9px] text-muted-foreground/60 font-black uppercase tracking-widest">Parents</span>
+                <div className="flex items-center gap-1.5">
                   {detail.parent_short_oids.map((p: string, i: number) => (
-                    <span key={i} className="text-[#58a6ff] font-mono">{p}</span>
+                    <Badge key={i} variant="outline" className="h-5 px-1.5 text-[10px] font-mono border-border/40 bg-background/40">
+                      {p}
+                    </Badge>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+            <Button 
+              size="xs" 
+              className="h-8 px-4 text-[10px] font-black uppercase tracking-widest ml-auto shadow-lg rounded-xl hover:scale-105 transition-transform"
+              onClick={() => useAppStore.setState({ selectedRowIndex: 0, selectedCommitDetail: null })}
+            >
+              <ExternalLink size={12} className="mr-2" />
+              Full View
+            </Button>
           </div>
         </div>
 
         {/* Changes Section */}
-        <div className="px-4 py-3 flex-1 bg-[#0d1117]">
-          {/* Stats */}
-          <div className="flex items-center gap-3 mb-3 text-[11px] font-semibold">
-            {Object.entries(counts).map(([key, count]) => {
-                if (count === 0) return null;
-                const colors = { modified: 'text-[#d29922]', added: 'text-[#3fb950]', deleted: 'text-[#f85149]', renamed: 'text-[#58a6ff]' };
-                const Icons = { modified: Edit2, added: Plus, deleted: Minus, renamed: ArrowRight };
-                const Icon = Icons[key as keyof typeof Icons];
-                return (
-                    <span key={key} className={`flex items-center gap-1 ${colors[key as keyof typeof colors]}`}>
-                        <Icon size={10} /> {count} {key}
-                    </span>
-                );
-            })}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex items-center gap-3 mb-2 border-b border-[#30363d] pb-1.5">
-            <button 
-              onClick={() => setViewMode('path')}
-              className={`text-[11px] font-semibold pb-1 transition-all ${viewMode === 'path' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
-            >
-              Path
-            </button>
-            <button 
-              onClick={() => setViewMode('tree')}
-              className={`text-[11px] font-semibold pb-1 transition-all ${viewMode === 'tree' ? 'text-[#58a6ff] border-b-2 border-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]'}`}
-            >
-              Tree
-            </button>
-            <div className="flex-1" />
-            {viewMode === 'tree' ? (
-              <button 
-                onClick={() => {
-                  if (expandedFolders.size > 1) {
-                    setExpandedFolders(new Set(['']));
-                  } else {
-                    setExpandedFolders(new Set(allFolderPaths));
-                  }
-                }}
-                className="flex items-center gap-1 text-[10px] text-[#8b949e] hover:text-[#c9d1d9]"
-              >
-                {expandedFolders.size > 1 ? 'Collapse All' : 'Expand All'}
-              </button>
-            ) : (
-              <button className="flex items-center gap-1 text-[10px] text-[#8b949e] hover:text-[#c9d1d9]">
-                <Eye size={10} /> View all files
-              </button>
-            )}
-          </div>
-
-          {/* File List / Tree */}
-          <div className="flex-1 min-h-0">
-            {viewMode === 'path' ? (
-              <div 
-                ref={parentRef}
-                className="h-full overflow-y-auto custom-scrollbar"
-              >
-                <div 
-                  style={{
-                    height: `${virtualizer.getTotalSize()}px`,
-                    width: '100%',
-                    position: 'relative',
-                  }}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="px-6 py-3 sticky top-0 bg-background/40 backdrop-blur-xl z-10 border-b border-border/20">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 bg-secondary/50 rounded-lg">
+                  <FileText size={14} className="text-muted-foreground/60" />
+                </div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+                  Changes ({detail.files?.length ?? 0})
+                </h3>
+              </div>
+              <div className="flex items-center bg-secondary/30 rounded-xl border border-border/40 p-1 backdrop-blur-md">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setViewMode('path')}
+                  className={cn("h-7 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", viewMode === 'path' && "bg-background shadow-md text-primary")}
                 >
+                  List
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setViewMode('tree')}
+                  className={cn("h-7 px-4 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", viewMode === 'tree' && "bg-background shadow-md text-primary")}
+                >
+                  Tree
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {Object.entries(counts).map(([key, count]) => {
+                  if (count === 0) return null;
+                  const colors: Record<string, string> = { 
+                    added: "bg-dracula-green", 
+                    deleted: "bg-dracula-red", 
+                    renamed: "bg-dracula-cyan", 
+                    modified: "bg-dracula-orange" 
+                  };
+                  return (
+                    <div key={key} className="flex items-center gap-2 group/stat">
+                      <div className={cn("w-2 h-2 rounded-full transition-transform group-hover/stat:scale-125", colors[key])} />
+                      <span className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-[0.1em] group-hover:text-foreground transition-colors">
+                        {count} {key}
+                      </span>
+                    </div>
+                  );
+              })}
+              
+              <div className="ml-auto">
+                {viewMode === 'tree' && (
+                  <Button 
+                    variant="ghost" 
+                    size="xs" 
+                    className="h-7 text-[9px] font-black uppercase tracking-[0.2em] text-primary/60 hover:text-primary rounded-lg"
+                    onClick={() => {
+                      if (expandedFolders.size > 1) {
+                        setExpandedFolders(new Set(['']));
+                      } else {
+                        setExpandedFolders(new Set(allFolderPaths));
+                      }
+                    }}
+                  >
+                    {expandedFolders.size > 1 ? 'Collapse All' : 'Expand All'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 px-4 py-4 overflow-hidden flex flex-col">
+            {viewMode === 'path' ? (
+              <div ref={parentRef} className="flex-1 overflow-y-auto custom-scrollbar">
+                <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
                   {virtualizer.getVirtualItems().map((virtualRow) => {
                     const f = detail.files[virtualRow.index];
                     return (
@@ -349,22 +399,24 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                             commitMessage: detail.message
                           });
                         }}
-                        className="flex items-center gap-2 py-1.5 px-2 hover:bg-[#2c313a] rounded cursor-pointer group absolute top-0 left-0 w-full"
-                        style={{ 
-                          height: `${virtualRow.size}px`,
-                          transform: `translateY(${virtualRow.start}px)`
-                        }}
+                        className="flex items-center gap-3 py-1.5 px-3 hover:bg-secondary/30 rounded-xl cursor-pointer group absolute top-0 left-0 w-full border border-transparent hover:border-border/40 shadow-sm"
+                        style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)` }}
                       >
-                        {statusIcon(f.status)}
-                        <div className="flex text-[12px] text-[#e6edf3] font-mono min-w-0 overflow-hidden" title={f.path}>
+                        <div className="shrink-0 w-5 h-5 flex items-center justify-center bg-background/40 rounded-lg group-hover:bg-background transition-colors">
+                          {statusIcon(f.status)}
+                        </div>
+                        <div className="flex text-[12px] font-mono min-w-0 overflow-hidden tracking-tight" title={f.path}>
                           {f.path.includes('/') ? (
                               <>
-                                <span className="truncate shrink text-[#8b949e]">{f.path.substring(0, f.path.lastIndexOf('/') + 1)}</span>
-                                <span className="shrink-0">{f.path.substring(f.path.lastIndexOf('/') + 1)}</span>
+                                <span className="truncate shrink text-muted-foreground/50">{f.path.substring(0, f.path.lastIndexOf('/') + 1)}</span>
+                                <span className="shrink-0 text-foreground/90 font-bold group-hover:text-primary transition-colors">{f.path.substring(f.path.lastIndexOf('/') + 1)}</span>
                               </>
                           ) : (
-                              <span className="truncate shrink-0">{f.path}</span>
+                              <span className="truncate shrink-0 text-foreground/90 font-bold group-hover:text-primary transition-colors">{f.path}</span>
                           )}
+                        </div>
+                        <div className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity">
+                          <ChevronRight size={14} className="text-muted-foreground" />
                         </div>
                       </div>
                     );
@@ -372,26 +424,32 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                 </div>
               </div>
             ) : (
-              <div className="h-full overflow-y-auto custom-scrollbar">
-                {treeData && renderTree(treeData)}
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {treeData && (
+                  <div className="flex flex-col">
+                    {renderTree(treeData)}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {contextMenu && (
-        <FileContextMenu 
-          path={contextMenu.path}
-          isStaged={false}
-          position={{ x: contextMenu.x, y: contextMenu.y }}
-          commitOid={contextMenu.commitOid}
-          shortOid={contextMenu.shortOid}
-          commitMessage={contextMenu.commitMessage}
-          onClose={() => setContextMenu(null)}
-          hideGitActions={true}
-        />
-      )}
-    </div>
+      <AnimatePresence>
+        {contextMenu && (
+          <FileContextMenu 
+            path={contextMenu.path}
+            isStaged={false}
+            position={{ x: contextMenu.x, y: contextMenu.y }}
+            commitOid={contextMenu.commitOid}
+            shortOid={contextMenu.shortOid}
+            commitMessage={contextMenu.commitMessage}
+            onClose={() => setContextMenu(null)}
+            hideGitActions={true}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

@@ -1,25 +1,15 @@
 import { useState, useRef, useMemo } from "react";
 import { Search, ChevronsLeft, ChevronsRight, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAppStore, StashEntry } from "../../store";
 import { BranchNode, BranchTreeItem } from "./BranchTree";
 import { SectionHeader } from "./SectionHeader";
 import { StashEntryItem, StashContextMenu } from "./Stashes";
 import { BranchContextMenu } from "./BranchContextMenu";
 import { Button } from "../ui/Button";
-import { Skeleton } from "../ui/Loading";
-
-export function SidebarSkeleton() {
-  return (
-    <div className="flex flex-col gap-2 p-1">
-      {[1, 2, 3, 4, 5].map(i => (
-        <div key={i} className="flex items-center gap-2 px-2 py-1">
-          <Skeleton width={16} height={16} borderRadius="4px" />
-          <Skeleton width={`${Math.floor(Math.random() * 40) + 40}%`} height={14} />
-        </div>
-      ))}
-    </div>
-  );
-}
+import { Input } from "../ui/Input";
+import { Separator } from "../ui/Separator";
+import { cn } from "../../lib/utils";
 
 function buildBranchTree(branchNames: string[]): BranchNode[] {
     const rootMap = new Map<string, BranchNode>();
@@ -102,7 +92,6 @@ export function Sidebar() {
   const activeBranch = useAppStore(state => state.activeBranch) || "main";
   const stashes = useAppStore(state => state.stashes) || [];
   const branches = useAppStore(state => state.branches) || [];
-  const isLoadingRepo = useAppStore(state => state.isLoadingRepo);
 
   const { localBranches, remoteBranchesTree } = useMemo(() => {
     const locals: string[] = [];
@@ -208,13 +197,16 @@ export function Sidebar() {
 
   return (
     <aside 
-      className={`bg-[#161b22] flex flex-col h-full border-r border-[#30363d] shrink-0 text-[#8b949e] select-none text-sm relative group/sidebar transition-all duration-300 ${isCollapsed ? 'w-12 items-center' : ''}`}
+      className={cn(
+        "bg-background/95 backdrop-blur-md flex flex-col h-full border-r border-border shrink-0 text-muted-foreground select-none relative transition-all duration-300 ease-out-expo group/sidebar",
+        isCollapsed && "w-12 items-center"
+      )}
       style={{ width: isCollapsed ? '48px' : `${sidebarWidth}px` }}
     >
       {!isCollapsed && (
         <div 
           onMouseDown={startHorizontalResizing}
-          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/40 transition-colors z-[101]"
+          className="absolute top-0 right-[-2px] w-1 h-full cursor-col-resize hover:bg-primary/40 transition-colors z-[101]"
         />
       )}
 
@@ -223,131 +215,156 @@ export function Sidebar() {
           variant="ghost" 
           size="icon" 
           onClick={() => setIsCollapsed(false)} 
-          className="mt-3 text-[#6e7681]"
+          className="mt-4 h-9 w-9 hover:bg-secondary"
         >
            <ChevronsRight size={16} />
         </Button>
       ) : (
         <>
-          <div className="p-3 border-b border-[#30363d] flex flex-col gap-3 relative">
-            <div className="flex justify-end items-center">
+          {/* Sidebar Header */}
+          <div className="p-3 pb-2 flex flex-col gap-3">
+            <div className="flex justify-between items-center pl-1">
+               <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Navigation</span>
                <Button 
                  variant="ghost" 
                  size="icon" 
                  onClick={() => setIsCollapsed(true)} 
-                 className="h-7 w-7 text-[#6e7681]"
+                 className="h-7 w-7 text-muted-foreground hover:text-foreground"
                >
                    <ChevronsLeft size={16} />
                </Button>
             </div>
         
-            <div className="flex items-center">
-               <div className="flex-1 flex items-center bg-[#0d1117] rounded-md px-2 border border-[#30363d] focus-within:border-blue-500/50 shadow-inner transition-colors">
-                  <Search size={14} className="text-[#6e7681] mr-2" />
-                  <input
-                    type="text"
-                    placeholder="Filter branches, stashes..."
-                    value={filter}
-                    onChange={e => setFilter(e.target.value)}
-                    className="w-full bg-transparent border-none text-[13px] py-1.5 outline-none text-[#e6edf3] placeholder-[#6e7681]"
-                  />
-                  {filter && (
-                    <button onClick={() => setFilter('')} className="text-[#6e7681] hover:text-[#e6edf3] ml-1">
-                      <X size={14} />
-                    </button>
-                  )}
-               </div>
+            <div className="relative group">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input
+                placeholder="Filter everything..."
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                className="pl-8 h-8 bg-secondary/30 border-transparent focus-visible:ring-primary/30 text-[13px]"
+              />
+              {filter && (
+                <button onClick={() => setFilter('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X size={12} />
+                </button>
+              )}
             </div>
           </div>
 
-          <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-2 gap-0 relative">
-            <div className={`flex flex-col min-h-0 pt-2 ${localOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
-                <SectionHeader title="LOCAL" count={filteredLocalTree.length} open={localOpen} setOpen={setLocalOpen} />
-                {localOpen && (
-                  <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1">
-                     {isLoadingRepo && filteredLocalTree.length === 0 ? (
-                        <SidebarSkeleton />
-                     ) : filteredLocalTree.length === 0 ? (
-                       <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No branches found</div>
-                     ) : (
-                      filteredLocalTree.map(node => (
-                         <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
-                      ))
-                     )}
-                  </div>
-                )}
+          <Separator className="mx-3 w-auto opacity-50" />
+
+          {/* Sidebar Content */}
+          <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden px-2 pt-2 gap-0 relative">
+            
+            {/* Local Branches */}
+            <div className={cn("flex flex-col min-h-0", localOpen ? "shrink" : "shrink-0")} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
+                <SectionHeader title="Local Branches" count={filteredLocalTree.length} open={localOpen} setOpen={setLocalOpen} />
+                <AnimatePresence>
+                  {localOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-secondary/20 rounded-lg border border-border/50 py-1"
+                    >
+                      {filteredLocalTree.length === 0 ? (
+                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No local branches</div>
+                      ) : (
+                        filteredLocalTree.map(node => (
+                          <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
+                        ))
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
             </div>
 
             {localOpen && remoteOpen && (
-              <div onMouseDown={startResizing('local')} className="h-1 cursor-row-resize hover:bg-blue-500/30 transition-colors my-1 shrink-0 z-10" />
+              <div onMouseDown={startResizing('local')} className="h-1.5 cursor-row-resize hover:bg-primary/20 transition-colors my-0.5 shrink-0 z-10" />
             )}
 
-            <div className={`flex flex-col min-h-0 pt-3 ${remoteOpen ? 'grow shrink' : 'shrink-0'}`} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
-               <SectionHeader title="REMOTE" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
-               {remoteOpen && (
-                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1">
-                   {isLoadingRepo && filteredRemoteTree.size === 0 ? (
-                     <SidebarSkeleton />
-                   ) : filteredRemoteTree.size === 0 ? (
-                     <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No remotes</div>
-                   ) : (
-                     Array.from(filteredRemoteTree.entries()).map(([remote, tree]) => (
-                       <div key={remote}>
-                          {tree.map(node => (
-                            <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remote} />
-                          ))}
-                       </div>
-                     ))
-                   )}
-                 </div>
-               )}
+            {/* Remote Branches */}
+            <div className={cn("flex flex-col min-h-0 pt-2", remoteOpen ? "grow shrink" : "shrink-0")} style={{ flex: remoteOpen ? remoteFlex : '0 0 auto' }}>
+               <SectionHeader title="Remotes" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
+               <AnimatePresence>
+                 {remoteOpen && (
+                   <motion.div 
+                     initial={{ opacity: 0, height: 0 }}
+                     animate={{ opacity: 1, height: 'auto' }}
+                     exit={{ opacity: 0, height: 0 }}
+                     className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-secondary/20 rounded-lg border border-border/50 py-1"
+                   >
+                     {filteredRemoteTree.size === 0 ? (
+                       <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No remote repositories</div>
+                     ) : (
+                       Array.from(filteredRemoteTree.entries()).map(([remote, tree]) => (
+                         <div key={remote}>
+                            {tree.map(node => (
+                              <BranchTreeItem key={`${remote}/${node.fullPath}`} node={node} activeBranch={null} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} remotePrefix={remote} />
+                            ))}
+                         </div>
+                       ))
+                     )}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
             </div>
 
             {remoteOpen && stashOpen && (
-              <div onMouseDown={startResizing('remote')} className="h-1 cursor-row-resize hover:bg-blue-500/30 transition-colors my-1 shrink-0 z-10" />
+              <div onMouseDown={startResizing('remote')} className="h-1.5 cursor-row-resize hover:bg-primary/20 transition-colors my-0.5 shrink-0 z-10" />
             )}
 
-            <div className={`flex flex-col min-h-0 pt-3 ${stashOpen ? 'shrink' : 'shrink-0'}`} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
-               <SectionHeader title="STASHES" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
-               {stashOpen && (
-                 <div className="flex-1 flex flex-col mt-2 overflow-y-auto custom-scrollbar scrollbar-autohide bg-[#0d1117]/30 rounded-lg border border-[#30363d]/50 py-1 px-1 gap-1">
-                   {isLoadingRepo && filteredStashes.length === 0 ? (
-                     <SidebarSkeleton />
-                   ) : filteredStashes.length === 0 ? (
-                     <div className="text-xs text-[#5c6370] italic px-2 py-2 text-center opacity-60">No stashes</div>
-                   ) : (
-                      filteredStashes.map((s: StashEntry) => (
-                        <StashEntryItem 
-                          key={s.oid} 
-                          stash={s} 
-                          filter={filter} 
-                          onContextMenu={(e, stash) => {
-                            e.preventDefault();
-                            setStashContextMenu({ x: e.clientX, y: e.clientY, stash });
-                          } } 
-                        />
-                      ))
-                    )}
-                 </div>
-               )}
+            {/* Stashes */}
+            <div className={cn("flex flex-col min-h-0 pt-2 mb-2", stashOpen ? "shrink" : "shrink-0")} style={{ flex: stashOpen ? stashFlex : '0 0 auto' }}>
+               <SectionHeader title="Stashes" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
+               <AnimatePresence>
+                 {stashOpen && (
+                   <motion.div 
+                     initial={{ opacity: 0, height: 0 }}
+                     animate={{ opacity: 1, height: 'auto' }}
+                     exit={{ opacity: 0, height: 0 }}
+                     className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-secondary/20 rounded-lg border border-border/50 py-1 px-1 gap-1"
+                   >
+                     {filteredStashes.length === 0 ? (
+                       <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">Empty stash</div>
+                     ) : (
+                        filteredStashes.map((s: StashEntry) => (
+                          <StashEntryItem 
+                            key={s.oid} 
+                            stash={s} 
+                            filter={filter} 
+                            onContextMenu={(e, stash) => {
+                              e.preventDefault();
+                              setStashContextMenu({ x: e.clientX, y: e.clientY, stash });
+                            } } 
+                          />
+                        ))
+                      )}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
             </div>
           </div>
         </>
       )}
-      {stashContextMenu && (
-        <StashContextMenu 
-          stash={stashContextMenu.stash} 
-          position={{ x: stashContextMenu.x, y: stashContextMenu.y }} 
-          onClose={() => setStashContextMenu(null)} 
-        />
-      )}
-      {branchContextMenu && (
-        <BranchContextMenu 
-          branch={branchContextMenu.branch} 
-          position={{ x: branchContextMenu.x, y: branchContextMenu.y }} 
-          onClose={() => setBranchContextMenu(null)} 
-        />
-      )}
+
+      {/* Context Menus */}
+      <AnimatePresence>
+        {stashContextMenu && (
+          <StashContextMenu 
+            stash={stashContextMenu.stash} 
+            position={{ x: stashContextMenu.x, y: stashContextMenu.y }} 
+            onClose={() => setStashContextMenu(null)} 
+          />
+        )}
+        {branchContextMenu && (
+          <BranchContextMenu 
+            branch={branchContextMenu.branch} 
+            position={{ x: branchContextMenu.x, y: branchContextMenu.y }} 
+            onClose={() => setBranchContextMenu(null)} 
+          />
+        )}
+      </AnimatePresence>
     </aside>
   );
 }

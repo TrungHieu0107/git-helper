@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FileCode, FolderSearch, Plus, Minus, RotateCcw, History, Copy, X, Undo2 } from 'lucide-react';
 import { openInEditor, showInExplorer, stageFile, unstageFile, discardFileChanges, refreshActiveRepoStatus, restoreFileFromCommit } from '../lib/repo';
 import { toast } from '../lib/toast';
 import { useAppStore } from '../store';
 import { confirm } from './ui/ConfirmDialog';
+import { cn } from '../lib/utils';
+import { Separator } from './ui/Separator';
+import { Badge } from './ui/Badge';
 
 export interface FileContextMenuProps {
   path: string;
@@ -75,7 +79,6 @@ export function FileContextMenu({
 
   const handleCopyFullPath = () => {
     if (!activeRepoPath) return;
-    // Normalize path separators for Windows/Unix
     const fullPath = `${activeRepoPath}${activeRepoPath.endsWith('/') || activeRepoPath.endsWith('\\') ? '' : '/'}${path}`;
     navigator.clipboard.writeText(fullPath.replace(/\//g, '\\'));
     toast.success('Full path copied');
@@ -114,7 +117,7 @@ export function FileContextMenu({
       id: 'stage-unstage',
       icon: isStaged ? <Minus size={14} /> : <Plus size={14} />,
       label: isStaged ? 'Unstage File' : 'Stage File',
-      color: isStaged ? 'text-[#f85149]' : 'text-[#3fb950]',
+      className: isStaged ? 'text-destructive hover:bg-destructive/10' : 'text-green-500 hover:bg-green-500/10',
       action: () => { isStaged ? unstageFile(path) : stageFile(path); onClose(); },
       hide: hideGitActions
     },
@@ -122,7 +125,7 @@ export function FileContextMenu({
       id: 'discard',
       icon: <RotateCcw size={14} />,
       label: 'Discard Changes',
-      color: 'text-[#f85149]',
+      className: 'text-destructive hover:bg-destructive/10',
       action: handleDiscard,
       hide: hideGitActions
     }] : []),
@@ -130,7 +133,7 @@ export function FileContextMenu({
     ...(commitOid ? [{
       id: 'restore',
       icon: <Undo2 size={14} />,
-      label: 'Restore File from This Version',
+      label: 'Restore version from commit',
       action: async () => {
         if (!shortOid || !commitMessage) return;
         onClose();
@@ -139,9 +142,9 @@ export function FileContextMenu({
           title: 'Restore File',
           message: `Restore "${path}" to version from commit?`,
           detail: (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-blue-400 font-mono font-bold">{shortOid}</span>
-              <span className="text-[#8b949e] italic truncate">"{commitMessage}"</span>
+            <div className="flex items-center gap-2 text-xs bg-secondary/30 p-2 rounded-md border border-border/50">
+              <Badge variant="secondary" className="font-mono">{shortOid}</Badge>
+              <span className="text-muted-foreground italic truncate">"{commitMessage}"</span>
             </div>
           ),
           confirmLabel: 'Restore',
@@ -175,35 +178,50 @@ export function FileContextMenu({
   ].filter(item => !('hide' in item) || !item.hide);
 
   return createPortal(
-    <div
-      ref={menuRef}
-      className="fixed z-[9999] bg-[#161b22] border border-[#30363d] rounded-md shadow-2xl py-1 min-w-[200px] animate-in fade-in zoom-in duration-100 ease-out"
-      style={{ left: adjustedPos.x, top: adjustedPos.y }}
-    >
-      <div className="px-3 py-1.5 border-b border-[#30363d] mb-1">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-[10px] font-mono text-[#8b949e] truncate max-w-[160px]">{path}</span>
-          <button onClick={onClose} className="text-[#8b949e] hover:text-[#e6edf3]">
-            <X size={12} />
-          </button>
+    <AnimatePresence>
+      <motion.div
+        key="file-context-menu"
+        ref={menuRef}
+        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+        transition={{ duration: 0.1, ease: 'easeOut' }}
+        className="fixed z-[9999] bg-background/80 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl py-1.5 min-w-[220px] overflow-hidden"
+        style={{ left: adjustedPos.x, top: adjustedPos.y }}
+      >
+        <div className="px-3.5 py-2 border-b border-border/30 mb-1.5 bg-secondary/20">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 truncate max-w-[160px]">
+              {path.split('/').pop()}
+            </span>
+            <button onClick={onClose} className="text-muted-foreground/40 hover:text-foreground transition-colors">
+              <X size={12} />
+            </button>
+          </div>
         </div>
-      </div>
-      
-      {menuItems.map((item, idx) => (
-        'separator' in item ? (
-          <div key={`sep-${idx}`} className="h-px bg-[#30363d] my-1" />
-        ) : (
-          <button
-            key={item.id}
-            onClick={item.action}
-            className={`w-full flex items-center gap-3 px-3 py-1.5 text-[12px] hover:bg-[#1f2937] transition-colors text-left ${item.color || 'text-[#e6edf3]'}`}
-          >
-            <span className="opacity-70">{item.icon}</span>
-            <span className="flex-1">{item.label}</span>
-          </button>
-        )
-      ))}
-    </div>,
+        
+        <div className="px-1">
+          {menuItems.map((item, idx) => (
+            'separator' in item ? (
+              <Separator key={`sep-${idx}`} className="my-1.5 opacity-50" />
+            ) : (
+              <button
+                key={item.id}
+                onClick={item.action}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 text-[12px] rounded-lg transition-all duration-200 text-left font-medium",
+                  "hover:bg-secondary/80 hover:translate-x-1",
+                  item.className || 'text-foreground/80 hover:text-foreground'
+                )}
+              >
+                <span className="opacity-60">{item.icon}</span>
+                <span className="flex-1">{item.label}</span>
+              </button>
+            )
+          ))}
+        </div>
+      </motion.div>
+    </AnimatePresence>,
     document.body
   );
 }
