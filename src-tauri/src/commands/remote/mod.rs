@@ -235,6 +235,46 @@ fn perform_merge(repo: &Repository, annotated: &AnnotatedCommit, branch_name: &s
     Ok(merge_commit_id.to_string())
 }
 
+fn check_working_tree_clean(repo: &Repository) -> Result<(), String> {
+    let mut opts = git2::StatusOptions::new();
+    opts.include_untracked(false) // untracked files không block merge
+        .include_ignored(false)
+        .recurse_untracked_dirs(false);
+
+    let statuses = repo.statuses(Some(&mut opts)).map_err(|e| e.to_string())?;
+
+    let dirty_files: Vec<String> = statuses
+        .iter()
+        .filter(|s| {
+            let st = s.status();
+            // Cover cả STAGED (INDEX_*) và UNSTAGED (WT_*) changes
+            st.intersects(
+                git2::Status::INDEX_MODIFIED
+                    | git2::Status::INDEX_NEW
+                    | git2::Status::INDEX_DELETED
+                    | git2::Status::INDEX_RENAMED
+                    | git2::Status::INDEX_TYPECHANGE
+                    | git2::Status::WT_MODIFIED
+                    | git2::Status::WT_DELETED
+                    | git2::Status::WT_RENAMED
+                    | git2::Status::WT_TYPECHANGE,
+            )
+        })
+        .filter_map(|s| s.path().map(|p| p.to_string()))
+        .collect();
+
+    if !dirty_files.is_empty() {
+        return Err(format!(
+            "Cannot pull: you have local changes that would be overwritten by merge.\n\
+             Please commit or stash your changes first.\n\
+             Affected files: {}",
+            dirty_files.join(", ")
+        ));
+    }
+
+    Ok(())
+}
+
 fn count_commits_between(repo: &Repository, from: git2::Oid, to: git2::Oid) -> Result<usize, String> {
     let mut revwalk = repo.revwalk().map_err(|e| e.to_string())?;
     revwalk.push(to).map_err(|e| e.to_string())?;
