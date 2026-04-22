@@ -20,7 +20,12 @@ export function ForceCheckoutAlert() {
     }
   }, [target, phase]);
 
+  const isRemoteTarget = target?.startsWith('origin/');
+  const localName = isRemoteTarget ? target.replace('origin/', '') : target;
+  const remoteRef = isRemoteTarget ? target : `origin/${target}`;
+
   if (!target || phase === 'idle' || (!visible && phase !== 'processing')) return null;
+
 
   const handleCancel = () => {
     setVisible(false);
@@ -77,16 +82,16 @@ export function ForceCheckoutAlert() {
               </span>
               <span className="text-[12px] text-slate-300 truncate">
                 {phase === 'confirm_reset' && (
-                  <>Local commits on <span className="font-mono font-bold text-white px-1.5 py-0.5 bg-white/5 rounded border border-white/10 mx-1">{target}</span> will be permanently lost.</>
+                  <>Local commits on <span className="font-mono font-bold text-white px-1.5 py-0.5 bg-white/5 rounded border border-white/10 mx-1">{localName}</span> will be permanently lost to match <span className="font-mono font-bold text-blue-400 px-1.5 py-0.5 bg-blue-500/10 rounded border border-blue-500/20 mx-1">{remoteRef}</span>.</>
                 )}
                 {phase === 'confirm_stash' && (
-                  <>Your changes will be stashed automatically and restored after checkout.</>
+                  <>Your changes will be stashed automatically and restored after resetting to {remoteRef}.</>
                 )}
                 {phase === 'processing' && (
-                  <>Hard-resetting {target} to origin/{target}...</>
+                  <>Hard-resetting {localName} to {remoteRef}...</>
                 )}
                 {phase === 'stash_conflict' && (
-                  <>Branch was reset, but stashed changes could not be fully restored due to conflicts.</>
+                  <>Branch was reset to {remoteRef}, but stashed changes could not be fully restored due to conflicts.</>
                 )}
               </span>
             </div>

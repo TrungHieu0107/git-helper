@@ -142,6 +142,9 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     ? findMergableBranch(commit.refs, repoInfo.head_branch)
     : null;
 
+  const remoteRefs = commit.refs.filter(r => r.startsWith('origin/'));
+
+
   const menuItems = [
     {
       id: 'merge-branch',
@@ -177,6 +180,17 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
       },
       disabled: isStash || commit.oid === repoInfo?.head_oid || cherryPickState !== 'idle'
     },
+    ...remoteRefs.map(ref => ({
+      id: `force-checkout-${ref}`,
+      icon: <RotateCcw size={14} />,
+      label: `Force reset local to '${ref}'`,
+      color: 'text-red-400',
+      action: () => {
+        useAppStore.setState({ forceCheckoutTarget: ref, forceCheckoutPhase: 'confirm_reset' });
+        onClose();
+      },
+      disabled: isStash || cherryPickState !== 'idle'
+    })),
     { id: 'sep-0', separator: true },
     {
       id: 'create-branch',

@@ -17,7 +17,7 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState(position);
 
-  const hasOrigin = branches.some(b => b.branch_type === 'remote' && b.name === `origin/${branch}`);
+  const hasOrigin = branch.startsWith('origin/') || branches.some(b => b.branch_type === 'remote' && b.name === `origin/${branch}`);
   const isProcessing = cherryPickState !== 'idle';
   const isCurrentBranch = activeBranch === branch;
 

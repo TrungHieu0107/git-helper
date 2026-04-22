@@ -113,10 +113,19 @@ function BranchLabels({ refs, colorIdx, isActive, labelWidth }: { refs: string[]
       await safeSwitchBranch(fullRef);
     };
 
+    const handleSingleClick = (e: React.MouseEvent) => {
+      if (isRemoteOnly) {
+        e.stopPropagation();
+        if (isDropdown) setOpen(false);
+        const fullRef = `origin/${name}`;
+        useAppStore.setState({ forceCheckoutTarget: fullRef, forceCheckoutPhase: 'confirm_reset' });
+      }
+    };
+
     return (
       <span key={name} 
         onDoubleClick={(e) => handleBranchClick(e, (info.isRemote && !info.isLocal) ? `origin/${name}` : name)}
-        onClick={(e) => e.stopPropagation()}
+        onClick={handleSingleClick}
         className={`${baseClass} ${bg}`}
         style={{ ...style, maxWidth: isDropdown ? '100%' : '130px' }}>
         {isHead ? name : (

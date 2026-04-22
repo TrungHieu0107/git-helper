@@ -3,6 +3,8 @@ import { ChevronDown, Folder, GitBranch, Cloud, MoreHorizontal } from 'lucide-re
 import { Highlight } from './utils';
 import { safeSwitchBranch } from '../../lib/repo';
 import { Button } from '../ui/Button';
+import { useAppStore } from '../../store';
+
 
 export interface BranchNode {
   name: string;
@@ -43,7 +45,14 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
   return (
     <div className="flex flex-col">
       <div 
-        onClick={() => { if (hasChildren) setExpanded(!expanded); }}
+        onClick={() => { 
+          if (hasChildren) {
+            setExpanded(!expanded); 
+          } else if (node.isBranch && remotePrefix && !isHead) {
+            const fullRef = `${remotePrefix}/${node.fullPath}`;
+            useAppStore.setState({ forceCheckoutTarget: fullRef, forceCheckoutPhase: 'confirm_reset' });
+          }
+        }}
         onContextMenu={(e) => {
           if (node.isBranch) {
             e.preventDefault();
