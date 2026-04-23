@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { listen } from '@tauri-apps/api/event';
 import { useAppStore } from "./store";
 import { loadRepo, restoreAppState, refreshActiveRepoStatus } from "./services/git/repoService";
@@ -23,7 +24,7 @@ import { FileHistoryModal } from "./components/FileHistoryModal";
 import { ResetCommitDialog } from "./components/ResetCommitDialog";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { setupGlobalErrorHandlers, handleError } from "./lib/error";
-import { LoadingOverlay } from "./components/ui/Loading";
+import { LoadingOverlay, GitLoader } from "./components/ui/Loading";
 
 // App component
 export function App() {
@@ -103,11 +104,11 @@ export function App() {
   const renderMainContent = () => {
     if (isInitializing) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center bg-background h-full">
-           <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-              <span className="text-sm font-medium text-[#6e7681] animate-pulse">Initializing GitKit...</span>
-           </div>
+        <div className="flex-1 flex flex-col items-center justify-center bg-[#0f0f0f] h-full relative overflow-hidden">
+           {/* Subtle background glow */}
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]" />
+           
+           <GitLoader label="Initializing GitKit Pro-Max..." />
         </div>
       );
     }
@@ -146,13 +147,10 @@ export function App() {
       <TopTabBar />
       {renderMainContent()}
       
-      {isLoadingRepo && (
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 pointer-events-auto">
-           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-lg"></div>
-        </div>
-      )}
-
-      {isProcessing && <LoadingOverlay label={processingLabel || undefined} />}
+      <AnimatePresence>
+        {isLoadingRepo && <LoadingOverlay label="Syncing Repository..." />}
+        {isProcessing && <LoadingOverlay label={processingLabel || undefined} />}
+      </AnimatePresence>
 
       <CheckoutAlert />
       <StashAlerts />

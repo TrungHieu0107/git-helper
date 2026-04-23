@@ -6,3 +6,4 @@ pub mod stash;
 pub mod branch;
 pub mod remote;
 pub mod cherry_pick;
+pub mod config;

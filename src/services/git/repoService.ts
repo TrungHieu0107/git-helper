@@ -67,18 +67,41 @@ export async function loadRepo(path: string) {
 }
 
 export async function restoreAppState() {
+  // Initialize defaults in SQLite if they don't exist
+  const defaults = {
+    'font_size': '13',
+    'background_color': '#0f0f0f',
+    'border_color': 'rgba(139, 153, 204, 0.15)',
+    'panel_background_color': '#141414',
+    'layout_density': 'compact',
+    'toolbar_group_background': 'rgba(255, 255, 255, 0.03)'
+  };
+  await safeInvoke('init_config_defaults', { defaults });
+
   const state = await safeInvoke<AppStateData>('get_app_state');
+  
+  // Try to load individual values from SQLite to override JSON if present
+  const [sqliteFontSize, sqliteBg, sqliteBorder, sqlitePanel, sqliteDensity, sqliteToolbar] = await Promise.all([
+    safeInvoke<string>('get_config_value', { key: 'font_size' }),
+    safeInvoke<string>('get_config_value', { key: 'background_color' }),
+    safeInvoke<string>('get_config_value', { key: 'border_color' }),
+    safeInvoke<string>('get_config_value', { key: 'panel_background_color' }),
+    safeInvoke<string>('get_config_value', { key: 'layout_density' }),
+    safeInvoke<string>('get_config_value', { key: 'toolbar_group_background' })
+  ]);
+
   if (state) {
     useAppStore.setState({ 
       repos: state.tabs,
       pullStrategy: state.pull_strategy,
       lastStashMode: state.stash_mode,
       lastIncludeUntracked: state.include_untracked,
-      fontSize: state.font_size || 13,
-      backgroundColor: state.background_color || '#0f0f0f',
-      borderColor: state.border_color || 'rgba(139, 153, 204, 0.15)',
-      panelBackgroundColor: state.panel_background_color || '#141414',
-      layoutDensity: state.layout_density || 'compact'
+      fontSize: sqliteFontSize ? parseInt(sqliteFontSize) : (state.font_size || 13),
+      backgroundColor: sqliteBg || state.background_color || '#0f0f0f',
+      borderColor: sqliteBorder || state.border_color || 'rgba(139, 153, 204, 0.15)',
+      panelBackgroundColor: sqlitePanel || state.panel_background_color || '#141414',
+      layoutDensity: sqliteDensity as any || state.layout_density || 'compact',
+      toolbarGroupBackground: sqliteToolbar || state.toolbar_group_background || 'rgba(255, 255, 255, 0.03)'
     });
     
     if (state.active_tab) {
@@ -121,7 +144,16 @@ export async function saveCurrentState() {
     layout_density: layoutDensity,
   };
 
-  await safeInvoke('save_app_state', { state });
+  // Parallel save to both JSON and SQLite
+  await Promise.all([
+    safeInvoke('save_app_state', { state }),
+    safeInvoke('save_config_value', { key: 'font_size', value: fontSize.toString() }),
+    safeInvoke('save_config_value', { key: 'background_color', value: backgroundColor }),
+    safeInvoke('save_config_value', { key: 'border_color', value: borderColor }),
+    safeInvoke('save_config_value', { key: 'panel_background_color', value: panelBackgroundColor }),
+    safeInvoke('save_config_value', { key: 'layout_density', value: layoutDensity }),
+    safeInvoke('save_config_value', { key: 'toolbar_group_background', value: toolbarGroupBackground })
+  ]);
 }
 
 export async function switchTab(tabId: string) {

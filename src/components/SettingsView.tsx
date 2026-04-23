@@ -10,14 +10,17 @@ import {
   Cpu,
   ShieldCheck,
   Palette,
-  Globe
+  Globe,
+  RotateCcw
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 import { Card, CardContent } from './ui/Card';
 import { Separator } from './ui/Separator';
-import { saveCurrentState } from '../services/git/repoService';
+import { saveCurrentState, restoreAppState } from '../services/git/repoService';
+import { safeInvoke } from '../services/git/utils';
+import { toast } from '../lib/toast';
 
 export function SettingsView() {
   const { 
@@ -35,6 +38,16 @@ export function SettingsView() {
     setFontSize(newSize);
     // Debounce or just save after change
     setTimeout(saveCurrentState, 500);
+  };
+
+  const handleResetDefaults = async () => {
+    try {
+      await safeInvoke('reset_config', { key: null });
+      await restoreAppState();
+      toast.success('Settings reset to default');
+    } catch (err) {
+      toast.error('Failed to reset settings');
+    }
   };
 
   return (
@@ -68,10 +81,21 @@ export function SettingsView() {
           
           {/* Appearance Section */}
           <section className="space-y-4">
-             <div className="flex items-center gap-2 px-2">
-                <Palette size={16} className="text-primary" />
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Appearance & Typography</h2>
-             </div>
+              <div className="flex items-center justify-between px-2">
+                 <div className="flex items-center gap-2">
+                    <Palette size={16} className="text-primary" />
+                    <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Appearance & Typography</h2>
+                 </div>
+                 <Button 
+                   variant="ghost" 
+                   size="xs" 
+                   onClick={handleResetDefaults}
+                   className="text-[10px] h-7 gap-1.5 font-bold uppercase tracking-wider text-dracula-orange hover:bg-dracula-orange/10 border border-dracula-orange/20 rounded-lg transition-all"
+                 >
+                   <RotateCcw size={12} />
+                   Reset to Defaults
+                 </Button>
+              </div>
              
              <Card className="bg-secondary/10 border-border/30 overflow-hidden">
                 <CardContent className="p-6 space-y-6">
