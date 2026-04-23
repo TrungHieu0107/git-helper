@@ -198,7 +198,7 @@ export function Sidebar() {
   return (
     <aside 
       className={cn(
-        "bg-background/95 backdrop-blur-md flex flex-col h-full border-r border-border shrink-0 text-muted-foreground select-none relative transition-all duration-300 ease-out-expo group/sidebar",
+        "bg-secondary/95 backdrop-blur-3xl flex flex-col h-full border-r border-border/40 shrink-0 text-muted-foreground select-none relative transition-all duration-300 ease-out-expo group/sidebar shadow-[4px_0_24px_rgba(0,0,0,0.1)]",
         isCollapsed && "w-12 items-center"
       )}
       style={{ width: isCollapsed ? '48px' : `${sidebarWidth}px` }}
@@ -236,12 +236,12 @@ export function Sidebar() {
             </div>
         
             <div className="relative group">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
               <Input
                 placeholder="Filter everything..."
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                className="pl-8 h-8 bg-secondary/30 border-transparent focus-visible:ring-primary/30 text-[13px]"
+                className="pl-8 h-8 bg-background/50 border-transparent focus-visible:ring-primary/30 text-[13px] rounded-xl placeholder:text-muted-foreground/30"
               />
               {filter && (
                 <button onClick={() => setFilter('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -265,7 +265,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-secondary/20 rounded-lg border border-border/50 py-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/20 rounded-2xl border border-border/20 py-1"
                     >
                       {filteredLocalTree.length === 0 ? (
                         <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No local branches</div>
@@ -288,12 +288,12 @@ export function Sidebar() {
                <SectionHeader title="Remotes" count={filteredRemoteTree.size} open={remoteOpen} setOpen={setRemoteOpen} />
                <AnimatePresence>
                  {remoteOpen && (
-                   <motion.div 
-                     initial={{ opacity: 0, height: 0 }}
-                     animate={{ opacity: 1, height: 'auto' }}
-                     exit={{ opacity: 0, height: 0 }}
-                     className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-secondary/20 rounded-lg border border-border/50 py-1"
-                   >
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/20 rounded-2xl border border-border/20 py-1"
+                    >
                      {filteredRemoteTree.size === 0 ? (
                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No remote repositories</div>
                      ) : (
@@ -319,12 +319,12 @@ export function Sidebar() {
                <SectionHeader title="Stashes" count={filteredStashes.length} open={stashOpen} setOpen={setStashOpen} />
                <AnimatePresence>
                  {stashOpen && (
-                   <motion.div 
-                     initial={{ opacity: 0, height: 0 }}
-                     animate={{ opacity: 1, height: 'auto' }}
-                     exit={{ opacity: 0, height: 0 }}
-                     className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-secondary/20 rounded-lg border border-border/50 py-1 px-1 gap-1"
-                   >
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/20 rounded-2xl border border-border/20 py-1 px-1 gap-1"
+                    >
                      {filteredStashes.length === 0 ? (
                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">Empty stash</div>
                      ) : (

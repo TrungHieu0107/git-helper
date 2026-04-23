@@ -1,52 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  /* Dracula High Contrast - Optimized for Accessibility & Premium Feel */
-  --color-background: #0b0e14;
-  --color-foreground: #ffffff;
+  /* GitKraken Gloam Inspired Palette - Optimized for Premium Feel */
+  --color-background: #1f2330;
+  --color-foreground: #d5dbe5;
   
-  --color-card: rgba(17, 18, 25, 0.85); /* Solid & Dark */
-  --color-muted-foreground: #cbd5f0; /* Significantly brighter than standard comments */
-  --color-card-foreground: #ffffff;
+  --color-card: rgba(31, 35, 48, 0.85);
+  --color-muted-foreground: #8b949e;
+  --color-card-foreground: #d5dbe5;
   
-  --color-primary: #caadff; /* High-vibrancy Purple */
-  --color-primary-foreground: #0b0e14;
+  --color-primary: #3ddbd9; /* GitKraken Teal */
+  --color-primary-foreground: #1f2330;
   
-  --color-secondary: #1e1f29; /* Darker secondary for depth */
+  --color-secondary: #262a39; /* Deep Sidebar/Header */
   --color-secondary-foreground: #ffffff;
   
-  --color-accent: #ff9de1; /* Vibrant Pink */
-  --color-accent-foreground: #0b0e14;
+  --color-accent: #b072d1; /* Soft Purple */
+  --color-accent-foreground: #ffffff;
   
-  --color-destructive: #ff6e6e; /* More vivid Red */
+  --color-destructive: #ff4b60; /* Vibrant Red */
   --color-destructive-foreground: #ffffff;
   
-  --color-border: rgba(139, 153, 204, 0.25); /* More visible border tokens */
-  --color-input: #0b0e14;
-  --color-ring: rgba(202, 173, 255, 0.7);
-  --color-ring-offset: #0b0e14;
+  --color-border: rgba(139, 153, 204, 0.15);
+  --color-input: #161922;
+  --color-ring: rgba(61, 219, 217, 0.5);
+  --color-ring-offset: #1f2330;
 
-  /* Explicit Dracula High-Contrast Palette */
-  --color-dracula-bg: #0b0e14;
-  --color-dracula-bg-soft: #16171d;
-  --color-dracula-fg: #ffffff;
-  --color-dracula-selection: #3d4455;
-  --color-dracula-comment: #a5b3e0;
-  --color-dracula-cyan: #a1efff;
-  --color-dracula-green: #69ff94;
-  --color-dracula-orange: #ffd1a0;
-  --color-dracula-pink: #ff9de1;
-  --color-dracula-purple: #caadff;
-  --color-dracula-red: #ff6e6e;
-  --color-dracula-yellow: #ffffa5;
+  /* Explicit GitKit Premium Palette (Mixed with Gloam) */
+  --color-dracula-bg: #1f2330;
+  --color-dracula-bg-soft: #262a39;
+  --color-dracula-fg: #d5dbe5;
+  --color-dracula-selection: #40434f;
+  --color-dracula-comment: #8b949e;
+  --color-dracula-cyan: #3ddbd9;
+  --color-dracula-green: #b3e33b;
+  --color-dracula-orange: #ff962f;
+  --color-dracula-pink: #f07178;
+  --color-dracula-purple: #b072d1;
+  --color-dracula-red: #ff4b60;
+  --color-dracula-yellow: #f9d342;
 
   /* Radius & Shadows */
   --radius-xs: 4px;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
   
-  --shadow-glass: 0 16px 64px 0 rgba(0, 0, 0, 0.6);
+  --shadow-glass: 0 16px 64px 0 rgba(0, 0, 0, 0.4);
 }
 
 @layer base {

@@ -10,19 +10,19 @@ const ROW_H = 32;
 
 // Dracula Theme colors for lanes
 const COLORS = [
-  '#8be9fd', // cyan
-  '#bd93f9', // purple
+  '#3ddbd9', // teal
+  '#b072d1', // purple
   '#ff79c6', // pink
   '#ffb86c', // orange
   '#50fa7b', // green
-  '#6272a4', // comment (indigo-ish)
-  '#ff5555', // red
   '#f1fa8c', // yellow
+  '#ff5555', // red
+  '#8be9fd', // cyan
 ];
 
 const color = (i: number) => COLORS[i % COLORS.length];
 
-export function SkeletonRow({ virtualRow, cw, gw }: { virtualRow: any, cw: any, gw: number }) {
+export const SkeletonRow = React.memo(({ virtualRow, cw, gw }: { virtualRow: any, cw: any, gw: number }) => {
   return (
     <div 
       className="absolute left-0 w-full flex items-center px-2 pointer-events-none opacity-20"
@@ -43,7 +43,7 @@ export function SkeletonRow({ virtualRow, cw, gw }: { virtualRow: any, cw: any, 
       </div>
     </div>
   );
-}
+});
 
 // ── BranchLabels Component ───────────────────────────────────────────
 function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: number, isActive: boolean }) {
@@ -188,9 +188,9 @@ export interface CommitRowProps {
   handleContextMenu: (e: React.MouseEvent, n: CommitNode) => void;
 }
 
-export function CommitRow({
+export const CommitRow = React.memo(({
   n, row, virtualRow, hov, sel, activeOids, cw, gw, setHov, setSel, handleContextMenu
-}: CommitRowProps) {
+}: CommitRowProps) => {
   const [copied, setCopied] = useState(false);
   const isActive = activeOids.has(n.oid);
 
@@ -257,7 +257,7 @@ export function CommitRow({
       </div>
     </div>
   );
-}
+});
 
 // ── WipRow Component ─────────────────────────────────────────────────
 export interface WipRowProps {
@@ -273,9 +273,9 @@ export interface WipRowProps {
   setSel: (r: number) => void;
 }
 
-export function WipRow({
+export const WipRow = React.memo(({
   virtualRow, hov, sel, cw, gw, status, staged, unstaged, setHov, setSel
-}: WipRowProps) {
+}: WipRowProps) => {
   const stagedCount = status?.staged_count ?? staged.length;
   const unstagedCount = status?.unstaged_count ?? unstaged.length;
 
@@ -322,4 +322,4 @@ export function WipRow({
       </div>
     </div>
   );
-}
+});

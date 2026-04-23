@@ -21,14 +21,14 @@ const DEF_AUTHOR_W = 120;
 
 // Dracula Theme colors for lanes
 const COLORS = [
-  '#8be9fd', // cyan
-  '#bd93f9', // purple
+  '#3ddbd9', // teal
+  '#b072d1', // purple
   '#ff79c6', // pink
   '#ffb86c', // orange
   '#50fa7b', // green
-  '#6272a4', // comment (indigo-ish)
-  '#ff5555', // red
   '#f1fa8c', // yellow
+  '#ff5555', // red
+  '#8be9fd', // cyan
 ];
 
 const color = (i: number) => COLORS[i % COLORS.length];
@@ -64,10 +64,8 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
   }
 }
 
-function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number): Edge[] {
+function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number, oidMap: Map<string, number>): Edge[] {
   const out: Edge[] = [];
-  const oidMap = new Map<string, number>();
-  commits.forEach((c, i) => oidMap.set(c.oid, i));
 
   const firstCommitIdx = commits.findIndex(c => c.node_type === 'commit');
   if (wip && firstCommitIdx !== -1 && minIdx <= 0) {
@@ -131,10 +129,8 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
   return out;
 }
 
-function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, maxIdx: number): Edge[] {
+function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, maxIdx: number, oidMap: Map<string, number>): Edge[] {
   const out: Edge[] = [];
-  const oidMap = new Map<string, number>();
-  commits.forEach((c, i) => oidMap.set(c.oid, i));
 
   const start = Math.max(0, minIdx - 20);
   const end = Math.min(commits.length, maxIdx + 20);
@@ -222,22 +218,43 @@ export function CommitGraph() {
   const minVis = virtualItems[0]?.index ?? 0;
   const maxVis = virtualItems[virtualItems.length - 1]?.index ?? 0;
 
-  const edges = useMemo(() => filteredCommits ? buildEdges(filteredCommits, off, hasWip, minVis, maxVis) : [], [filteredCommits, off, hasWip, minVis, maxVis]);
-  const stashEdges = useMemo(() => filteredCommits ? buildStashEdges(filteredCommits, off, minVis, maxVis) : [], [filteredCommits, off, hasWip, minVis, maxVis]);
+  const oidMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!filteredCommits) return map;
+    for (let i = 0; i < filteredCommits.length; i++) {
+      map.set(filteredCommits[i].oid, i);
+    }
+    return map;
+  }, [filteredCommits]);
+
+  const edges = useMemo(() => {
+    if (!filteredCommits) return [];
+    return buildEdges(filteredCommits, off, hasWip, minVis, maxVis, oidMap);
+  }, [filteredCommits, off, hasWip, minVis, maxVis, oidMap]);
+
+  const stashEdges = useMemo(() => {
+    if (!filteredCommits) return [];
+    return buildStashEdges(filteredCommits, off, minVis, maxVis, oidMap);
+  }, [filteredCommits, off, minVis, maxVis, oidMap]);
 
   const activeOids = useMemo(() => {
     const set = new Set<string>();
     if (!filteredCommits || filteredCommits.length === 0) return set;
     if (hasWip) set.add('WIP');
-    const map = new Map<string, CommitNode>();
-    filteredCommits.forEach((c: CommitNode) => map.set(c.oid, c));
-    let current: string | undefined = filteredCommits.find((c: CommitNode) => c.refs.includes('HEAD'))?.oid || filteredCommits[0].oid;
-    while (current) {
-      set.add(current);
-      current = map.get(current)?.parents?.[0];
+    
+    // Find HEAD
+    let currentOid = filteredCommits.find(c => c.refs.some(r => r === 'HEAD' || r.includes('HEAD')) )?.oid;
+    if (!currentOid && filteredCommits.length > 0) currentOid = filteredCommits[0].oid;
+
+    while (currentOid) {
+      set.add(currentOid);
+      const idx = oidMap.get(currentOid);
+      if (idx === undefined) break;
+      const node = filteredCommits[idx];
+      currentOid = node?.parents?.[0];
     }
     return set;
-  }, [filteredCommits, hasWip]);
+  }, [filteredCommits, hasWip, oidMap]);
 
   const [hov, setHov] = useState<number | null>(null);
   const sel = useAppStore(s => s.selectedRowIndex);

@@ -119,7 +119,7 @@ export function TopToolbar() {
               onClick={handleFetch} 
               loading={fetching}
               tooltip="Fetch all remotes"
-              className="text-dracula-cyan hover:bg-dracula-cyan/10"
+              className="text-primary hover:bg-primary/10"
             />
             
             <div className="relative flex items-center" ref={pullDropdownRef}>
@@ -165,17 +165,17 @@ export function TopToolbar() {
                 loading={isLoadingPush}
                 badge={repoStatus?.ahead}
                 tooltip={lastCommitWasAmend ? "Force push required due to amend" : "Push commits to remote"}
-                className={cn("rounded-r-none pr-1 transition-all", lastCommitWasAmend ? "text-dracula-red hover:bg-dracula-red/10" : "text-dracula-cyan hover:bg-dracula-cyan/10")}
+                className={cn("rounded-r-none pr-1 transition-all", lastCommitWasAmend ? "text-destructive hover:bg-destructive/10" : "text-primary hover:bg-primary/10")}
               />
               <button 
                 onClick={() => setShowPushDropdown(!showPushDropdown)}
                 className={cn(
                   "h-10 px-1 transition-all duration-200 border-l rounded-r-xl group",
-                  lastCommitWasAmend ? "hover:bg-dracula-red/10 border-dracula-red/10" : "hover:bg-dracula-cyan/10 border-dracula-cyan/10",
-                  showPushDropdown && (lastCommitWasAmend ? "bg-dracula-red/10" : "bg-dracula-cyan/10")
+                  lastCommitWasAmend ? "hover:bg-destructive/10 border-destructive/10" : "hover:bg-primary/10 border-primary/10",
+                  showPushDropdown && (lastCommitWasAmend ? "bg-destructive/10" : "bg-primary/10")
                 )}
               >
-                <ChevronDown size={12} className={cn("transition-transform duration-300", lastCommitWasAmend ? "text-dracula-red/40 group-hover:text-dracula-red" : "text-dracula-cyan/40 group-hover:text-dracula-cyan", showPushDropdown && "rotate-180")} />
+                <ChevronDown size={12} className={cn("transition-transform duration-300", lastCommitWasAmend ? "text-destructive/40 group-hover:text-destructive" : "text-primary/40 group-hover:text-primary", showPushDropdown && "rotate-180")} />
               </button>
 
               <AnimatePresence>
@@ -184,7 +184,7 @@ export function TopToolbar() {
                     title="Push Mode"
                     items={[
                       { id: 'normal', label: 'Normal Push', desc: 'Standard fast-forward', icon: <CloudUpload size={14} /> },
-                      { id: 'force_with_lease', label: 'Force with Lease', desc: 'Secure history overwrite', color: 'text-dracula-red', icon: <Zap size={14} /> },
+                      { id: 'force_with_lease', label: 'Force with Lease', desc: 'Secure history overwrite', color: 'text-destructive', icon: <Zap size={14} /> },
                     ]}
                     onSelect={(id) => {
                       pushCurrentBranch(activeRepoPath!, id as any);
