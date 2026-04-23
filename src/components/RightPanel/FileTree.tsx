@@ -36,22 +36,23 @@ export const FileTree: React.FC<FileTreeProps> = ({
           return (
             <div key={child.fullPath} className="flex flex-col relative">
               <div 
-                className="flex items-center justify-between h-[var(--row-height)] hover:bg-white/10 rounded-md cursor-pointer group px-2 transition-colors"
+                className="flex items-center justify-between h-[var(--row-height)] hover:bg-white/5 rounded-md cursor-pointer group px-2 transition-colors relative z-10"
                 onClick={() => child.isFolder ? toggleFolder(child.fullPath) : onFileClick(child.fullPath)}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
                   {child.isFolder ? (
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <ChevronDown size={14} className={cn("text-muted-foreground/60 transition-transform duration-200", !isExpanded && "-rotate-90")} />
-                      <Folder size={16} className="text-primary/70 fill-primary/10 shrink-0" />
+                      <ChevronDown size={14} className={cn("text-muted-foreground/40 transition-transform duration-200", !isExpanded && "-rotate-90")} />
+                      <Folder size={16} className="text-primary/60 fill-primary/5 shrink-0" />
                     </div>
                   ) : (
-                    <div className="pl-[20px] flex items-center">
+                    <div className="pl-[20px] flex items-center relative">
+                      <div className="absolute left-[8px] top-1/2 -translate-y-1/2 w-2 h-[1px] bg-border/40" />
                       <StatusIcon status={child.status!} />
                     </div>
                   )}
                   <span className={cn(
-                    "text-[13px] truncate font-mono tracking-tight",
+                    "text-[var(--app-font-size)] truncate font-mono tracking-tight",
                     child.isFolder ? "text-foreground/90 font-medium" : "text-muted-foreground group-hover:text-foreground"
                   )}>
                     {child.name}
@@ -65,14 +66,14 @@ export const FileTree: React.FC<FileTreeProps> = ({
                        e.stopPropagation();
                        onAction(child.fullPath);
                      }}
-                     className="invisible group-hover:visible h-5 px-1.5 text-[10px] font-bold uppercase tracking-wider"
+                     className="invisible group-hover:visible h-5 px-1.5 text-[9px] font-bold uppercase tracking-wider rounded-[4px]"
                    >
                      {actionLabel}
                    </Button>
                 )}
               </div>
               {child.isFolder && isExpanded && (
-                <div className="ml-[15px] border-l border-border/30 pl-1">
+                <div className="ml-[18px] border-l border-border/40 pl-1 relative">
                   <FileTree 
                     node={child} 
                     onAction={onAction} 

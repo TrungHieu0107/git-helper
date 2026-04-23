@@ -14,7 +14,7 @@ export const RightPanelHeader: React.FC<RightPanelHeaderProps> = ({
   hasChanges
 }) => {
   return (
-    <header className="h-[var(--toolbar-height)] border-b border-border/40 flex items-center px-3 justify-between bg-panel-background shrink-0">
+    <header className="h-[var(--toolbar-height)] border-b border-border/40 flex items-center px-3 justify-between bg-panel-background shrink-0 shadow-sm">
       <div className="flex items-center gap-2">
         <Button 
           variant="ghost" 

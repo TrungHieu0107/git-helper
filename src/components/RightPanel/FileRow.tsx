@@ -73,7 +73,7 @@ export const FileRow: React.FC<FileRowProps> = ({
     >
       <div className="flex items-center gap-2 overflow-hidden min-w-0">
         <StatusIcon status={status} />
-        <div className="flex items-center text-[13px] font-mono min-w-0 overflow-hidden" title={name}>
+        <div className="flex items-center text-[var(--app-font-size)] font-mono min-w-0 overflow-hidden tracking-tight" title={name}>
           {displayDirPath && (
             <span className="text-muted-foreground shrink-0 opacity-60">
               <HighlightText text={displayDirPath} query={highlight} />

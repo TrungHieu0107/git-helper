@@ -41,11 +41,13 @@
   --color-dracula-red: #ff4b60;
   --color-dracula-yellow: #f9d342;
 
-  /* Radius & Shadows */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 24px;
+  /* Radius & Shadows - Reduced by 50% for a cleaner look */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
   
   --shadow-glass: 0 16px 64px 0 rgba(0, 0, 0, 0.4);
 }

@@ -2,29 +2,58 @@ import { useAppStore } from '../../store';
 import { safeInvoke } from './utils';
 import { AppStateData } from './types';
 import { toast } from '../../lib/toast';
+import { LogResponse } from '../../store/slices/logSlice';
 
 export async function loadRepo(path: string) {
   const store = useAppStore.getState();
+  useAppStore.setState({ isLoadingRepo: true });
   
   try {
     store.setRepoPath(path);
     const info = await safeInvoke<any>('open_repo', { path });
-    if (!info) return;
+    if (!info) {
+      useAppStore.setState({ isLoadingRepo: false });
+      return;
+    }
 
     store.setRepoInfo(info);
     
-    const [status, repoStatus, branches] = await Promise.all([
+    // Parallel fetch for all repo data to reduce latency
+    const [status, repoStatus, branches, logResponse, backendStashes] = await Promise.all([
       safeInvoke<any[]>('get_status', { repoPath: path }),
       safeInvoke<any>('get_repo_status', { path }),
-      safeInvoke<any[]>('list_branches', { repoPath: path })
+      safeInvoke<any[]>('list_branches', { repoPath: path }),
+      safeInvoke<LogResponse>('get_log', { repoPath: path, limit: 200, offset: 0, refresh: true }),
+      safeInvoke<any[]>('list_stashes', { repoPath: path })
     ]);
 
     if (status) store.setRepoFiles(
       status.filter(f => f.status === 'staged'),
-      status.filter(f => f.status === 'unstaged' || f.status === 'untracked')
+      status.filter(f => f.status === 'unstaged' || f.status === 'untracked' || f.status === 'conflicted')
     );
+    
     if (repoStatus) store.setRepoStatus(repoStatus);
     if (branches) store.setBranches(branches);
+    
+    if (logResponse) {
+      store.setCommitLog(logResponse.nodes);
+      store.setHasMoreCommits(logResponse.has_more);
+      useAppStore.setState({ commitOffset: logResponse.commit_count });
+    }
+
+    if (backendStashes) {
+      const stashes = backendStashes.map(s => ({
+        ...s,
+        stackIndex: s.index
+      }));
+      store.setStashes(stashes);
+    }
+
+    // Reset selections on refresh/load to avoid stale views
+    store.setSelectedCommitDetail(null);
+    store.setSelectedRowIndex(null);
+    store.setActiveCommitOid(null);
+    store.setIsLoadingCommitDetail(false);
 
     // Update recent repos
     const recent = await safeInvoke<any[]>('get_recent_repos');
@@ -32,6 +61,8 @@ export async function loadRepo(path: string) {
 
   } catch (e) {
     console.error("Failed to load repo:", e);
+  } finally {
+    useAppStore.setState({ isLoadingRepo: false });
   }
 }
 

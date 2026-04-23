@@ -99,7 +99,7 @@ export function TopToolbar() {
         >
           
           {/* History Group */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-1.5">
             <ToolbarAction 
               icon={<Undo size={16} />} 
               label="Undo" 
@@ -118,7 +118,7 @@ export function TopToolbar() {
           <Separator orientation="vertical" className="h-6 mx-1.5 opacity-30" />
           
           {/* Sync Group */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-1.5">
             <ToolbarAction 
               icon={<RotateCw size={16} />} 
               label="Fetch" 
@@ -128,7 +128,7 @@ export function TopToolbar() {
               className="text-primary hover:bg-primary/10"
             />
             
-            <div className="relative flex items-center" ref={pullDropdownRef}>
+            <div className="relative flex items-center gap-1.5" ref={pullDropdownRef}>
               <ToolbarAction 
                 icon={<CloudDownload size={16} />} 
                 label="Pull" 
@@ -207,7 +207,7 @@ export function TopToolbar() {
           <Separator orientation="vertical" className="h-6 mx-1.5 opacity-30" />
 
           {/* Workflow Group */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-1.5">
             <ToolbarAction 
               icon={<GitBranch size={16} />} 
               label="Branch" 
@@ -301,17 +301,17 @@ function ToolbarAction({
       disabled={disabled || loading}
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-0.5 py-1 px-3 relative min-w-[56px] rounded-xl transition-all duration-200 group active:scale-98",
-        layoutDensity === 'compact' ? "h-7 min-w-[48px]" : "h-9",
+        "flex items-center justify-center py-1 px-2 relative rounded-xl transition-all duration-200 group active:scale-98",
+        layoutDensity === 'compact' ? "h-7 w-8" : "h-9 w-10",
         className
       )}
       title={tooltip}
     >
       <motion.div 
-        whileHover={{ scale: 1.1, y: -1 }}
-        className="relative"
+        whileHover={{ scale: 1.1 }}
+        className="relative flex items-center justify-center"
       >
-        {loading ? <Loader2 size={layoutDensity === 'compact' ? 12 : 14} className="animate-spin" /> : React.cloneElement(icon as React.ReactElement, { size: layoutDensity === 'compact' ? 12 : 14 })}
+        {loading ? <Loader2 size={layoutDensity === 'compact' ? 14 : 16} className="animate-spin" /> : React.cloneElement(icon as React.ReactElement, { size: layoutDensity === 'compact' ? 14 : 16 })}
         <AnimatePresence>
           {badge !== undefined && badge > 0 && (
             <motion.span 
@@ -325,10 +325,6 @@ function ToolbarAction({
           )}
         </AnimatePresence>
       </motion.div>
-      <span className={cn(
-        "uppercase font-bold tracking-wider opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap",
-        layoutDensity === 'compact' ? "text-[8px]" : "text-[10px]"
-      )}>{label}</span>
     </Button>
   );
 }

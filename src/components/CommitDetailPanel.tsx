@@ -195,7 +195,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
               )}
               <span className={cn(
                 "text-[13px] truncate font-mono tracking-tight transition-colors",
-                child.isFolder ? 'text-muted-foreground font-bold uppercase tracking-widest text-[10px]' : 'text-foreground/90 group-hover:text-foreground'
+                child.isFolder ? 'text-muted-foreground font-bold text-[var(--app-font-size)]' : 'text-foreground/90 group-hover:text-foreground'
               )}>
                 {child.name}
               </span>
@@ -222,10 +222,10 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
     <motion.div 
       initial={{ x: 20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="flex flex-col h-full bg-background/30 backdrop-blur-sm border-l border-border relative overflow-hidden"
+      className="flex flex-col h-full bg-panel-background border-l border-border/40 relative overflow-hidden"
     >
       {/* Header */}
-      <header className="h-11 border-b border-border/40 flex items-center px-4 justify-between bg-background backdrop-blur-xl z-10 shrink-0 shadow-sm">
+      <header className="h-[var(--toolbar-height)] border-b border-border/40 flex items-center px-3 justify-between bg-panel-background shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           {onCollapse && (
             <Button variant="ghost" size="icon" onClick={onCollapse} className="h-8 w-8 text-muted-foreground/60 hover:text-foreground rounded-xl">
@@ -249,7 +249,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
       </header>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col bg-background/40">
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
 
         {/* Commit Info Block */}
         <div className="px-6 py-5 border-b border-border/20 shrink-0">
@@ -262,7 +262,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
               {(detail.author?.[0] || '?').toUpperCase()}
             </div>
             <div className="flex flex-col gap-1.5 min-w-0 pt-0.5">
-              <span className="text-base text-foreground font-bold truncate tracking-tight">{detail.author || 'Unknown Author'}</span>
+              <span className="text-[14px] text-foreground font-bold truncate tracking-tight">{detail.author || 'Unknown Author'}</span>
               <div className="flex items-center gap-2.5 text-[12px] text-muted-foreground font-semibold">
                 <Clock size={14} className="opacity-40" />
                 <span>{formatDate(detail.timestamp)}</span>
@@ -271,11 +271,11 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           </div>
 
           {/* Message Card */}
-          <Card className="bg-secondary/10 border-border/20 p-3.5 mb-4 shadow-none rounded-2xl relative group/msg">
+          <Card className="bg-background/30 border-border/40 p-3.5 mb-4 shadow-none rounded-2xl relative group/msg">
             <div className="absolute -top-3 -left-2 p-1.5 bg-background border border-border/40 rounded-xl shadow-lg opacity-0 group-hover/msg:opacity-100 transition-opacity">
               <MessageSquare size={12} className="text-primary" />
             </div>
-            <p className="text-[14px] text-foreground/90 leading-relaxed whitespace-pre-wrap font-medium tracking-tight">
+            <p className="text-[13px] text-foreground/90 leading-relaxed whitespace-pre-wrap font-medium tracking-tight">
               {detail.message || 'No commit message provided.'}
             </p>
           </Card>
@@ -308,7 +308,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
 
         {/* Changes Section */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="px-6 py-3 sticky top-0 bg-background/40 backdrop-blur-xl z-10 border-b border-border/20">
+          <div className="px-6 py-3 sticky top-0 bg-panel-background/95 backdrop-blur-md z-10 border-b border-border/20">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 bg-secondary/50 rounded-lg">
@@ -379,6 +379,10 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           </div>
 
           <div className="flex-1 px-4 py-4 overflow-hidden flex flex-col">
+            <div className={cn(
+              "flex-1 flex flex-col overflow-hidden bg-background/30 rounded-xl border border-border/40 py-1 px-1",
+              viewMode === 'tree' ? "p-2" : ""
+            )}>
             {viewMode === 'path' ? (
               <div ref={parentRef} className="flex-1 overflow-y-auto custom-scrollbar">
                 <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
@@ -405,7 +409,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                         <div className="shrink-0 w-5 h-5 flex items-center justify-center bg-background/40 rounded-lg group-hover:bg-background transition-colors">
                           {statusIcon(f.status)}
                         </div>
-                        <div className="flex text-[13px] font-mono min-w-0 overflow-hidden tracking-tight" title={f.path}>
+                        <div className="flex text-[var(--app-font-size)] font-mono min-w-0 overflow-hidden tracking-tight" title={f.path}>
                           {f.path.includes('/') ? (
                               <>
                                 <span className="truncate shrink text-muted-foreground/50">{f.path.substring(0, f.path.lastIndexOf('/') + 1)}</span>
@@ -432,6 +436,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                 )}
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
