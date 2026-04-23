@@ -265,7 +265,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/30 rounded-lg border border-border/40 py-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-1"
                     >
                       {filteredLocalTree.length === 0 ? (
                         <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No local branches</div>
@@ -292,7 +292,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/30 rounded-lg border border-border/40 py-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-1"
                     >
                      {filteredRemoteTree.size === 0 ? (
                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No remote repositories</div>
@@ -323,7 +323,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/30 rounded-lg border border-border/40 py-1 px-1 gap-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-1 px-1 gap-1"
                     >
                      {filteredStashes.length === 0 ? (
                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">Empty stash</div>

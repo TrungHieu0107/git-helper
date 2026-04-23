@@ -22,7 +22,7 @@ import {
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import { Card } from "./ui/Card";
-import { Spinner } from "./ui/Loading";
+import { GitLoader } from "./ui/Loading";
 import { cn } from "../lib/utils";
 
 interface CommitDetailPanelProps {
@@ -133,7 +133,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-background/20 backdrop-blur-md z-20">
-        <Spinner label="Analysing commit..." />
+        <GitLoader label="Analysing commit..." />
       </div>
     );
   }
@@ -271,7 +271,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           </div>
 
           {/* Message Card */}
-          <Card className="bg-background/30 border-border/40 p-3.5 mb-4 shadow-none rounded-xl relative group/msg">
+          <Card className="bg-panel-background/80 border-border/40 p-3.5 mb-4 shadow-none rounded-xl relative group/msg">
             <div className="absolute -top-3 -left-2 p-1.5 bg-background border border-border/40 rounded-lg shadow-lg opacity-0 group-hover/msg:opacity-100 transition-opacity">
               <MessageSquare size={12} className="text-primary" />
             </div>
@@ -380,7 +380,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
 
           <div className="flex-1 px-4 py-4 overflow-hidden flex flex-col">
             <div className={cn(
-              "flex-1 flex flex-col overflow-hidden bg-background/30 rounded-xl border border-border/40 py-1 px-1",
+              "flex-1 flex flex-col overflow-hidden bg-panel-background/40 rounded-xl border border-border/40 py-1 px-1",
               viewMode === 'tree' ? "p-2" : ""
             )}>
             {viewMode === 'path' ? (

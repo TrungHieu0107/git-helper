@@ -52,6 +52,7 @@ export interface UISlice {
   isLoadingPull: boolean;
   isLoadingPush: boolean;
   showSetUpstreamDialog: boolean;
+  showCreateBranch: boolean;
   lastCommitWasAmend: boolean;
 
   forceCheckoutTarget: string | null;
@@ -90,6 +91,7 @@ export interface UISlice {
   setIsLoadingPull: (loading: boolean) => void;
   setIsLoadingPush: (loading: boolean) => void;
   setShowSetUpstreamDialog: (show: boolean) => void;
+  setShowCreateBranch: (show: boolean) => void;
   setLastCommitWasAmend: (wasAmend: boolean) => void;
 
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
@@ -130,6 +132,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   isLoadingPull: false,
   isLoadingPush: false,
   showSetUpstreamDialog: false,
+  showCreateBranch: false,
   lastCommitWasAmend: false,
 
   forceCheckoutTarget: null,
@@ -170,6 +173,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setIsLoadingPull: (loading) => set(() => ({ isLoadingPull: loading })),
   setIsLoadingPush: (loading) => set(() => ({ isLoadingPush: loading })),
   setShowSetUpstreamDialog: (show) => set(() => ({ showSetUpstreamDialog: show })),
+  setShowCreateBranch: (show) => set(() => ({ showCreateBranch: show })),
   setLastCommitWasAmend: (wasAmend) => set(() => ({ lastCommitWasAmend: wasAmend })),
 
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),

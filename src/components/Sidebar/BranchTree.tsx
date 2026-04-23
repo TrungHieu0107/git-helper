@@ -73,7 +73,7 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
         )}
         style={{ marginLeft: `${level * 12}px` }}
       >
-        <div className="flex items-center gap-2 overflow-hidden flex-1 group/inner">
+        <div className="flex items-center gap-2 overflow-hidden flex-1 group/inner min-w-0">
           {hasChildren ? (
             <div className="flex items-center gap-1.5 shrink-0">
               <motion.div

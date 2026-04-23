@@ -28,11 +28,11 @@ export function StashEntryItem({ stash, filter, onContextMenu }: StashEntryItemP
       className="flex flex-col p-3 bg-background/40 hover:bg-white/5 border border-border/40 rounded-xl cursor-pointer group transition-all relative mx-0.5"
       title={`stash@{${stash.stackIndex}}: ${stash.message}`}
     >
-       <div className="flex items-center gap-2.5 mb-2">
+        <div className="flex items-center gap-2.5 mb-2 min-w-0">
           <div className="p-1.5 rounded-md bg-primary/10 text-primary">
             <Layers size={14} className="shrink-0" />
           </div>
-          <span className="text-[13.5px] text-foreground font-medium truncate pr-1 tracking-tight">
+          <span className="text-[13.5px] text-foreground font-medium truncate pr-1 tracking-tight group-hover:pr-14 transition-all">
              <Highlight text={stash.message || `stash@{${stash.stackIndex}}`} query={filter} />
           </span>
        </div>

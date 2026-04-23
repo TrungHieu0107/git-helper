@@ -57,6 +57,7 @@ export interface AppStateData {
   border_color?: string;
   panel_background_color?: string;
   layout_density?: 'compact' | 'normal';
+  toolbar_group_background?: string;
 }
 
 export type PullResult = 

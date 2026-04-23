@@ -14,8 +14,7 @@ import { pullRepo, fetchAllRepo, pushCurrentBranch } from "../services/git/remot
 import { popStash } from "../services/git/stashService";
 import { undoLastCommit } from "../services/git/branchService";
 import { loadRepo, openTerminal, autoFetch } from "../services/git/repoService";
-import { CreateBranchDialog } from "./CreateBranchDialog";
-import { CreateStashDialog } from "./CreateStashDialog";
+
 import { Button } from "./ui/Button";
 import { Separator } from "./ui/Separator";
 import { Badge } from "./ui/Badge";
@@ -24,13 +23,13 @@ import { toast } from "../lib/toast";
 
 export function TopToolbar() {
   const { 
-    activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, 
+    activeRepoPath, isLoadingRepo, repoStatus,
     isLoadingPull, pullStrategy, setPullStrategy, isLoadingPush, 
-    lastCommitWasAmend, activeBranch, setActiveTabId, layoutDensity
+    lastCommitWasAmend, activeBranch, setActiveTabId, layoutDensity,
+    setShowCreateBranch
   } = useAppStore();
   
   const [fetching, setFetching] = useState(false);
-  const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [showPullDropdown, setShowPullDropdown] = useState(false);
   const [showPushDropdown, setShowPushDropdown] = useState(false);
   
@@ -102,14 +101,12 @@ export function TopToolbar() {
           <div className="flex items-center gap-1.5">
             <ToolbarAction 
               icon={<Undo size={16} />} 
-              label="Undo" 
               onClick={undoLastCommit} 
               tooltip="Undo last commit (Soft Reset)"
               className="text-dracula-orange hover:bg-dracula-orange/10"
             />
             <ToolbarAction 
               icon={<Redo size={16} />} 
-              label="Redo" 
               disabled 
               tooltip="Redo operation (Coming soon)"
             />
@@ -121,7 +118,6 @@ export function TopToolbar() {
           <div className="flex items-center gap-1.5">
             <ToolbarAction 
               icon={<RotateCw size={16} />} 
-              label="Fetch" 
               onClick={handleFetch} 
               loading={fetching}
               tooltip="Fetch all remotes"
@@ -131,7 +127,6 @@ export function TopToolbar() {
             <div className="relative flex items-center gap-1.5" ref={pullDropdownRef}>
               <ToolbarAction 
                 icon={<CloudDownload size={16} />} 
-                label="Pull" 
                 onClick={() => handlePull()} 
                 loading={isLoadingPull}
                 badge={repoStatus?.behind}
@@ -167,7 +162,6 @@ export function TopToolbar() {
             <div className="relative flex items-center" ref={pushDropdownRef}>
               <ToolbarAction 
                 icon={<CloudUpload size={16} className={lastCommitWasAmend ? "animate-bounce" : ""} />} 
-                label={lastCommitWasAmend ? "Force" : "Push"} 
                 onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
                 loading={isLoadingPush}
                 badge={repoStatus?.ahead}
@@ -210,21 +204,18 @@ export function TopToolbar() {
           <div className="flex items-center gap-1.5">
             <ToolbarAction 
               icon={<GitBranch size={16} />} 
-              label="Branch" 
               onClick={() => setShowCreateBranch(true)} 
               tooltip="Create new branch"
               className="text-primary hover:bg-primary/10"
             />
             <ToolbarAction 
               icon={<Archive size={16} />} 
-              label="Stash" 
               onClick={() => useAppStore.setState({ showCreateStash: true })} 
               tooltip="Stash local changes"
               className="text-dracula-orange hover:bg-dracula-orange/10"
             />
             <ToolbarAction 
               icon={<Navigation size={16} />} 
-              label="Pop" 
               onClick={() => popStash(0)} 
               tooltip="Apply and drop latest stash"
               className="text-dracula-green hover:bg-dracula-green/10"
@@ -267,24 +258,14 @@ export function TopToolbar() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {showCreateBranch && (
-          <CreateBranchDialog onClose={() => setShowCreateBranch(false)} />
-        )}
-        {showCreateStash && (
-          <CreateStashDialog onClose={() => useAppStore.setState({ showCreateStash: false })} />
-        )}
-      </AnimatePresence>
-
     </motion.div>
   );
 }
 
 function ToolbarAction({ 
-  icon, label, onClick, disabled, loading, badge, tooltip, className 
+  icon, onClick, disabled, loading, badge, tooltip, className 
 }: { 
   icon: React.ReactNode; 
-  label: string; 
   onClick?: () => void; 
   disabled?: boolean; 
   loading?: boolean;
@@ -311,7 +292,11 @@ function ToolbarAction({
         whileHover={{ scale: 1.1 }}
         className="relative flex items-center justify-center"
       >
-        {loading ? <Loader2 size={layoutDensity === 'compact' ? 14 : 16} className="animate-spin" /> : React.cloneElement(icon as React.ReactElement, { size: layoutDensity === 'compact' ? 14 : 16 })}
+        {loading ? (
+          <Loader2 size={layoutDensity === 'compact' ? 14 : 16} className="animate-spin" />
+        ) : (
+          React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: layoutDensity === 'compact' ? 14 : 16 }) : icon
+        )}
         <AnimatePresence>
           {badge !== undefined && badge > 0 && (
             <motion.span 
@@ -339,7 +324,7 @@ function DropdownMenu({ title, items, onSelect }: {
       initial={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
-      className="absolute top-[calc(100%+8px)] left-0 w-64 bg-background backdrop-blur-2xl border border-border shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-[100] p-2 rounded-2xl overflow-hidden"
+      className="absolute top-[calc(100%+8px)] left-0 w-64 bg-card backdrop-blur-2xl border border-border shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-[100] p-2 rounded-2xl overflow-hidden"
     >
       <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-40 mb-1">
         {title}
@@ -438,7 +423,7 @@ function RepoSelector() {
             initial={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
-            className="absolute top-[calc(100%+12px)] left-0 w-[320px] bg-background backdrop-blur-3xl border border-border/50 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-[100] overflow-hidden flex flex-col"
+            className="absolute top-[calc(100%+12px)] left-0 w-[320px] bg-card backdrop-blur-3xl border border-border/50 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-[100] overflow-hidden flex flex-col"
           >
             <div className="px-4 py-3 border-b border-border/30 bg-secondary/20 text-[10px] uppercase font-bold text-muted-foreground/60 tracking-[0.2em] flex items-center justify-between">
               <div className="flex items-center gap-2">

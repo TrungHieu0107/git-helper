@@ -415,19 +415,42 @@ export function CommitGraph() {
                 );
               }
 
+              const isActive = activeOids.has(n.oid);
+              const authorChar = (n.author?.[0] ?? '?').toUpperCase();
+
               if (isMerge) {
-                return <circle key={n.oid} cx={cx} cy={cy} r={r} fill={c} className="shadow-lg" />;
+                return (
+                  <g key={n.oid} transform={`translate(${cx}, ${cy})`}>
+                    <circle r={r} fill={c} className="shadow-lg" />
+                    {/* For dots (r=4), text might be too small, but we'll try or skip if too small */}
+                    {r > 6 && (
+                      <text textAnchor="middle" dominantBaseline="central" fill="#191a21" fontSize={8} fontWeight={900}>
+                        {authorChar}
+                      </text>
+                    )}
+                  </g>
+                );
               }
 
-              const isActive = activeOids.has(n.oid);
               return (
                 <g key={n.oid} transform={`translate(${cx}, ${cy})`}>
-                  <circle r={r} fill={isActive ? c : "#21222c"} stroke={c} strokeWidth={isActive ? 3 : 2} className={cn(isActive && "shadow-[0_0_12px_rgba(255,255,255,0.2)]")} />
-                  {!isActive && (
-                    <text textAnchor="middle" dominantBaseline="central" fill={c} fontSize={10} fontWeight={900} opacity={0.9}>
-                      {(n.author?.[0] ?? '?')}
-                    </text>
-                  )}
+                  <circle 
+                    r={r} 
+                    fill={isActive ? c : "#21222c"} 
+                    stroke={c} 
+                    strokeWidth={isActive ? 3 : 2} 
+                    className={cn(isActive && "shadow-[0_0_12px_rgba(255,255,255,0.2)]")} 
+                  />
+                  <text 
+                    textAnchor="middle" 
+                    dominantBaseline="central" 
+                    fill={isActive ? "#191a21" : c} 
+                    fontSize={10} 
+                    fontWeight={900} 
+                    opacity={isActive ? 1 : 0.9}
+                  >
+                    {authorChar}
+                  </text>
                 </g>
               );
             })}

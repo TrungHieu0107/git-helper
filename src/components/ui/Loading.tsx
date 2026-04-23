@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { GitBranch, Share2, Layers } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GitBranch } from 'lucide-react';
 
 interface SkeletonProps {
   width?: string | number;

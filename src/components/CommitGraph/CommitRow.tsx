@@ -229,7 +229,7 @@ export const CommitRow = React.memo(({
       <div style={{ width: gw }} />
       <div className="flex-1 flex items-center pl-6 pr-4 min-w-0">
         {n.node_type === 'stash' ? (
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
              <span className="bg-dracula-orange/10 text-dracula-orange border border-dracula-orange/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter shrink-0 shadow-sm">STASH</span>
              <span className="truncate text-dracula-orange/80 text-[12px] italic font-medium">{n.message || 'Stashed changes'}</span>
           </div>

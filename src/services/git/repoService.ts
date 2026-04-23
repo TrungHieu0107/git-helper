@@ -130,7 +130,10 @@ export async function refreshActiveRepoStatus() {
 }
 
 export async function saveCurrentState() {
-  const { repos, activeTabId, lastStashMode, lastIncludeUntracked, pullStrategy, fontSize, backgroundColor, borderColor, panelBackgroundColor, layoutDensity } = useAppStore.getState();
+  const { 
+    repos, activeTabId, lastStashMode, lastIncludeUntracked, pullStrategy, 
+    fontSize, backgroundColor, borderColor, panelBackgroundColor, layoutDensity, toolbarGroupBackground 
+  } = useAppStore.getState();
   const state: AppStateData = {
     tabs: repos.map(r => ({ path: r.path, name: r.name })),
     active_tab: activeTabId === 'home' ? null : activeTabId,
@@ -142,6 +145,7 @@ export async function saveCurrentState() {
     border_color: borderColor,
     panel_background_color: panelBackgroundColor,
     layout_density: layoutDensity,
+    toolbar_group_background: toolbarGroupBackground,
   };
 
   // Parallel save to both JSON and SQLite

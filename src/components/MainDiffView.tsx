@@ -5,7 +5,7 @@ import { X, Columns, AlignLeft, ArrowUp, ArrowDown, FileCode, Binary, AlertCircl
 import { motion, AnimatePresence } from "framer-motion";
 import { EncodingBadge } from "./EncodingBadge";
 import { useAppStore } from "../store";
-import { Spinner } from "./ui/Loading";
+import { GitLoader } from "./ui/Loading";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import { Separator } from "./ui/Separator";
@@ -367,7 +367,7 @@ export function MainDiffView(props: MainDiffViewProps) {
               exit={{ opacity: 0 }}
               className="absolute inset-0 flex flex-col items-center justify-center bg-background z-50"
             >
-               <Spinner label="Analyzing diff..." />
+                <GitLoader label="Analyzing diff..." />
             </motion.div>
           ) : error ? (
             <motion.div 

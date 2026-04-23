@@ -6,14 +6,14 @@
   --color-panel-background: var(--app-panel-background, #141414);
   --color-foreground: #e4e4e7;
   
-  --color-card: #252526;
+  --color-card: var(--color-panel-background);
   --color-muted-foreground: #a1a1aa;
   --color-card-foreground: #e4e4e7;
   
   --color-primary: #3ddbd9; /* GitKraken Teal */
   --color-primary-foreground: #1e1e1e;
   
-  --color-secondary: #1e1e1e; /* Deep Sidebar/Header */
+  --color-secondary: var(--color-panel-background); /* Deep Sidebar/Header */
   --color-secondary-foreground: #ffffff;
   
   --color-accent: #b072d1; /* Soft Purple */

@@ -286,7 +286,7 @@ export function RightPanel() {
                        )}
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-background/30 rounded-lg border border-border/40 py-1">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-panel-background/40 rounded-lg border border-border/40 py-1">
                       {filteredUnstaged.length > 0 ? (
                        viewMode === 'path' ? (
                          filteredUnstaged.map((f, i) => (
@@ -338,7 +338,7 @@ export function RightPanel() {
                      )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-background/30 rounded-lg border border-border/40 py-1">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-panel-background/40 rounded-lg border border-border/40 py-1">
                     {filteredStaged.length > 0 ? (
                       viewMode === 'path' ? (
                         filteredStaged.map((f, i) => (
