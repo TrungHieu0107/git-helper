@@ -256,7 +256,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           {/* Author & Metadata */}
           <div className="flex items-start gap-4 mb-4">
             <div 
-              className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center text-background text-lg font-bold shadow-2xl border border-white/10"
+              className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center text-background text-lg font-bold shadow-2xl border border-white/10"
               style={{ background: `linear-gradient(135deg, #bd93f9, #ff79c6)` }}
             >
               {(detail.author?.[0] || '?').toUpperCase()}
@@ -271,8 +271,8 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           </div>
 
           {/* Message Card */}
-          <Card className="bg-background/30 border-border/40 p-3.5 mb-4 shadow-none rounded-2xl relative group/msg">
-            <div className="absolute -top-3 -left-2 p-1.5 bg-background border border-border/40 rounded-xl shadow-lg opacity-0 group-hover/msg:opacity-100 transition-opacity">
+          <Card className="bg-background/30 border-border/40 p-3.5 mb-4 shadow-none rounded-xl relative group/msg">
+            <div className="absolute -top-3 -left-2 p-1.5 bg-background border border-border/40 rounded-lg shadow-lg opacity-0 group-hover/msg:opacity-100 transition-opacity">
               <MessageSquare size={12} className="text-primary" />
             </div>
             <p className="text-[13px] text-foreground/90 leading-relaxed whitespace-pre-wrap font-medium tracking-tight">
@@ -283,7 +283,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
           {/* Parents & Actions */}
           <div className="flex flex-wrap items-center gap-4">
             {detail.parent_short_oids && detail.parent_short_oids.length > 0 && (
-              <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-secondary/30 border border-border/40 backdrop-blur-md">
+              <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-secondary/30 border border-border/40 backdrop-blur-md">
                 <GitBranch size={14} className="text-muted-foreground/40" />
                 <span className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-widest">Parents</span>
                 <div className="flex items-center gap-1.5">
@@ -297,7 +297,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
             )}
             <Button 
               size="xs" 
-              className="h-8 px-4 text-[11px] font-bold uppercase tracking-widest ml-auto shadow-lg rounded-xl hover:scale-105 transition-transform"
+              className="h-8 px-4 text-[11px] font-bold uppercase tracking-widest ml-auto shadow-lg rounded-lg hover:scale-105 transition-transform"
               onClick={() => useAppStore.setState({ selectedRowIndex: 0, selectedCommitDetail: null })}
             >
               <ExternalLink size={12} className="mr-2" />
@@ -318,7 +318,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                   Changes ({detail.files?.length ?? 0})
                 </h3>
               </div>
-              <div className="flex items-center bg-secondary/30 rounded-xl border border-border/40 p-1 backdrop-blur-md">
+              <div className="flex items-center bg-secondary/30 rounded-lg border border-border/40 p-1 backdrop-blur-md">
                 <Button
                   variant="ghost"
                   size="xs"
@@ -403,10 +403,10 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                             commitMessage: detail.message
                           });
                         }}
-                        className="flex items-center gap-3 py-1.5 px-3 hover:bg-secondary/30 rounded-xl cursor-pointer group absolute top-0 left-0 w-full border border-transparent hover:border-border/40 shadow-sm"
+                        className="flex items-center gap-3 py-1.5 px-3 hover:bg-secondary/30 rounded-lg cursor-pointer group absolute top-0 left-0 w-full border border-transparent hover:border-border/40 shadow-sm"
                         style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)` }}
                       >
-                        <div className="shrink-0 w-5 h-5 flex items-center justify-center bg-background/40 rounded-lg group-hover:bg-background transition-colors">
+                        <div className="shrink-0 w-5 h-5 flex items-center justify-center bg-background/40 rounded-md group-hover:bg-background transition-colors">
                           {statusIcon(f.status)}
                         </div>
                         <div className="flex text-[var(--app-font-size)] font-mono min-w-0 overflow-hidden tracking-tight" title={f.path}>
