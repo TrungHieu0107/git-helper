@@ -56,7 +56,7 @@ export function MergeDialog() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+            className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -129,7 +129,7 @@ export function MergeDialog() {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-secondary/30 border border-border/40 rounded-xl p-4 flex flex-col gap-2"
                   >
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-black">Latest Commit</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-bold">Latest Commit</span>
                     <p className="text-[14px] text-foreground/80 font-medium line-clamp-2 leading-snug italic">
                       "{targetBranchInfo.last_commit_message || 'No message'}"
                     </p>

@@ -101,6 +101,21 @@ export interface UISlice {
 
   fontSize: number;
   setFontSize: (size: number) => void;
+
+  backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
+
+  borderColor: string;
+  setBorderColor: (color: string) => void;
+
+  panelBackgroundColor: string;
+  setPanelBackgroundColor: (color: string) => void;
+
+  layoutDensity: 'compact' | 'normal';
+  setLayoutDensity: (density: 'compact' | 'normal') => void;
+
+  toolbarGroupBackground: string;
+  setToolbarGroupBackground: (color: string) => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -182,4 +197,19 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
 
   fontSize: 13,
   setFontSize: (fontSize) => set(() => ({ fontSize })),
+
+  backgroundColor: '#0f0f0f',
+  setBackgroundColor: (backgroundColor) => set(() => ({ backgroundColor })),
+
+  borderColor: 'rgba(139, 153, 204, 0.15)',
+  setBorderColor: (borderColor) => set(() => ({ borderColor })),
+
+  panelBackgroundColor: '#141414',
+  setPanelBackgroundColor: (panelBackgroundColor) => set(() => ({ panelBackgroundColor })),
+
+  layoutDensity: 'compact',
+  setLayoutDensity: (layoutDensity) => set(() => ({ layoutDensity })),
+
+  toolbarGroupBackground: '#1a1a1a',
+  setToolbarGroupBackground: (toolbarGroupBackground) => set(() => ({ toolbarGroupBackground })),
 });

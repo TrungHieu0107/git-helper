@@ -65,7 +65,7 @@ export const BranchContextMenu: React.FC<BranchContextMenuProps> = ({
   return (
     <div 
       ref={menuRef}
-      className="fixed bg-background/80 border border-border/40 rounded-lg shadow-2xl py-1.5 z-[9999] min-w-[200px] animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
+      className="fixed bg-background border border-border/40 rounded-lg shadow-2xl py-1.5 z-[9999] min-w-[200px] animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl"
       style={{ top: menuPos.y, left: menuPos.x }}
     >
       <div className="px-3 py-1.5 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider border-b border-border/20 mb-1 truncate">

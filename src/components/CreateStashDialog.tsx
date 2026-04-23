@@ -73,7 +73,7 @@ export function CreateStashDialog({ onClose }: CreateStashDialogProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[520px] flex flex-col overflow-hidden"
+          className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[520px] flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
@@ -280,7 +280,7 @@ function FileRow({ file, dimmed = false }: { file: FileStatus, dimmed?: boolean 
       )}
     >
       <div className={cn(
-        "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black shrink-0",
+        "w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
         statusColor
       )}>
         {statusChar}

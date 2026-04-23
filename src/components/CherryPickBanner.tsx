@@ -43,7 +43,7 @@ export function CherryPickBanner() {
           
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-3">
-              <span className="text-[12px] font-black tracking-widest text-dracula-orange/60 uppercase">
+              <span className="text-[12px] font-bold tracking-widest text-dracula-orange/60 uppercase">
                 Cherry-Pick Active
               </span>
               {conflictedOid && (

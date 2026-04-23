@@ -51,7 +51,7 @@ export function CherryPickDialog({ commits, onClose }: CherryPickDialogProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+          className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="px-6 py-5 border-b border-border/30 flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">

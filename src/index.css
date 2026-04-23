@@ -1,18 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  /* GitKraken Gloam Inspired Palette - Optimized for Premium Feel */
-  --color-background: #1f2330;
-  --color-foreground: #d5dbe5;
+  /* Windows/Mac Desktop Premium Dark Theme */
+  --color-background: var(--app-background, #0f0f0f); /* Deep Gloam Dark */
+  --color-panel-background: var(--app-panel-background, #141414);
+  --color-foreground: #e4e4e7;
   
-  --color-card: rgba(31, 35, 48, 0.85);
-  --color-muted-foreground: #8b949e;
-  --color-card-foreground: #d5dbe5;
+  --color-card: #252526;
+  --color-muted-foreground: #a1a1aa;
+  --color-card-foreground: #e4e4e7;
   
   --color-primary: #3ddbd9; /* GitKraken Teal */
-  --color-primary-foreground: #1f2330;
+  --color-primary-foreground: #1e1e1e;
   
-  --color-secondary: #262a39; /* Deep Sidebar/Header */
+  --color-secondary: #1e1e1e; /* Deep Sidebar/Header */
   --color-secondary-foreground: #ffffff;
   
   --color-accent: #b072d1; /* Soft Purple */
@@ -21,14 +22,14 @@
   --color-destructive: #ff4b60; /* Vibrant Red */
   --color-destructive-foreground: #ffffff;
   
-  --color-border: rgba(139, 153, 204, 0.15);
+  --color-border: var(--app-border, rgba(139, 153, 204, 0.15));
   --color-input: #161922;
   --color-ring: rgba(61, 219, 217, 0.5);
   --color-ring-offset: #1f2330;
 
   /* Explicit GitKit Premium Palette (Mixed with Gloam) */
-  --color-dracula-bg: #1f2330;
-  --color-dracula-bg-soft: #262a39;
+  --color-dracula-bg: #1e1e1e;
+  --color-dracula-bg-soft: #2d2d30;
   --color-dracula-fg: #d5dbe5;
   --color-dracula-selection: #40434f;
   --color-dracula-comment: #8b949e;
@@ -72,13 +73,13 @@
 
     /* Sizing & Gaps - Pro Layout Density */
     --app-font-size: 13px;
-    --app-gap-xs: 2px;
-    --app-gap-sm: 4px;
-    --app-gap-md: 6px; /* Tightened from 8px */
-    --app-gap-lg: 12px; /* Tightened from 16px */
+    --app-gap-xs: 4px;
+    --app-gap-sm: 8px;
+    --app-gap-md: 12px;
+    --app-gap-lg: 16px;
     
-    --row-height: 28px; /* High-density row height */
-    --toolbar-height: 42px;
+    --row-height: 28px; /* Standard desktop row height */
+    --toolbar-height: 40px;
     
     /* Animation Tokens */
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -100,8 +101,8 @@ body {
 
 /* Global Custom Scrollbar Styling (Premium Glassmorphic) */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -138,7 +139,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.15em;
   color: var(--color-muted-foreground);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .branch-name-text {
@@ -185,8 +186,8 @@ body {
 
 /* ── Commit Context Menu ─────────────────────────────────────────── */
 .commit-context-menu {
-  background: rgba(22, 27, 34, 0.97);
-  backdrop-filter: blur(12px) saturate(1.6);
+  background: rgba(30, 30, 30, 0.98);
+  backdrop-filter: blur(16px) saturate(1.8);
   border: 1px solid rgba(48, 54, 61, 0.8);
   border-radius: 10px;
   min-width: 220px;
@@ -251,8 +252,8 @@ body {
 /* ── Create Branch Dialog ────────────────────────────────────────── */
 
 .create-branch-dialog {
-  background: rgba(22, 27, 34, 0.98);
-  backdrop-filter: blur(16px) saturate(1.6);
+  background: rgba(30, 30, 30, 0.98);
+  backdrop-filter: blur(20px) saturate(1.8);
   border: 1px solid rgba(48, 54, 61, 0.9);
   border-radius: 14px;
   box-shadow:
@@ -315,8 +316,8 @@ body {
 
 /* Source Dropdown */
 .branch-source-dropdown {
-  background: rgba(13, 17, 23, 0.98);
-  backdrop-filter: blur(12px);
+  background: rgba(30, 30, 30, 0.98);
+  backdrop-filter: blur(16px);
   border: 1px solid #30363d;
   border-radius: 10px;
   box-shadow:
@@ -366,7 +367,7 @@ body {
     rgba(255, 255, 255, 0.05) 50%,
     transparent 100%
   );
-  animation: shimmer 2s infinite;
+  animation: shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes shimmer {

@@ -43,7 +43,11 @@ export async function restoreAppState() {
       pullStrategy: state.pull_strategy,
       lastStashMode: state.stash_mode,
       lastIncludeUntracked: state.include_untracked,
-      fontSize: state.font_size || 13
+      fontSize: state.font_size || 13,
+      backgroundColor: state.background_color || '#0f0f0f',
+      borderColor: state.border_color || 'rgba(139, 153, 204, 0.15)',
+      panelBackgroundColor: state.panel_background_color || '#141414',
+      layoutDensity: state.layout_density || 'compact'
     });
     
     if (state.active_tab) {
@@ -72,7 +76,7 @@ export async function refreshActiveRepoStatus() {
 }
 
 export async function saveCurrentState() {
-  const { repos, activeTabId, lastStashMode, lastIncludeUntracked, pullStrategy, fontSize } = useAppStore.getState();
+  const { repos, activeTabId, lastStashMode, lastIncludeUntracked, pullStrategy, fontSize, backgroundColor, borderColor, panelBackgroundColor, layoutDensity } = useAppStore.getState();
   const state: AppStateData = {
     tabs: repos.map(r => ({ path: r.path, name: r.name })),
     active_tab: activeTabId === 'home' ? null : activeTabId,
@@ -80,6 +84,10 @@ export async function saveCurrentState() {
     include_untracked: lastIncludeUntracked,
     pull_strategy: pullStrategy,
     font_size: fontSize,
+    background_color: backgroundColor,
+    border_color: borderColor,
+    panel_background_color: panelBackgroundColor,
+    layout_density: layoutDensity,
   };
 
   await safeInvoke('save_app_state', { state });

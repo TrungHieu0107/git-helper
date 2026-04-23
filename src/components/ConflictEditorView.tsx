@@ -134,14 +134,14 @@ export function ConflictEditorView() {
     parsed.hunks.forEach((hunk) => {
       const id = `widget-${hunk.id}`;
       const domNode = document.createElement('div');
-      domNode.className = 'conflict-action-bar flex items-center gap-1.5 bg-background/90 backdrop-blur-md border border-border/50 rounded-xl shadow-2xl p-1.5 z-50';
+      domNode.className = 'conflict-action-bar flex items-center gap-1.5 bg-background backdrop-blur-md border border-border/50 rounded-xl shadow-2xl p-1.5 z-50';
       domNode.style.cssText = 'pointer-events: auto !important; z-index: 9999; position: relative;';
       
       const createBtn = (label: string, variant: string, type: 'ours' | 'theirs' | 'both') => {
         const btn = document.createElement('button');
         btn.innerText = label;
         btn.className = cn(
-          "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all duration-200 active:scale-95",
+          "px-3 py-1 text-[10px] font-bold uppercase rounded-lg transition-all duration-200 active:scale-95",
           variant === 'ours' ? "bg-dracula-green/20 text-dracula-green hover:bg-dracula-green/30" :
           variant === 'theirs' ? "bg-dracula-orange/20 text-dracula-orange hover:bg-dracula-orange/30" :
           "bg-dracula-cyan/20 text-dracula-cyan hover:bg-dracula-cyan/30"
@@ -322,11 +322,11 @@ export function ConflictEditorView() {
       className="flex-1 flex flex-col min-w-0 bg-background relative z-10 border-r border-border/50 overflow-hidden"
     >
       {/* Premium Navigation Toolbar */}
-      <div className="h-[52px] px-6 shrink-0 flex items-center justify-between border-b border-border/30 bg-background/80 backdrop-blur-2xl shadow-sm z-30">
+      <div className="h-[52px] px-6 shrink-0 flex items-center justify-between border-b border-border/30 bg-background backdrop-blur-2xl shadow-sm z-30">
         <div className="flex items-center gap-6 overflow-hidden">
           <div className="flex flex-col gap-0.5 min-w-0">
              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-black text-foreground tracking-tight truncate">
+                <span className="text-[13px] font-bold text-foreground tracking-tight truncate">
                   {activeConflictFile}
                 </span>
                 <Badge variant="secondary" className="px-1.5 py-0 font-mono text-[10px] bg-secondary/50 border-border/20">
@@ -335,7 +335,7 @@ export function ConflictEditorView() {
              </div>
              <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-dracula-red animate-pulse shadow-[0_0_8px_rgba(255,85,85,0.5)]" />
-                <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">
+                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
                   Resolution required
                 </span>
              </div>
@@ -347,7 +347,7 @@ export function ConflictEditorView() {
             <Button variant="ghost" size="icon" onClick={goToPrev} className="h-7 w-7 text-muted-foreground hover:text-foreground">
               <ChevronLeft size={14}/>
             </Button>
-            <span className="text-[11px] font-mono font-black text-primary px-2 min-w-[50px] text-center">
+            <span className="text-[11px] font-mono font-bold text-primary px-2 min-w-[50px] text-center">
               {parsed && parsed.hunks.length > 0 ? `${currentHunkIndex + 1} / ${parsed.hunks.length}` : '0 / 0'}
             </span>
             <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7 text-muted-foreground hover:text-foreground">
@@ -359,7 +359,7 @@ export function ConflictEditorView() {
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="px-3 py-1 bg-dracula-red/10 text-dracula-red text-[11px] font-black rounded-full border border-dracula-red/20 flex items-center gap-2"
+              className="px-3 py-1 bg-dracula-red/10 text-dracula-red text-[11px] font-bold rounded-full border border-dracula-red/20 flex items-center gap-2"
             >
               <ShieldAlert size={12} />
               {remainingConflicts} REMAINING
@@ -395,7 +395,7 @@ export function ConflictEditorView() {
             onClick={handleResolve}
             disabled={remainingConflicts > 0}
             className={cn(
-              "font-black tracking-wide px-6 shadow-lg",
+              "font-bold tracking-wide px-6 shadow-lg",
               remainingConflicts > 0 ? "opacity-50 grayscale" : "shadow-primary/20"
             )}
           >
@@ -422,7 +422,7 @@ export function ConflictEditorView() {
            <div className="flex items-center justify-between px-4 py-2.5 bg-dracula-green/5 border-b border-dracula-green/10 transition-colors group-hover:bg-dracula-green/10">
              <div className="flex items-center gap-2.5">
                <div className="w-2 h-2 bg-dracula-green rounded-full shadow-[0_0_8px_rgba(80,250,123,0.4)]" />
-               <span className="text-dracula-green text-[11px] font-black tracking-[0.2em] uppercase">OURS</span>
+               <span className="text-dracula-green text-[11px] font-bold tracking-[0.2em] uppercase">OURS</span>
              </div>
              <Badge variant="outline" className="font-mono text-[9px] border-dracula-green/20 text-dracula-green/60 uppercase">LOCAL BRANCH</Badge>
            </div>
@@ -442,7 +442,7 @@ export function ConflictEditorView() {
            <div className="flex items-center justify-between px-4 py-2.5 bg-primary/10 border-b border-primary/20">
              <div className="flex items-center gap-2.5">
                <div className="w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_rgba(189,147,249,0.4)] animate-pulse" />
-               <span className="text-primary text-[11px] font-black tracking-[0.2em] uppercase">RESULT</span>
+               <span className="text-primary text-[11px] font-bold tracking-[0.2em] uppercase">RESULT</span>
              </div>
              <div className="flex items-center gap-2">
                <span className="text-[10px] text-muted-foreground font-bold italic opacity-60">Manual editing allowed</span>
@@ -455,11 +455,11 @@ export function ConflictEditorView() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-50 bg-background/80 backdrop-blur-md flex items-center justify-center"
+                    className="absolute inset-0 z-50 bg-background backdrop-blur-md flex items-center justify-center"
                   >
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 size={32} className="animate-spin text-primary" />
-                      <span className="text-[11px] text-primary font-black uppercase tracking-widest animate-pulse">Syncing Conflict State...</span>
+                      <span className="text-[11px] text-primary font-bold uppercase tracking-widest animate-pulse">Syncing Conflict State...</span>
                     </div>
                   </motion.div>
                )}
@@ -479,7 +479,7 @@ export function ConflictEditorView() {
            <div className="flex items-center justify-between px-4 py-2.5 bg-dracula-orange/5 border-b border-dracula-orange/10 transition-colors group-hover:bg-dracula-orange/10">
              <div className="flex items-center gap-2.5">
                <div className="w-2 h-2 bg-dracula-orange rounded-full shadow-[0_0_8px_rgba(255,184,108,0.4)]" />
-               <span className="text-dracula-orange text-[11px] font-black tracking-[0.2em] uppercase">THEIRS</span>
+               <span className="text-dracula-orange text-[11px] font-bold tracking-[0.2em] uppercase">THEIRS</span>
              </div>
              <Badge variant="outline" className="font-mono text-[9px] border-dracula-orange/20 text-dracula-orange/60 uppercase">
                {cherryPickConflictedOid ? cherryPickConflictedOid.substring(0, 7) : 'INCOMING'}

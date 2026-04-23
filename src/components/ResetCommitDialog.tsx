@@ -86,7 +86,7 @@ export function ResetCommitDialog() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+            className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -114,7 +114,7 @@ export function ResetCommitDialog() {
                 {/* Target Details */}
                 <div className="bg-secondary/20 border border-border/40 rounded-2xl p-5 space-y-4 shadow-inner">
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-black">Target Message</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-bold">Target Message</span>
                     <p className="text-[14px] text-foreground/80 font-medium line-clamp-2 italic leading-snug">
                       "{target.message}"
                     </p>
@@ -150,7 +150,7 @@ export function ResetCommitDialog() {
                             </div>
                             <span className={cn("text-[15px] font-bold", mode === m.id ? "text-foreground" : "text-foreground/70")}>{m.label}</span>
                           </div>
-                          <Badge className={cn("text-[10px] font-black tracking-widest", m.badge)}>{m.id === 'Mixed' ? 'DEFAULT' : m.id.toUpperCase()}</Badge>
+                          <Badge className={cn("text-[10px] font-bold tracking-widest", m.badge)}>{m.id === 'Mixed' ? 'DEFAULT' : m.id.toUpperCase()}</Badge>
                         </div>
                         <p className={cn("text-[12px] leading-relaxed mt-2.5 px-8 font-medium transition-colors", mode === m.id ? "text-muted-foreground/80" : "text-muted-foreground/40")}>{m.desc}</p>
                       </button>
@@ -173,7 +173,7 @@ export function ResetCommitDialog() {
                       <div className="flex flex-col gap-1">
                         <p className="text-[14px] font-bold text-destructive">Destructive Action</p>
                         <p className="text-[12px] text-destructive/70 leading-relaxed font-medium">
-                          You have uncommitted changes. Hard reset will <span className="font-black underline decoration-destructive/30">permanently discard</span> all work. This cannot be undone.
+                          You have uncommitted changes. Hard reset will <span className="font-bold underline decoration-destructive/30">permanently discard</span> all work. This cannot be undone.
                         </p>
                       </div>
                     </motion.div>

@@ -105,7 +105,7 @@ export function FileHistoryModal() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full h-full max-w-[1400px] max-h-[900px] flex flex-col overflow-hidden"
+          className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full h-full max-w-[1400px] max-h-[900px] flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
@@ -155,11 +155,11 @@ export function FileHistoryModal() {
             {/* Left Panel: Commits */}
             <div className="w-[380px] border-r border-border/30 flex flex-col bg-secondary/10 shrink-0">
               <div className="px-6 py-3 border-b border-border/20 bg-secondary/20 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-[11px] font-black text-muted-foreground/60 uppercase tracking-widest">
+                <div className="flex items-center gap-2.5 text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">
                   <Clock size={14} />
                   <span>Timeline</span>
                 </div>
-                <Badge variant="secondary" className="px-2 py-0.5 text-[10px] font-black bg-secondary/40">
+                <Badge variant="secondary" className="px-2 py-0.5 text-[10px] font-bold bg-secondary/40">
                   {commits.length} COMMITS
                 </Badge>
               </div>
@@ -202,7 +202,7 @@ export function FileHistoryModal() {
                     >
                       <div className="flex items-center justify-between gap-2">
                          <Badge variant="secondary" className={cn(
-                           "px-2 py-0.5 text-[10px] font-black font-mono transition-colors",
+                           "px-2 py-0.5 text-[10px] font-bold font-mono transition-colors",
                            selectedOid === c.oid ? "bg-primary/20 text-primary" : "bg-secondary/40 text-muted-foreground group-hover:text-foreground"
                          )}>
                            {c.short_oid}
@@ -222,7 +222,7 @@ export function FileHistoryModal() {
                       <div className="flex items-center justify-between mt-1">
                         <div className="flex items-center gap-2.5">
                           <div 
-                            className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black text-white shadow-lg shadow-black/20"
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shadow-lg shadow-black/20"
                             style={{ backgroundColor: getAvatarColor(c.author_email) }}
                           >
                             {c.author_name[0].toUpperCase()}
@@ -282,7 +282,7 @@ export function FileHistoryModal() {
                 </div>
               </div>
               <div className="flex items-center gap-3 font-mono text-[10px] tracking-tight">
-                <span className="text-muted-foreground/30 font-black">OID</span>
+                <span className="text-muted-foreground/30 font-bold">OID</span>
                 <Badge variant="secondary" className="px-2 py-0.5 font-bold font-mono opacity-60">{selectedCommit.oid}</Badge>
               </div>
             </div>

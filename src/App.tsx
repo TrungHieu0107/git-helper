@@ -42,10 +42,27 @@ export function App() {
 
   const [isInitializing, setIsInitializing] = useState(true);
   const fontSize = useAppStore(state => state.fontSize);
+  const backgroundColor = useAppStore(state => state.backgroundColor);
+  const borderColor = useAppStore(state => state.borderColor);
+  const panelBackgroundColor = useAppStore(state => state.panelBackgroundColor);
+  const layoutDensity = useAppStore(state => state.layoutDensity);
+  const toolbarGroupBackground = useAppStore(state => state.toolbarGroupBackground);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--app-font-size', `${fontSize}px`);
-  }, [fontSize]);
+    document.documentElement.style.setProperty('--app-background', backgroundColor);
+    document.documentElement.style.setProperty('--app-panel-background', panelBackgroundColor);
+    document.documentElement.style.setProperty('--app-border', borderColor);
+    document.documentElement.style.setProperty('--toolbar-group-background', toolbarGroupBackground);
+    
+    // Layout Density logic
+    const rowHeight = layoutDensity === 'compact' ? 28 : 36;
+    const gapMultiplier = layoutDensity === 'compact' ? 1 : 1.5;
+    
+    document.documentElement.style.setProperty('--row-height', `${rowHeight}px`);
+    document.documentElement.style.setProperty('--app-gap-sm', `${8 * gapMultiplier}px`);
+    document.documentElement.style.setProperty('--app-gap-md', `${12 * gapMultiplier}px`);
+  }, [fontSize, backgroundColor, panelBackgroundColor, borderColor, layoutDensity, toolbarGroupBackground]);
 
   useEffect(() => {
     const init = async () => {

@@ -68,8 +68,8 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
           }
         }}
         className={cn(
-          "flex items-center group h-7 px-2 rounded-md transition-all cursor-pointer whitespace-nowrap",
-          isHead ? "bg-primary/10 text-primary" : "hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
+          "flex items-center group h-[var(--row-height)] px-2 rounded-md cursor-pointer whitespace-nowrap mx-1",
+          isHead ? "bg-primary/10 text-primary" : "hover:bg-white/5 text-muted-foreground hover:text-foreground"
         )}
         style={{ marginLeft: `${level * 12}px` }}
       >
@@ -80,22 +80,22 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
                 animate={{ rotate: expanded ? 0 : -90 }}
                 transition={{ duration: 0.2 }}
               >
-                <ChevronDown size={12} className="opacity-40" />
+                <ChevronDown size={14} className="opacity-40" />
               </motion.div>
-              <Folder size={14} className="text-primary/70 fill-primary/10" />
+              <Folder size={16} className="text-primary/70 fill-primary/10" />
             </div>
           ) : (
             <div className="shrink-0 w-4 flex justify-center items-center">
                {remotePrefix ? (
-                 <Cloud size={14} className={cn("opacity-50", isHead && "opacity-100 text-primary")} />
+                 <Cloud size={16} className={cn("opacity-50", isHead && "opacity-100 text-primary")} />
                ) : (
-                 <GitBranch size={14} className={cn("opacity-50", isHead && "opacity-100 text-primary")} />
+                 <GitBranch size={16} className={cn("opacity-50", isHead && "opacity-100 text-primary")} />
                )}
             </div>
           )}
           
           <span className={cn(
-            "text-[var(--app-font-size)] truncate flex-1 tracking-tight transition-colors",
+            "text-[var(--app-font-size)] truncate flex-1 tracking-tight",
             isHead && "font-semibold"
           )}>
             <Highlight text={node.name} query={filter} />

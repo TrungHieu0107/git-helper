@@ -32,7 +32,7 @@ export function StashAlerts() {
                 
                 <div className="flex flex-col gap-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <span className="text-[12px] font-black tracking-widest text-dracula-red/60 uppercase">
+                    <span className="text-[12px] font-bold tracking-widest text-dracula-red/60 uppercase">
                       Stash Conflict Detected
                     </span>
                     <Badge variant="secondary" className="px-3 py-0.5 bg-dracula-red/20 text-dracula-red font-bold border-dracula-red/10 shadow-sm">
@@ -64,7 +64,7 @@ export function StashAlerts() {
             {/* Conflicted Files List */}
             <div className="space-y-4">
               <div className="flex items-center gap-3 px-1">
-                <label className="text-[10px] font-black text-dracula-red/40 uppercase tracking-[0.2em]">Conflicted Entities</label>
+                <label className="text-[10px] font-bold text-dracula-red/40 uppercase tracking-[0.2em]">Conflicted Entities</label>
                 <div className="h-px flex-1 bg-dracula-red/10" />
                 <span className="text-[10px] font-bold text-dracula-red/60 font-mono tracking-tighter bg-dracula-red/10 px-2 py-0.5 rounded-full border border-dracula-red/10">
                   {stashConflict.files.length} ITEMS

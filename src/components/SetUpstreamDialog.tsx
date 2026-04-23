@@ -68,7 +68,7 @@ export function SetUpstreamDialog({ onClose, onSuccess }: SetUpstreamDialogProps
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[420px] flex flex-col overflow-hidden"
+          className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[420px] flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}

@@ -122,7 +122,7 @@ export function MergeBanner() {
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-3">
               <span className={cn(
-                "text-[12px] font-black tracking-widest uppercase",
+                "text-[12px] font-bold tracking-widest uppercase",
                 config.color === 'dracula-cyan' ? "text-dracula-cyan/60" : 
                 config.color === 'dracula-purple' ? "text-dracula-purple/60" :
                 "text-dracula-orange/60"

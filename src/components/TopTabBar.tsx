@@ -6,7 +6,7 @@ export function TopTabBar() {
   const { repos, activeTabId } = useAppStore();
 
   return (
-    <div className="h-[36px] w-full bg-background border-b border-border/30 flex items-center px-2 shrink-0 select-none overflow-x-auto custom-scrollbar no-scrollbar-buttons">
+    <div className="h-[36px] w-full bg-panel-background border-b border-border/30 flex items-center px-2 shrink-0 select-none overflow-x-auto custom-scrollbar no-scrollbar-buttons">
       
       {/* Home Tab */}
       <div 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { 
@@ -26,7 +26,7 @@ export function TopToolbar() {
   const { 
     activeRepoPath, isLoadingRepo, repoStatus, showCreateStash, 
     isLoadingPull, pullStrategy, setPullStrategy, isLoadingPush, 
-    lastCommitWasAmend, activeBranch, setActiveTabId
+    lastCommitWasAmend, activeBranch, setActiveTabId, layoutDensity
   } = useAppStore();
   
   const [fetching, setFetching] = useState(false);
@@ -67,7 +67,7 @@ export function TopToolbar() {
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="h-[var(--toolbar-height)] w-full bg-background/60 backdrop-blur-3xl border-b border-border/40 flex items-center px-6 shrink-0 justify-between select-none shadow-[0_1px_10px_rgba(0,0,0,0.1)] z-50 overflow-visible"
+      className="h-[var(--toolbar-height)] w-full bg-panel-background/80 backdrop-blur-3xl border-b border-border/40 flex items-center px-6 shrink-0 justify-between select-none shadow-[0_1px_10px_rgba(0,0,0,0.1)] z-50 overflow-visible"
     >
       
       {/* Left: Repo Selector & Navigation */}
@@ -77,7 +77,7 @@ export function TopToolbar() {
         <div className="flex items-center gap-1">
           <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 transition-colors gap-1.5 px-2.5 py-0.5">
             <GitBranch size={10} className="opacity-70" />
-            <span className="font-mono text-[11px] font-black">{activeBranch || 'No Branch'}</span>
+            <span className="font-mono text-[11px] font-bold">{activeBranch || 'No Branch'}</span>
           </Badge>
           {repoStatus && (repoStatus.ahead > 0 || repoStatus.behind > 0) && (
             <div className="flex items-center gap-1 ml-1 scale-90 origin-left">
@@ -90,19 +90,25 @@ export function TopToolbar() {
 
       {/* Middle: Git Actions Grouped */}
       <div className="flex-[2] flex items-center justify-center">
-        <div className="flex items-center gap-1 p-1 bg-secondary/20 backdrop-blur-md rounded-2xl border border-border/30 shadow-inner">
+        <div 
+          className={cn(
+            "flex items-center gap-1 p-0.5 rounded-2xl border border-border/40 shadow-[0_2px_10px_rgba(0,0,0,0.2)] backdrop-blur-xl transition-all",
+            layoutDensity === 'compact' ? "h-9" : "h-11"
+          )}
+          style={{ backgroundColor: 'var(--toolbar-group-background)' }}
+        >
           
           {/* History Group */}
           <div className="flex items-center">
             <ToolbarAction 
-              icon={<Undo size={14} />} 
+              icon={<Undo size={16} />} 
               label="Undo" 
               onClick={undoLastCommit} 
               tooltip="Undo last commit (Soft Reset)"
               className="text-dracula-orange hover:bg-dracula-orange/10"
             />
             <ToolbarAction 
-              icon={<Redo size={14} />} 
+              icon={<Redo size={16} />} 
               label="Redo" 
               disabled 
               tooltip="Redo operation (Coming soon)"
@@ -114,7 +120,7 @@ export function TopToolbar() {
           {/* Sync Group */}
           <div className="flex items-center">
             <ToolbarAction 
-              icon={<RotateCw size={14} />} 
+              icon={<RotateCw size={16} />} 
               label="Fetch" 
               onClick={handleFetch} 
               loading={fetching}
@@ -124,7 +130,7 @@ export function TopToolbar() {
             
             <div className="relative flex items-center" ref={pullDropdownRef}>
               <ToolbarAction 
-                icon={<CloudDownload size={14} />} 
+                icon={<CloudDownload size={16} />} 
                 label="Pull" 
                 onClick={() => handlePull()} 
                 loading={isLoadingPull}
@@ -135,7 +141,8 @@ export function TopToolbar() {
               <button 
                 onClick={() => setShowPullDropdown(!showPullDropdown)}
                 className={cn(
-                  "h-10 px-1 hover:bg-dracula-green/10 rounded-r-xl transition-all duration-200 border-l border-dracula-green/10 group",
+                  "px-1 hover:bg-dracula-green/10 rounded-r-xl transition-all duration-200 border-l border-dracula-green/10 group",
+                  layoutDensity === 'compact' ? "h-7" : "h-9",
                   showPullDropdown && "bg-dracula-green/10"
                 )}
               >
@@ -147,9 +154,9 @@ export function TopToolbar() {
                   <DropdownMenu 
                     title="Pull Strategy"
                     items={[
-                      { id: 'fast_forward_only', label: 'Fast-Forward Only', desc: 'Fails if diverged', active: pullStrategy === 'fast_forward_only', icon: <Zap size={14} /> },
-                      { id: 'fast_forward_or_merge', label: 'Merge (Default)', desc: 'Creates merge commit if needed', active: pullStrategy === 'fast_forward_or_merge', icon: <Layers size={14} /> },
-                      { id: 'rebase', label: 'Rebase', desc: 'Rebases local on remote', active: pullStrategy === 'rebase', icon: <History size={14} /> },
+                      { id: 'fast_forward_only', label: 'Fast-Forward Only', desc: 'Fails if diverged', active: pullStrategy === 'fast_forward_only', icon: <Zap size={16} /> },
+                      { id: 'fast_forward_or_merge', label: 'Merge (Default)', desc: 'Creates merge commit if needed', active: pullStrategy === 'fast_forward_or_merge', icon: <Layers size={16} /> },
+                      { id: 'rebase', label: 'Rebase', desc: 'Rebases local on remote', active: pullStrategy === 'rebase', icon: <History size={16} /> },
                     ]}
                     onSelect={(id) => handlePull(id)}
                   />
@@ -159,7 +166,7 @@ export function TopToolbar() {
 
             <div className="relative flex items-center" ref={pushDropdownRef}>
               <ToolbarAction 
-                icon={<CloudUpload size={14} className={lastCommitWasAmend ? "animate-bounce" : ""} />} 
+                icon={<CloudUpload size={16} className={lastCommitWasAmend ? "animate-bounce" : ""} />} 
                 label={lastCommitWasAmend ? "Force" : "Push"} 
                 onClick={() => pushCurrentBranch(activeRepoPath!, 'normal')} 
                 loading={isLoadingPush}
@@ -170,7 +177,8 @@ export function TopToolbar() {
               <button 
                 onClick={() => setShowPushDropdown(!showPushDropdown)}
                 className={cn(
-                  "h-10 px-1 transition-all duration-200 border-l rounded-r-xl group",
+                  "px-1 transition-all duration-200 border-l rounded-r-xl group",
+                  layoutDensity === 'compact' ? "h-7" : "h-9",
                   lastCommitWasAmend ? "hover:bg-destructive/10 border-destructive/10" : "hover:bg-primary/10 border-primary/10",
                   showPushDropdown && (lastCommitWasAmend ? "bg-destructive/10" : "bg-primary/10")
                 )}
@@ -183,8 +191,8 @@ export function TopToolbar() {
                   <DropdownMenu 
                     title="Push Mode"
                     items={[
-                      { id: 'normal', label: 'Normal Push', desc: 'Standard fast-forward', icon: <CloudUpload size={14} /> },
-                      { id: 'force_with_lease', label: 'Force with Lease', desc: 'Secure history overwrite', color: 'text-destructive', icon: <Zap size={14} /> },
+                      { id: 'normal', label: 'Normal Push', desc: 'Standard fast-forward', icon: <CloudUpload size={16} /> },
+                      { id: 'force_with_lease', label: 'Force with Lease', desc: 'Secure history overwrite', color: 'text-destructive', icon: <Zap size={16} /> },
                     ]}
                     onSelect={(id) => {
                       pushCurrentBranch(activeRepoPath!, id as any);
@@ -201,21 +209,21 @@ export function TopToolbar() {
           {/* Workflow Group */}
           <div className="flex items-center">
             <ToolbarAction 
-              icon={<GitBranch size={14} />} 
+              icon={<GitBranch size={16} />} 
               label="Branch" 
               onClick={() => setShowCreateBranch(true)} 
               tooltip="Create new branch"
               className="text-primary hover:bg-primary/10"
             />
             <ToolbarAction 
-              icon={<Archive size={14} />} 
+              icon={<Archive size={16} />} 
               label="Stash" 
               onClick={() => useAppStore.setState({ showCreateStash: true })} 
               tooltip="Stash local changes"
               className="text-dracula-orange hover:bg-dracula-orange/10"
             />
             <ToolbarAction 
-              icon={<Navigation size={14} />} 
+              icon={<Navigation size={16} />} 
               label="Pop" 
               onClick={() => popStash(0)} 
               tooltip="Apply and drop latest stash"
@@ -228,33 +236,33 @@ export function TopToolbar() {
       {/* Right: Meta Actions */}
       <div className="flex-1 flex items-center justify-end gap-2">
         <div className="flex items-center gap-1 bg-secondary/10 p-1 rounded-xl border border-border/20">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95" onClick={() => toast.info("Search coming soon")}>
-            <Search size={16} />
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98" onClick={() => toast.info("Search coming soon")}>
+            <Search size={18} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className={cn("h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95", isLoadingRepo && "text-primary")}
+            className={cn("h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98", isLoadingRepo && "text-primary")}
             onClick={handleRefresh}
           >
-            <RotateCw size={16} className={cn(isLoadingRepo && "animate-spin")} />
+            <RotateCw size={18} className={cn(isLoadingRepo && "animate-spin")} />
           </Button>
           <Separator orientation="vertical" className="h-4 mx-0.5 opacity-20" />
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98"
             onClick={openTerminal}
           >
-            <Terminal size={16} />
+            <Terminal size={18} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setActiveTabId('settings')}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-95"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98"
           >
-            <Settings size={16} />
+            <Settings size={18} />
           </Button>
         </div>
       </div>
@@ -284,6 +292,8 @@ function ToolbarAction({
   tooltip?: string;
   className?: string;
 }) {
+  const layoutDensity = useAppStore(s => s.layoutDensity);
+
   return (
     <Button
       variant="ghost"
@@ -291,30 +301,34 @@ function ToolbarAction({
       disabled={disabled || loading}
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-0.5 h-10 py-1.5 px-3 relative min-w-[56px] rounded-xl transition-all duration-200 group active:scale-95",
+        "flex flex-col gap-0.5 py-1 px-3 relative min-w-[56px] rounded-xl transition-all duration-200 group active:scale-98",
+        layoutDensity === 'compact' ? "h-7 min-w-[48px]" : "h-9",
         className
       )}
       title={tooltip}
     >
       <motion.div 
-        whileHover={{ scale: 1.15, y: -1 }}
+        whileHover={{ scale: 1.1, y: -1 }}
         className="relative"
       >
-        {loading ? <Loader2 size={15} className="animate-spin" /> : icon}
+        {loading ? <Loader2 size={layoutDensity === 'compact' ? 12 : 14} className="animate-spin" /> : React.cloneElement(icon as React.ReactElement, { size: layoutDensity === 'compact' ? 12 : 14 })}
         <AnimatePresence>
           {badge !== undefined && badge > 0 && (
             <motion.span 
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
-              className="absolute -top-1.5 -right-2.5 bg-primary text-primary-foreground text-[8px] font-black px-1 rounded-full border border-background shadow-sm"
+              className="absolute -top-1.5 -right-2 bg-primary text-primary-foreground text-[9px] font-bold px-1 rounded-full border border-background shadow-sm"
             >
               {badge}
             </motion.span>
           )}
         </AnimatePresence>
       </motion.div>
-      <span className="text-[9px] uppercase font-black tracking-tighter opacity-50 group-hover:opacity-100 transition-opacity whitespace-nowrap">{label}</span>
+      <span className={cn(
+        "uppercase font-bold tracking-wider opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap",
+        layoutDensity === 'compact' ? "text-[8px]" : "text-[10px]"
+      )}>{label}</span>
     </Button>
   );
 }
@@ -329,9 +343,9 @@ function DropdownMenu({ title, items, onSelect }: {
       initial={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
       exit={{ opacity: 0, y: 10, scale: 0.9, filter: "blur(10px)" }}
-      className="absolute top-[calc(100%+8px)] left-0 w-64 bg-background/90 backdrop-blur-2xl border border-border shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-[100] p-2 rounded-2xl overflow-hidden"
+      className="absolute top-[calc(100%+8px)] left-0 w-64 bg-background backdrop-blur-2xl border border-border shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-[100] p-2 rounded-2xl overflow-hidden"
     >
-      <div className="px-3 py-2 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] opacity-40 mb-1">
+      <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-40 mb-1">
         {title}
       </div>
       <div className="space-y-1">
@@ -409,12 +423,12 @@ function RepoSelector() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 px-3 py-1.5 hover:bg-secondary/40 rounded-xl transition-all duration-300 group border border-transparent hover:border-border/30 active:scale-95"
       >
-        <div className="w-7 h-7 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center text-primary-foreground font-black text-[12px] shadow-[0_4px_12px_rgba(189,147,249,0.3)] group-hover:shadow-[0_4px_20px_rgba(189,147,249,0.5)] transition-all group-hover:-translate-y-0.5">
+        <div className="w-7 h-7 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center text-primary-foreground font-bold text-[12px] shadow-[0_4px_12px_rgba(189,147,249,0.3)] group-hover:shadow-[0_4px_20px_rgba(189,147,249,0.5)] transition-all group-hover:-translate-y-0.5">
           {repoInfo?.name[0]?.toUpperCase() || 'G'}
         </div>
         <div className="flex flex-col text-left min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[14px] font-black tracking-tight text-foreground/90 truncate max-w-[120px]">
+            <span className="text-[14px] font-bold tracking-tight text-foreground/90 truncate max-w-[120px]">
               {repoInfo?.name || 'GitKit'}
             </span>
             <ChevronDown size={14} className={cn("text-muted-foreground/40 transition-transform duration-300", isOpen && "rotate-180")} />
@@ -428,9 +442,9 @@ function RepoSelector() {
             initial={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: 10, scale: 0.95, filter: "blur(10px)" }}
-            className="absolute top-[calc(100%+12px)] left-0 w-[320px] bg-background/90 backdrop-blur-3xl border border-border/50 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-[100] overflow-hidden flex flex-col"
+            className="absolute top-[calc(100%+12px)] left-0 w-[320px] bg-background backdrop-blur-3xl border border-border/50 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-[100] overflow-hidden flex flex-col"
           >
-            <div className="px-4 py-3 border-b border-border/30 bg-secondary/20 text-[10px] uppercase font-black text-muted-foreground/60 tracking-[0.2em] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-border/30 bg-secondary/20 text-[10px] uppercase font-bold text-muted-foreground/60 tracking-[0.2em] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <History size={12} /> RECENT REPOS
               </div>
@@ -466,13 +480,13 @@ function RepoSelector() {
                          <Layout size={14} />
                        </div>
                        <div className="flex flex-col min-w-0">
-                         <span className={cn("text-[14px] font-black truncate tracking-tight", activeRepoPath === repo.path ? 'text-primary' : 'text-foreground/80')}>
+                         <span className={cn("text-[14px] font-bold truncate tracking-tight", activeRepoPath === repo.path ? 'text-primary' : 'text-foreground/80')}>
                            {repo.name}
                          </span>
                          <span className="text-[10px] text-muted-foreground truncate opacity-40 font-mono" title={repo.path}>{repo.path}</span>
                        </div>
                        {activeRepoPath === repo.path && (
-                         <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-black tracking-widest uppercase">
+                         <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-bold tracking-widest uppercase">
                             Active
                          </div>
                        )}
@@ -485,7 +499,7 @@ function RepoSelector() {
             <div className="p-3 bg-secondary/10 border-t border-border/30">
               <button 
                 onClick={handlePickRepo}
-                className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-2xl bg-primary text-primary-foreground text-[13px] font-black shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all active:scale-95 group"
+                className="flex items-center justify-center gap-3 w-full px-4 py-3 rounded-2xl bg-primary text-primary-foreground text-[13px] font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all active:scale-95 group"
               >
                 <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
                 Open Repository

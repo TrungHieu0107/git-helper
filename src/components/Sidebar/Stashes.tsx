@@ -25,20 +25,20 @@ export function StashEntryItem({ stash, filter, onContextMenu }: StashEntryItemP
     <motion.div 
       layout
       onContextMenu={(e) => onContextMenu(e, stash)}
-      className="flex flex-col p-2 bg-secondary/20 hover:bg-secondary/40 border border-border/50 rounded-lg cursor-pointer group transition-all relative mx-0.5"
+      className="flex flex-col p-3 bg-background/40 hover:bg-white/5 border border-border/40 rounded-xl cursor-pointer group transition-all relative mx-0.5"
       title={`stash@{${stash.stackIndex}}: ${stash.message}`}
     >
-       <div className="flex items-center gap-2 mb-1.5">
-          <div className="p-1 rounded bg-primary/10 text-primary">
-            <Layers size={12} className="shrink-0" />
+       <div className="flex items-center gap-2.5 mb-2">
+          <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+            <Layers size={14} className="shrink-0" />
           </div>
-          <span className="text-[12.5px] text-foreground font-medium truncate pr-1 tracking-tight">
+          <span className="text-[13.5px] text-foreground font-medium truncate pr-1 tracking-tight">
              <Highlight text={stash.message || `stash@{${stash.stackIndex}}`} query={filter} />
           </span>
        </div>
 
-       <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono opacity-60">
-          <Badge variant="glass" className="h-4 px-1 text-[9px] border-none">stash@&#123;{stash.stackIndex}&#125;</Badge>
+       <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono opacity-70">
+          <Badge variant="glass" className="h-5 px-1.5 text-[10px] border-none">stash@&#123;{stash.stackIndex}&#125;</Badge>
           <span>{timeStr}</span>
        </div>
 
@@ -120,7 +120,7 @@ export function StashContextMenu({ stash, position, onClose }: { stash: StashEnt
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
       transition={{ duration: 0.1, ease: "easeOut" }}
-      className="bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-[9999] overflow-hidden py-1.5 min-w-[180px]"
+      className="bg-background backdrop-blur-xl border border-border rounded-xl shadow-2xl z-[9999] overflow-hidden py-1.5 min-w-[180px]"
       style={{
         position: 'fixed',
         left: menuPos.x,

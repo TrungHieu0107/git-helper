@@ -277,7 +277,7 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-          className="relative bg-background/80 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[480px] flex flex-col overflow-hidden"
+          className="relative bg-background backdrop-blur-2xl border border-border/50 rounded-2xl shadow-2xl w-full max-w-[480px] flex flex-col overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
@@ -449,7 +449,7 @@ export function CreateBranchDialog({ onClose, defaultSource, defaultSourceLabel 
                               initial={{ opacity: 0, y: 10, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                              className="absolute top-[calc(100%+8px)] left-0 right-0 z-[100] bg-background/95 backdrop-blur-2xl border border-border shadow-2xl rounded-2xl overflow-hidden"
+                              className="absolute top-[calc(100%+8px)] left-0 right-0 z-[100] bg-background backdrop-blur-2xl border border-border shadow-2xl rounded-2xl overflow-hidden"
                             >
                               <div className="p-3 border-b border-border/50 bg-secondary/20">
                                 <div className="relative">

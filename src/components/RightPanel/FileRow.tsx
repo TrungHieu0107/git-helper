@@ -14,13 +14,13 @@ interface FileRowProps {
 }
 
 export const StatusIcon = ({ status }: { status: string }) => {
-  if (status === 'untracked') return <Plus size={14} className="text-dracula-green shrink-0" />;
-  if (status === 'modified') return <Pencil size={12} className="text-dracula-orange shrink-0" />;
-  if (status === 'deleted') return <Minus size={14} className="text-dracula-red shrink-0" />;
-  if (status === 'added') return <Plus size={14} className="text-dracula-green shrink-0" />;
-  if (status === 'renamed') return <ArrowRight size={12} className="text-dracula-cyan shrink-0" />;
-  if (status === 'conflicted') return <AlertTriangle size={12} className="text-dracula-red shrink-0" />;
-  return <Pencil size={12} className="text-dracula-orange shrink-0" />;
+  if (status === 'untracked') return <Plus size={16} className="text-dracula-green shrink-0" />;
+  if (status === 'modified') return <Pencil size={14} className="text-dracula-orange shrink-0" />;
+  if (status === 'deleted') return <Minus size={16} className="text-dracula-red shrink-0" />;
+  if (status === 'added') return <Plus size={16} className="text-dracula-green shrink-0" />;
+  if (status === 'renamed') return <ArrowRight size={14} className="text-dracula-cyan shrink-0" />;
+  if (status === 'conflicted') return <AlertTriangle size={14} className="text-dracula-red shrink-0" />;
+  return <Pencil size={14} className="text-dracula-orange shrink-0" />;
 };
 
 export const HighlightText = ({ text, query }: { text: string; query: string }) => {
@@ -69,11 +69,11 @@ export const FileRow: React.FC<FileRowProps> = ({
     <div 
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className="flex items-center justify-between h-[26px] px-2 hover:bg-white/5 rounded-md cursor-pointer group transition-all duration-150 mx-1"
+      className="flex items-center justify-between h-[var(--row-height)] px-2 hover:bg-white/5 rounded-md cursor-pointer group mx-1"
     >
       <div className="flex items-center gap-2 overflow-hidden min-w-0">
         <StatusIcon status={status} />
-        <div className="flex items-center text-[12px] font-mono min-w-0 overflow-hidden" title={name}>
+        <div className="flex items-center text-[13px] font-mono min-w-0 overflow-hidden" title={name}>
           {displayDirPath && (
             <span className="text-muted-foreground shrink-0 opacity-60">
               <HighlightText text={displayDirPath} query={highlight} />

@@ -14,15 +14,15 @@ export const RightPanelHeader: React.FC<RightPanelHeaderProps> = ({
   hasChanges
 }) => {
   return (
-    <header className="h-10 border-b border-border/30 flex items-center px-4 justify-between bg-background shrink-0">
-      <div className="flex items-center gap-3">
+    <header className="h-[var(--toolbar-height)] border-b border-border/40 flex items-center px-3 justify-between bg-panel-background shrink-0">
+      <div className="flex items-center gap-2">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onCollapse} 
           className="h-7 w-7 text-muted-foreground/60 hover:text-foreground"
         >
-          <ChevronsRight size={16} />
+          <ChevronsRight size={18} />
         </Button>
         <span className="section-header-text">Changes</span>
       </div>
@@ -34,7 +34,7 @@ export const RightPanelHeader: React.FC<RightPanelHeaderProps> = ({
           className="h-7 w-7 text-dracula-red hover:text-dracula-red/80"
           title="Discard All"
         >
-          <Trash size={14} />
+          <Trash size={16} />
         </Button>
       )}
     </header>

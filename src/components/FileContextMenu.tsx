@@ -186,7 +186,7 @@ export function FileContextMenu({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -10 }}
         transition={{ duration: 0.1, ease: 'easeOut' }}
-        className="fixed z-[9999] bg-background/80 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl py-1.5 min-w-[220px] overflow-hidden"
+        className="fixed z-[9999] bg-background backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl py-1.5 min-w-[220px] overflow-hidden"
         style={{ left: adjustedPos.x, top: adjustedPos.y }}
       >
         <div className="px-3.5 py-2 border-b border-border/30 mb-1.5 bg-secondary/20">

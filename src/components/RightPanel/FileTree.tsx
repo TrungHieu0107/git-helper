@@ -35,20 +35,20 @@ export const FileTree: React.FC<FileTreeProps> = ({
           return (
             <div key={child.fullPath} className="flex flex-col">
               <div 
-                className="flex items-center justify-between h-[26px] hover:bg-white/5 rounded-md cursor-pointer group mx-1"
+                className="flex items-center justify-between h-[var(--row-height)] hover:bg-white/5 rounded-md cursor-pointer group mx-1"
                 style={{ paddingLeft: `${depth * 12 + 8}px` }}
                 onClick={() => child.isFolder ? toggleFolder(child.fullPath) : onFileClick(child.fullPath)}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
                   {child.isFolder ? (
                     <>
-                      <ChevronDown size={14} className={`text-[#6e7681] transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
-                      <Folder size={14} className="text-blue-500 opacity-70 shrink-0" />
+                      <ChevronDown size={14} className={`text-[#6e7681] ${isExpanded ? '' : '-rotate-90'}`} />
+                      <Folder size={16} className="text-blue-500 opacity-70 shrink-0" />
                     </>
                   ) : (
                     <StatusIcon status={child.status!} />
                   )}
-                  <span className={`text-[12px] truncate font-mono text-[#e6edf3]`}>
+                  <span className={`text-[13px] truncate font-mono text-[#e6edf3]`}>
                     {child.name}
                   </span>
                 </div>

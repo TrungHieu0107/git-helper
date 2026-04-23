@@ -6,7 +6,6 @@ import { selectCommitDetail, safeSwitchBranch } from '../../lib/repo';
 import { Skeleton } from '../ui/Loading';
 import { cn } from '../../lib/utils';
 
-const ROW_H = 32;
 
 // Dracula Theme colors for lanes
 const COLORS = [
@@ -22,11 +21,11 @@ const COLORS = [
 
 const color = (i: number) => COLORS[i % COLORS.length];
 
-export const SkeletonRow = React.memo(({ virtualRow, cw, gw }: { virtualRow: any, cw: any, gw: number }) => {
+export const SkeletonRow = React.memo(({ virtualRow, rowH, cw, gw }: { virtualRow: any, rowH: number, cw: any, gw: number }) => {
   return (
     <div 
       className="absolute left-0 w-full flex items-center px-2 pointer-events-none opacity-20"
-      style={{ height: ROW_H, transform: `translateY(${virtualRow.start}px)` }}
+      style={{ height: rowH, transform: `translateY(${virtualRow.start}px)` }}
     >
       <div className="shrink-0" style={{ width: cw.label }}>
         <Skeleton width="60%" height={16} borderRadius="12px" />
@@ -112,7 +111,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
           }
         }}
         className={cn(
-          "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap min-w-0 cursor-pointer select-none border transition-all shadow-sm",
+          "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap min-w-0 cursor-pointer select-none border transition-all shadow-sm",
           (isHead || isActiveBranch) 
             ? "bg-primary/10 text-primary border-primary/20 shadow-[0_0_10px_rgba(var(--p),0.1)] ring-1 ring-primary/10"
             : isTag
@@ -123,12 +122,12 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
         )}
         style={(!isHead && !isActiveBranch && !isTag && !isRemoteOnly) ? { borderColor: `${clr}40`, color: clr } : {}}
       >
-        {isTag ? <Tag size={10} className="shrink-0" /> : isHead ? <GitCommit size={10} className="shrink-0" /> : null}
+        {isTag ? <Tag size={12} className="shrink-0" /> : isHead ? <GitCommit size={12} className="shrink-0" /> : null}
         <span className="truncate">{name}</span>
         {!isHead && !isTag && (
           <div className="flex items-center gap-1 opacity-50 shrink-0">
-            {info.isLocal && <Monitor size={10} />}
-            {info.isRemote && <Cloud size={10} />}
+            {info.isLocal && <Monitor size={12} />}
+            {info.isRemote && <Cloud size={12} />}
           </div>
         )}
       </motion.span>
@@ -148,9 +147,9 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       {renderBadge(primary as any)}
 
       {others.length > 0 && (
-        <div className="bg-secondary/40 text-muted-foreground border border-border/40 px-1.5 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 cursor-default hover:text-foreground hover:border-border transition-all h-[18px]">
+        <div className="bg-secondary/40 text-muted-foreground border border-border/40 px-1.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 cursor-default hover:text-foreground hover:border-border transition-all h-[20px]">
           +{others.length}
-          <ChevronDown size={10} className={cn("transition-transform duration-300", open && "rotate-180")} />
+          <ChevronDown size={12} className={cn("transition-transform duration-300", open && "rotate-180")} />
         </div>
       )}
 
@@ -163,7 +162,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="absolute top-full left-0 pt-2 z-[50] w-max before:content-[''] before:absolute before:-top-4 before:inset-x-0 before:h-4"
           >
-            <div className="bg-background/80 backdrop-blur-xl border border-border/40 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] p-1.5 flex flex-col gap-1 w-full min-w-[120px]">
+            <div className="bg-background backdrop-blur-xl border border-border/40 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] p-1.5 flex flex-col gap-1 w-full min-w-[120px]">
               {others.map((entry: any) => renderBadge(entry, true))}
             </div>
           </motion.div>
@@ -178,6 +177,7 @@ export interface CommitRowProps {
   n: CommitNode;
   row: number;
   virtualRow: any;
+  rowH: number;
   hov: number | null;
   sel: number | null;
   activeOids: Set<string>;
@@ -189,7 +189,7 @@ export interface CommitRowProps {
 }
 
 export const CommitRow = React.memo(({
-  n, row, virtualRow, hov, sel, activeOids, cw, gw, setHov, setSel, handleContextMenu
+  n, row, virtualRow, rowH, hov, sel, activeOids, cw, gw, setHov, setSel, handleContextMenu
 }: CommitRowProps) => {
   const [copied, setCopied] = useState(false);
   const isActive = activeOids.has(n.oid);
@@ -212,7 +212,7 @@ export const CommitRow = React.memo(({
         hov === row ? "z-[60] border-transparent" : sel === row ? "z-[50] border-primary" : "z-[20] border-transparent"
       )}
       style={{ 
-        height: ROW_H,
+        height: rowH,
         transform: `translateY(${virtualRow.start}px)`
       }}
       onClick={() => {
@@ -230,13 +230,13 @@ export const CommitRow = React.memo(({
       <div className="flex-1 flex items-center pl-6 pr-4 min-w-0">
         {n.node_type === 'stash' ? (
           <div className="flex items-center gap-2.5">
-             <span className="bg-dracula-orange/10 text-dracula-orange border border-dracula-orange/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter shrink-0 shadow-sm">STASH</span>
+             <span className="bg-dracula-orange/10 text-dracula-orange border border-dracula-orange/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter shrink-0 shadow-sm">STASH</span>
              <span className="truncate text-dracula-orange/80 text-[12px] italic font-medium">{n.message || 'Stashed changes'}</span>
           </div>
         ) : (
           <span className={cn(
-            "truncate text-[12px] transition-colors duration-200",
-            isActive ? "text-foreground font-medium" : "text-foreground/70 font-normal group-hover/row:text-foreground"
+            "truncate text-[13px] transition-colors duration-200",
+            isActive ? "text-foreground" : "text-foreground/70 group-hover/row:text-foreground"
           )}>
             {n.message}
           </span>
@@ -247,13 +247,13 @@ export const CommitRow = React.memo(({
         style={{ width: cw.hash }}
         onClick={handleCopy}
       >
-        <span className="font-mono text-[11px] text-muted-foreground/80 group-hover/hash:text-primary transition-colors">{n.short_oid}</span>
+        <span className="font-mono text-[12px] text-muted-foreground/80 group-hover/hash:text-primary transition-colors">{n.short_oid}</span>
         <button className="opacity-0 group-hover/hash:opacity-100 p-1 hover:bg-primary/10 rounded-lg transition-all duration-200">
-          {copied ? <Check size={12} className="text-dracula-green" /> : <Copy size={12} className="text-muted-foreground/40" />}
+          {copied ? <Check size={14} className="text-dracula-green" /> : <Copy size={14} className="text-muted-foreground/40" />}
         </button>
       </div>
       <div className="pl-4 flex items-center pr-4" style={{ width: cw.author }}>
-         <span className="text-[11px] text-muted-foreground/80 truncate font-semibold group-hover/row:text-foreground transition-colors uppercase tracking-tight">{authorFirstName}</span>
+         <span className="text-[12px] text-muted-foreground/80 truncate font-semibold group-hover/row:text-foreground transition-colors tracking-tight">{authorFirstName}</span>
       </div>
     </div>
   );
@@ -262,6 +262,7 @@ export const CommitRow = React.memo(({
 // ── WipRow Component ─────────────────────────────────────────────────
 export interface WipRowProps {
   virtualRow: any;
+  rowH: number;
   hov: number | null;
   sel: number | null;
   cw: any;
@@ -274,7 +275,7 @@ export interface WipRowProps {
 }
 
 export const WipRow = React.memo(({
-  virtualRow, hov, sel, cw, gw, status, staged, unstaged, setHov, setSel
+  virtualRow, rowH, hov, sel, cw, gw, status, staged, unstaged, setHov, setSel
 }: WipRowProps) => {
   const stagedCount = status?.staged_count ?? staged.length;
   const unstagedCount = status?.unstaged_count ?? unstaged.length;
@@ -286,7 +287,7 @@ export const WipRow = React.memo(({
         "absolute left-0 w-full flex items-center cursor-pointer transition-all duration-200 border-l-4",
         hov === 0 ? "z-[60] border-transparent" : sel === 0 ? "z-[50] border-primary" : "z-[20] border-transparent"
       )}
-      style={{ height: ROW_H, transform: `translateY(${virtualRow.start}px)` }}
+      style={{ height: rowH, transform: `translateY(${virtualRow.start}px)` }}
       onClick={() => {
         setSel(0);
         useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false });
@@ -295,19 +296,19 @@ export const WipRow = React.memo(({
       onMouseLeave={() => setHov(null)}
     >
       <div className="pl-3 flex items-center" style={{ width: cw.label }}>
-        <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter">WIP</span>
+        <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider">WIP</span>
       </div>
       <div style={{ width: gw }} />
-      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0">
-        <div className="h-7 rounded-xl border border-primary/10 bg-primary/5 flex items-center px-3 gap-4 shadow-sm backdrop-blur-sm group/wip-pill hover:border-primary/20 transition-all">
-          <HardDrive size={12} className="text-primary/60 group-hover/wip-pill:scale-110 transition-transform" />
+      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full">
+        <div className="h-[calc(100%-6px)] rounded-xl border border-primary/10 bg-primary/5 flex items-center px-3 gap-4 shadow-sm backdrop-blur-sm group/wip-pill hover:border-primary/20 transition-all">
+          <HardDrive size={14} className="text-primary/60 group-hover/wip-pill:scale-110 transition-transform" />
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-dracula-green uppercase flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-dracula-green uppercase flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-dracula-green shadow-[0_0_8px_rgba(80,250,123,0.4)]" />
               {stagedCount} Staged
             </span>
-            <div className="w-px h-2.5 bg-border/40" />
-            <span className="text-[10px] font-black text-dracula-orange uppercase flex items-center gap-1.5">
+            <div className="w-px h-3 bg-border/40" />
+            <span className="text-[11px] font-bold text-dracula-orange uppercase flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-dracula-orange shadow-[0_0_8px_rgba(255,184,108,0.4)]" />
               {unstagedCount} Unstaged
             </span>
@@ -318,7 +319,7 @@ export const WipRow = React.memo(({
         <Clock size={12} className="text-muted-foreground/20" />
       </div>
       <div className="pl-4 pr-4 flex items-center" style={{ width: cw.author }}>
-        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Working Tree</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Working Tree</span>
       </div>
     </div>
   );

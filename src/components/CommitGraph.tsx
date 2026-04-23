@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 import { AlertCircle, Search } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────
-const ROW_H = 32;
+// ── Constants ────────────────────────────────────────────────────────
 const LANE_W = 20;
 const NODE_R = 9;
 const MERGE_DOT_R = 4;
@@ -33,7 +33,7 @@ const COLORS = [
 
 const color = (i: number) => COLORS[i % COLORS.length];
 const lx = (lane: number) => LANE_PAD + lane * LANE_W;
-const ly = (row: number) => row * ROW_H + ROW_H / 2;
+const ly = (row: number, rowH: number) => row * rowH + rowH / 2;
 
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
@@ -64,14 +64,14 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
   }
 }
 
-function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number, oidMap: Map<string, number>): Edge[] {
+function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number, oidMap: Map<string, number>, rowH: number): Edge[] {
   const out: Edge[] = [];
 
   const firstCommitIdx = commits.findIndex(c => c.node_type === 'commit');
   if (wip && firstCommitIdx !== -1 && minIdx <= 0) {
     const target = commits[firstCommitIdx];
     const targetRow = firstCommitIdx + off;
-    const x1 = lx(0), y1 = ly(0), x2 = lx(target.lane), y2 = ly(targetRow);
+    const x1 = lx(0), y1 = ly(0, rowH), x2 = lx(target.lane), y2 = ly(targetRow, rowH);
     out.push({ 
       path: roundedPath(x1, y1, x2, y2, 'branch-off'), 
       colorIdx: target.color_idx, 
@@ -95,12 +95,12 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
       const targetIdx = oidMap.get(po);
       const e = c.edges[pi];
       const ci = e?.color_idx ?? c.color_idx;
-      const x1 = lx(c.lane), y1 = ly(row);
+      const x1 = lx(c.lane), y1 = ly(row, rowH);
       const type = pi === 0 ? 'branch-off' : 'merge';
 
       if (targetIdx === undefined) {
         const tl = e?.to_lane ?? c.lane;
-        const x2 = lx(tl), y2 = ly(row + 5);
+        const x2 = lx(tl), y2 = ly(row + 5, rowH);
         out.push({ 
           path: roundedPath(x1, y1, x2, y2, type), 
           colorIdx: ci, 
@@ -114,7 +114,7 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
 
       const pRow = targetIdx + off;
       if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
-        const x2 = lx(commits[targetIdx].lane), y2 = ly(pRow);
+        const x2 = lx(commits[targetIdx].lane), y2 = ly(pRow, rowH);
         out.push({ 
           path: roundedPath(x1, y1, x2, y2, type), 
           colorIdx: ci, 
@@ -129,7 +129,7 @@ function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: nu
   return out;
 }
 
-function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, maxIdx: number, oidMap: Map<string, number>): Edge[] {
+function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, maxIdx: number, oidMap: Map<string, number>, rowH: number): Edge[] {
   const out: Edge[] = [];
 
   const start = Math.max(0, minIdx - 20);
@@ -147,9 +147,9 @@ function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, max
     
     if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
       const x1 = lx(commits[baseIdx].lane); 
-      const y1 = ly(pRow);                 
+      const y1 = ly(pRow, rowH);                 
       const x2 = lx(c.lane);               
-      const y2 = ly(row);                  
+      const y2 = ly(row, rowH);                  
       const path = roundedPath(x1, y1, x2, y2, 'merge');
       out.push({ 
         path, 
@@ -174,6 +174,8 @@ export function CommitGraph() {
   const isLoadingMore = useAppStore(s => s.isLoadingMore);
   const hasMoreCommits = useAppStore(s => s.hasMoreCommits);
   const commitSearchInput = useAppStore(s => s.commitSearchInput);
+  const layoutDensity = useAppStore(s => s.layoutDensity);
+  const rowH = layoutDensity === 'compact' ? 28 : 36;
 
   const [debouncedSearch, setDebouncedSearch] = useState(commitSearchInput);
   
@@ -210,7 +212,7 @@ export function CommitGraph() {
   const virtualizer = useVirtualizer({
     count: totalRows,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_H,
+    estimateSize: () => rowH,
     overscan: 25,
   });
 
@@ -229,13 +231,13 @@ export function CommitGraph() {
 
   const edges = useMemo(() => {
     if (!filteredCommits) return [];
-    return buildEdges(filteredCommits, off, hasWip, minVis, maxVis, oidMap);
-  }, [filteredCommits, off, hasWip, minVis, maxVis, oidMap]);
+    return buildEdges(filteredCommits, off, hasWip, minVis, maxVis, oidMap, rowH);
+  }, [filteredCommits, off, hasWip, minVis, maxVis, oidMap, rowH]);
 
   const stashEdges = useMemo(() => {
     if (!filteredCommits) return [];
-    return buildStashEdges(filteredCommits, off, minVis, maxVis, oidMap);
-  }, [filteredCommits, off, minVis, maxVis, oidMap]);
+    return buildStashEdges(filteredCommits, off, minVis, maxVis, oidMap, rowH);
+  }, [filteredCommits, off, minVis, maxVis, oidMap, rowH]);
 
   const activeOids = useMemo(() => {
     const set = new Set<string>();
@@ -289,23 +291,23 @@ export function CommitGraph() {
       className="flex-1 flex flex-col bg-background h-full overflow-hidden text-sm selection:bg-primary/20"
     >
       {/* Header */}
-      <div className="h-9 flex items-center border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm px-1">
-        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60" style={{ width: cw.label }}>
+      <div className="h-[var(--toolbar-height)] flex items-center border-b border-border/40 bg-background backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm px-1">
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60" style={{ width: cw.label }}>
           Branches / Tags
         </div>
         <ResizeHandle onMouseDown={onMouseDown('label')} />
-        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60" style={{ width: gw }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60" style={{ width: gw }}>
           Graph
         </div>
-        <div className="flex-1 pl-6 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+        <div className="flex-1 pl-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
           Commit Message
         </div>
         <ResizeHandle onMouseDown={onMouseDown('hash')} />
-        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60" style={{ width: cw.hash }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60" style={{ width: cw.hash }}>
           Hash
         </div>
         <ResizeHandle onMouseDown={onMouseDown('author')} />
-        <div className="pl-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 pr-4" style={{ width: cw.author }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-4" style={{ width: cw.author }}>
           Author
         </div>
       </div>
@@ -327,7 +329,7 @@ export function CommitGraph() {
                 <AlertCircle size={14} className="text-dracula-orange" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] font-black text-dracula-orange/90 leading-tight">
+                <span className="text-[11px] font-bold text-dracula-orange/90 leading-tight">
                   SEARCHING {commitLog.length.toLocaleString()} COMMITS
                 </span>
                 <span className="text-[9px] font-medium text-dracula-orange/60">Performance may be impacted</span>
@@ -354,7 +356,7 @@ export function CommitGraph() {
                   "absolute left-0 w-full pointer-events-none transition-all duration-200 z-[5]",
                   isSel ? "bg-primary/10 border-y border-primary/10" : "bg-secondary/40"
                 )}
-                style={{ height: ROW_H, transform: `translateY(${virtualRow.start}px)` }}
+                style={{ height: rowH, transform: `translateY(${virtualRow.start}px)` }}
               />
             );
           })}
@@ -386,7 +388,7 @@ export function CommitGraph() {
 
             {/* WIP node */}
             {hasWip && (
-              <g transform={`translate(${lx(0)}, ${ly(0)})`}>
+              <g transform={`translate(${lx(0)}, ${ly(0, rowH)})`}>
                 <circle r={NODE_R} fill="#191a21" stroke="#bd93f9" strokeWidth={2} strokeDasharray="3 2" className="animate-pulse" />
                 <text textAnchor="middle" dominantBaseline="central" fill="#bd93f9" fontSize={10} fontWeight={900}>W</text>
               </g>
@@ -398,7 +400,7 @@ export function CommitGraph() {
               const n = row === 0 && hasWip ? null : filteredCommits[row - off];
               if (!n) return null;
 
-              const cx = lx(n.lane), cy = ly(row);
+              const cx = lx(n.lane), cy = ly(row, rowH);
               const c = color(n.color_idx);
               const isMerge = (n.parents?.length ?? 0) > 1;
               const r = isMerge ? MERGE_DOT_R : NODE_R;
@@ -423,7 +425,7 @@ export function CommitGraph() {
                   <circle r={r} fill={isActive ? c : "#21222c"} stroke={c} strokeWidth={isActive ? 3 : 2} className={cn(isActive && "shadow-[0_0_12px_rgba(255,255,255,0.2)]")} />
                   {!isActive && (
                     <text textAnchor="middle" dominantBaseline="central" fill={c} fontSize={10} fontWeight={900} opacity={0.9}>
-                      {(n.author?.[0] ?? '?').toUpperCase()}
+                      {(n.author?.[0] ?? '?')}
                     </text>
                   )}
                 </g>
@@ -442,6 +444,7 @@ export function CommitGraph() {
                 <WipRow 
                   key="WIP"
                   virtualRow={virtualRow}
+                  rowH={rowH}
                   hov={hov}
                   sel={sel}
                   cw={cw}
@@ -456,7 +459,7 @@ export function CommitGraph() {
             }
 
             if (!n) {
-              return <SkeletonRow key={`skeleton-${row}`} virtualRow={virtualRow} cw={cw} gw={gw} />;
+              return <SkeletonRow key={`skeleton-${row}`} virtualRow={virtualRow} rowH={rowH} cw={cw} gw={gw} />;
             }
 
             return (
@@ -465,6 +468,7 @@ export function CommitGraph() {
                 n={n}
                 row={row}
                 virtualRow={virtualRow}
+                rowH={rowH}
                 hov={hov}
                 sel={sel}
                 activeOids={activeOids}
@@ -480,7 +484,7 @@ export function CommitGraph() {
           {(!filteredCommits?.length && !isLoadingMore) && (
             <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-40">
               <Search size={40} className="text-muted-foreground/20" />
-              <span className="text-[14px] font-black uppercase tracking-widest text-muted-foreground/60">No commits matched</span>
+              <span className="text-[14px] font-bold uppercase tracking-widest text-muted-foreground/60">No commits matched</span>
             </div>
           )}
         </div>

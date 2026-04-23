@@ -61,7 +61,7 @@ export function ForceCheckoutAlert() {
               <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-3">
                   <span className={cn(
-                    "text-[12px] font-black tracking-widest uppercase",
+                    "text-[12px] font-bold tracking-widest uppercase",
                     phase === 'confirm_reset' ? "text-dracula-red/60" : 
                     phase === 'confirm_stash' ? "text-dracula-orange/60" : 
                     "text-dracula-cyan/60"

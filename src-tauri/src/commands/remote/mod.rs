@@ -36,7 +36,13 @@ pub enum PushResult {
 
 fn setup_callbacks() -> RemoteCallbacks<'static> {
     let mut cb = RemoteCallbacks::new();
-    cb.credentials(|url, username_from_url, allowed_types| {
+    let mut retries = 0;
+    cb.credentials(move |url, username_from_url, allowed_types| {
+        retries += 1;
+        if retries > 3 {
+            return Err(git2::Error::from_str("Authentication failed, too many retries"));
+        }
+        
         if allowed_types.contains(git2::CredentialType::SSH_KEY) {
             let user = username_from_url.unwrap_or("git");
             Cred::ssh_key_from_agent(user)

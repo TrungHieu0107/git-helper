@@ -53,6 +53,10 @@ export interface AppStateData {
   include_untracked: boolean;
   pull_strategy: 'fast_forward_only' | 'fast_forward_or_merge' | 'rebase';
   font_size: number;
+  background_color?: string;
+  border_color?: string;
+  panel_background_color?: string;
+  layout_density?: 'compact' | 'normal';
 }
 
 export type PullResult = 

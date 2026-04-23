@@ -78,7 +78,7 @@ export function WelcomeScreen() {
               <GitBranch size={36} className="text-primary-foreground" />
             </motion.div>
             <div className="flex-1">
-              <CardTitle className="text-3xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
+              <CardTitle className="text-3xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
                 GitKit <span className="text-primary">Pro</span>
               </CardTitle>
               <CardDescription className="text-base font-medium opacity-60">
@@ -119,7 +119,7 @@ export function WelcomeScreen() {
                 className="flex flex-col gap-4"
               >
                 <div className="flex items-center justify-between px-2">
-                  <h2 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                  <h2 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                     <Monitor size={12} />
                     Active Sessions
                   </h2>
@@ -148,7 +148,7 @@ export function WelcomeScreen() {
                               <X size={12} />
                             </Button>
                           </div>
-                          <span className="text-[13px] font-black truncate pr-6">{repo.name}</span>
+                          <span className="text-[13px] font-bold truncate pr-6">{repo.name}</span>
                           <span className="text-[10px] text-muted-foreground truncate opacity-60 font-mono tracking-tight">{repo.path}</span>
                         </CardContent>
                       </Card>
@@ -162,7 +162,7 @@ export function WelcomeScreen() {
           {/* Recent List */}
           <section className="flex flex-col gap-4">
              <div className="px-2">
-               <h2 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+               <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                  <Clock size={12} />
                  Recent History
                </h2>

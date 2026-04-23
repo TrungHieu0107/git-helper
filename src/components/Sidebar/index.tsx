@@ -198,7 +198,7 @@ export function Sidebar() {
   return (
     <aside 
       className={cn(
-        "bg-secondary/95 backdrop-blur-3xl flex flex-col h-full border-r border-border/40 shrink-0 text-muted-foreground select-none relative transition-all duration-300 ease-out-expo group/sidebar shadow-[4px_0_24px_rgba(0,0,0,0.1)]",
+        "bg-panel-background flex flex-col h-full border-r border-border/40 shrink-0 text-muted-foreground select-none relative transition-all group/sidebar shadow-[4px_0_24px_rgba(0,0,0,0.1)]",
         isCollapsed && "w-12 items-center"
       )}
       style={{ width: isCollapsed ? '48px' : `${sidebarWidth}px` }}
@@ -224,7 +224,7 @@ export function Sidebar() {
           {/* Sidebar Header */}
           <div className="p-3 pb-2 flex flex-col gap-3">
             <div className="flex justify-between items-center pl-1">
-               <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Navigation</span>
+               <span className="text-[11px] font-semibold uppercase tracking-widest opacity-40">Navigation</span>
                <Button 
                  variant="ghost" 
                  size="icon" 
@@ -235,17 +235,17 @@ export function Sidebar() {
                </Button>
             </div>
         
-            <div className="relative group">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+            <div className="relative group mt-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
               <Input
                 placeholder="Filter everything..."
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                className="pl-8 h-8 bg-background/50 border-transparent focus-visible:ring-primary/30 text-[13px] rounded-xl placeholder:text-muted-foreground/30"
+                className="pl-9 h-8 bg-black/10 border-transparent focus-visible:ring-primary/30 text-[13px] rounded-lg placeholder:text-muted-foreground/30"
               />
               {filter && (
-                <button onClick={() => setFilter('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <X size={12} />
+                <button onClick={() => setFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -265,7 +265,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/20 rounded-2xl border border-border/20 py-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/30 rounded-lg border border-border/40 py-1"
                     >
                       {filteredLocalTree.length === 0 ? (
                         <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No local branches</div>
@@ -292,7 +292,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/20 rounded-2xl border border-border/20 py-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/30 rounded-lg border border-border/40 py-1"
                     >
                      {filteredRemoteTree.size === 0 ? (
                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No remote repositories</div>
@@ -323,7 +323,7 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/20 rounded-2xl border border-border/20 py-1 px-1 gap-1"
+                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-background/30 rounded-lg border border-border/40 py-1 px-1 gap-1"
                     >
                      {filteredStashes.length === 0 ? (
                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">Empty stash</div>

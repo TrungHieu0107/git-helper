@@ -218,7 +218,7 @@ export function RightPanel() {
   return (
     <>
       <aside 
-        className={`flex flex-col bg-background border-l border-border/30 shrink-0 text-muted-foreground select-none h-full relative transition-all duration-300 ${isCollapsed ? 'w-12 items-center bg-secondary/20' : 'w-[var(--right-width)]'}`}
+        className={`flex flex-col bg-panel-background border-l border-border/40 shrink-0 text-muted-foreground select-none h-full relative transition-all ${isCollapsed ? 'w-12 items-center' : 'w-[var(--right-width)]'}`}
       >
         {!isCollapsed && (
           <div 
@@ -253,8 +253,8 @@ export function RightPanel() {
             <div ref={listContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
                {cherryPickState === 'conflict' && cherryPickConflictFiles.length > 0 && (
                  <div className="flex flex-col p-2 shrink-0">
-                   <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-dracula-red mb-2 px-1 gap-2">
-                     <AlertTriangle size={12} /> Conflicts ({cherryPickConflictFiles.length})
+                   <div className="flex items-center text-[11px] font-bold uppercase tracking-wider text-dracula-red mb-2 px-1 gap-2">
+                     <AlertTriangle size={14} /> Conflicts ({cherryPickConflictFiles.length})
                    </div>
                    <div className="flex flex-col bg-secondary/40 rounded-lg border border-dracula-red/30 py-1 overflow-hidden">
                      {cherryPickConflictFiles.map((f, i) => (
@@ -274,19 +274,19 @@ export function RightPanel() {
                )}
 
                <div className="flex flex-col p-2" style={{ flex: unstagedFlex, minHeight: 0 }}>
-                    <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 shrink-0 justify-between">
+                    <div className="flex items-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 shrink-0 justify-between">
                        <div className="flex items-center gap-2">
                           <span className="text-dracula-orange">UNSTAGED</span>
                           <span className="bg-secondary/20 px-1.5 py-0.5 rounded-full border border-dracula-orange/20 text-dracula-orange/80">{filteredUnstaged.length}</span>
                        </div>
                        {unstagedFiles.length > 0 && (
-                         <button onClick={stageAll} className="text-dracula-green hover:bg-dracula-green/10 px-2 py-0.5 rounded-md border border-dracula-green/20 transition-all font-bold uppercase tracking-wide text-[9px]">
+                         <button onClick={stageAll} className="text-dracula-green hover:bg-dracula-green/10 px-2 py-0.5 rounded-md border border-dracula-green/20 transition-all font-bold uppercase tracking-wide text-[10px]">
                            Stage All
                          </button>
                        )}
                     </div>
                     
-                    <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-secondary/10 rounded-lg border border-border/30 py-1">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-background/30 rounded-lg border border-border/40 py-1">
                       {filteredUnstaged.length > 0 ? (
                        viewMode === 'path' ? (
                          filteredUnstaged.map((f, i) => (
@@ -320,25 +320,25 @@ export function RightPanel() {
 
                 <div 
                   onMouseDown={startVerticalResizing}
-                  className="h-2 bg-secondary/10 border-y border-border/30 w-full cursor-row-resize hover:bg-dracula-cyan/20 transition-all shrink-0 flex items-center justify-center group"
+                  className="h-2 bg-secondary/10 border-y border-border/40 w-full cursor-row-resize hover:bg-dracula-cyan/20 transition-all shrink-0 flex items-center justify-center group"
                 >
                    <div className="w-8 h-1 bg-border/40 rounded-full group-hover:bg-dracula-cyan transition-colors" />
                 </div>
 
                <div className="flex flex-col p-2" style={{ flex: stagedFlex, minHeight: 0 }}>
-                  <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 shrink-0 justify-between">
+                  <div className="flex items-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 shrink-0 justify-between">
                      <div className="flex items-center gap-2">
                         <span className="text-dracula-green">STAGED</span>
                         <span className="bg-secondary/20 px-1.5 py-0.5 rounded-full border border-dracula-green/20 text-dracula-green/80">{filteredStaged.length}</span>
                      </div>
                      {stagedFiles.length > 0 && (
-                       <button onClick={unstageAll} className="text-dracula-red hover:bg-dracula-red/10 px-2 py-0.5 rounded-md border border-dracula-red/20 transition-all font-bold uppercase tracking-wide text-[9px]">
+                       <button onClick={unstageAll} className="text-dracula-red hover:bg-dracula-red/10 px-2 py-0.5 rounded-md border border-dracula-red/20 transition-all font-bold uppercase tracking-wide text-[10px]">
                          Unstage All
                        </button>
                      )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-secondary/10 rounded-lg border border-border/30 py-1">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar-hidden flex flex-col bg-background/30 rounded-lg border border-border/40 py-1">
                     {filteredStaged.length > 0 ? (
                       viewMode === 'path' ? (
                         filteredStaged.map((f, i) => (
