@@ -83,55 +83,57 @@ const getAvatarUrl = (email: string) => `https://www.gravatar.com/avatar/${md5(e
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
 
-function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 10) {
-  // Xác định node trên (Top) và node dưới (Bottom)
-  const topX = y1 < y2 ? x1 : x2;
-  const topY = y1 < y2 ? y1 : y2;
-  const bottomX = y1 < y2 ? x2 : x1;
-  const bottomY = y1 < y2 ? y2 : y1;
-
-  // 1. Trường hợp 2 node cùng lane (thẳng hàng dọc)
-  if (Math.abs(topX - bottomX) < 1) {
-    return `M ${bottomX} ${bottomY - NODE_R} L ${topX} ${topY + NODE_R}`;
+function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', cornerRadius: number = 12) {
+  const nodeRadius = NODE_R;
+  
+  // 1. Cùng một nhánh (Thẳng dọc)
+  if (x1 === x2) {
+    return `M ${x1} ${y1 + nodeRadius} L ${x2} ${y2 - nodeRadius}`;
   }
 
-  // 2. Xác định hướng đi ngang: rẽ trái hay rẽ phải?
-  const dx = topX - bottomX;
-  const dy = topY - bottomY;
-  const dirX = Math.sign(dx);
+  // 2. Sang PHẢI (Parent ở bên phải Child) -> Ngang rồi Dọc
+  if (x2 > x1) {
+    const safeRadius = Math.min(cornerRadius, (x2 - x1) / 2, (y2 - y1) / 2);
+    
+    const p1x = x1 + nodeRadius; // Bắt đầu từ hông PHẢI node trên (Child)
+    const p1y = y1;
+    
+    const p2x = x2 - safeRadius; // Đi ngang phải
+    const p2y = y1;
+    
+    const cx  = x2;              // Điểm neo góc vuông
+    const cy  = y1;
+    
+    const p3x = x2;              // Điểm kết thúc bo góc
+    const p3y = y1 + safeRadius;
+    
+    const p4x = x2;
+    const p4y = y2 - nodeRadius; // Đi thẳng xuống đỉnh node dưới (Parent)
+    
+    return `M ${p1x} ${p1y} L ${p2x} ${p2y} Q ${cx} ${cy} ${p3x} ${p3y} L ${p4x} ${p4y}`;
+  }
 
-  // Tính toán an toàn để tránh góc bo bẻ gập ngược
-  const safeRadius = Math.min(
-    r, 
-    Math.abs(dx) / 2, 
-    Math.abs(dy) - NODE_R
-  );
-
-  // 3. Tính toán các Tọa độ (Anchor Points)
-  // Bắt đầu từ mép hông của Node dưới (tránh đâm xuyên tâm)
-  const startX = bottomX + (dirX * NODE_R);
-  const startY = bottomY;
-
-  // Điểm chuẩn bị bo góc
-  const curveStartX = topX - (dirX * safeRadius);
-  const curveStartY = bottomY;
-
-  // Tọa độ của điểm góc vuông lý tưởng (Control Point)
-  const controlPointX = topX;
-  const controlPointY = bottomY;
-
-  // Điểm hoàn thành bo góc (bắt đầu đi thẳng lên)
-  const curveEndX = topX;
-  const curveEndY = bottomY - safeRadius;
-
-  // Điểm kết thúc: chạm vào đáy của Node trên
-  const endX = topX;
-  const endY = topY + NODE_R;
-
-  return `M ${startX} ${startY}
-          L ${curveStartX} ${curveStartY}
-          Q ${controlPointX} ${controlPointY} ${curveEndX} ${curveEndY}
-          L ${endX} ${endY}`;
+  // 3. Sang TRÁI (Parent ở bên trái Child) -> Dọc rồi Ngang
+  if (x2 < x1) {
+    const safeRadius = Math.min(cornerRadius, (x1 - x2) / 2, (y2 - y1) / 2);
+    
+    const p1x = x1; 
+    const p1y = y1 + nodeRadius;  // Bắt đầu từ ĐÁY node trên (Child)
+    
+    const p2x = x1;
+    const p2y = y2 - safeRadius; // Đi thẳng xuống
+    
+    const cx  = x1;               // Điểm neo góc vuông
+    const cy  = y2;
+    
+    const p3x = x1 - safeRadius;  // Điểm kết thúc bo góc
+    const p3y = y2;
+    
+    const p4x = x2 + nodeRadius; // Đi ngang trái vào hông PHẢI node dưới (Parent)
+    const p4y = y2;
+    
+    return `M ${p1x} ${p1y} L ${p2x} ${p2y} Q ${cx} ${cy} ${p3x} ${p3y} L ${p4x} ${p4y}`;
+  }
 }
 
 function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number, oidMap: Map<string, number>, rowH: number): Edge[] {

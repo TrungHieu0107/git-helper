@@ -23,7 +23,7 @@
 - **Change**: Increased commit row height by 5px (24px -> 29px for compact, 32px -> 37px for normal) to improve legibility while keeping avatar size constant.
 - **Verification**: Verified row spacing and alignment.
 
-### [2026-04-25] - UI/UX: Improved Graph Routing Algorithm
+### [2026-04-25] - Feature: Asymmetric Edge Routing (GitKraken Style)
 - **Files**: `src/components/CommitGraph.tsx`
-- **Change**: Replaced the Z-curve Manhattan routing with a "Horizontal -> Rounded Corner -> Vertical Up" algorithm (GitKraken-style). Edges now start from the side of the bottom node and end at the bottom of the top node, preventing lines from intersecting avatar centers.
-- **Verification**: Verified path generation logic and edge cases (same lane, opposite directions).
+- **Change**: Replaced the symmetric Manhattan routing with an asymmetric algorithm. Forking (branching to the right) now exits from the right side of the child and enters the top of the parent. Merging (to the left) exits from the bottom of the child and enters the right side of the parent. This ensures lines always touch node boundaries and never intersect node centers.
+- **Verification**: Verified graph visual integrity and edge anchor points.
