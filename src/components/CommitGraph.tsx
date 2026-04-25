@@ -267,6 +267,33 @@ export function CommitGraph() {
     { label: 100, hash: 60, author: 80 },
   );
 
+  const graphColumnWidth = useAppStore(s => s.graphColumnWidth);
+  const setGraphColumnWidth = useAppStore(s => s.setGraphColumnWidth);
+
+  const onGraphResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = graphColumnWidth;
+    let ticking = false;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const newWidth = Math.max(100, Math.min(startW + (ev.clientX - startX), 1000));
+          setGraphColumnWidth(newWidth);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [graphColumnWidth, setGraphColumnWidth]);
+
   const [ctxMenu, setCtxMenu] = useState<{ commit: CommitNode; pos: ContextMenuPosition } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, commit: CommitNode) => {
@@ -292,22 +319,23 @@ export function CommitGraph() {
     >
       {/* Header */}
       <div className="h-[var(--toolbar-height)] flex items-center border-b border-border/40 bg-background backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm px-1">
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60" style={{ width: cw.label }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.label }}>
           Branches / Tags
         </div>
         <ResizeHandle onMouseDown={onMouseDown('label')} />
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60" style={{ width: gw }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: graphColumnWidth }}>
           Graph
         </div>
-        <div className="flex-1 pl-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
+        <ResizeHandle onMouseDown={onGraphResize} />
+        <div className="flex-1 pl-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 min-w-[200px]">
           Commit Message
         </div>
         <ResizeHandle onMouseDown={onMouseDown('hash')} />
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60" style={{ width: cw.hash }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.hash }}>
           Hash
         </div>
         <ResizeHandle onMouseDown={onMouseDown('author')} />
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-4" style={{ width: cw.author }}>
+        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-4 shrink-0" style={{ width: cw.author }}>
           Author
         </div>
       </div>
@@ -471,7 +499,7 @@ export function CommitGraph() {
                   hov={hov}
                   sel={sel}
                   cw={cw}
-                  gw={gw}
+                  graphColumnWidth={graphColumnWidth}
                   status={status}
                   staged={staged}
                   unstaged={unstaged}
@@ -482,7 +510,7 @@ export function CommitGraph() {
             }
 
             if (!n) {
-              return <SkeletonRow key={`skeleton-${row}`} virtualRow={virtualRow} rowH={rowH} cw={cw} gw={gw} />;
+              return <SkeletonRow key={`skeleton-${row}`} virtualRow={virtualRow} rowH={rowH} cw={cw} graphColumnWidth={graphColumnWidth} />;
             }
 
             return (
@@ -496,7 +524,7 @@ export function CommitGraph() {
                 sel={sel}
                 activeOids={activeOids}
                 cw={cw}
-                gw={gw}
+                graphColumnWidth={graphColumnWidth}
                 setHov={setHov}
                 setSel={setSel}
                 handleContextMenu={handleContextMenu}

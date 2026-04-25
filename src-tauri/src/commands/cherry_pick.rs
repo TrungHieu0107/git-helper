@@ -266,18 +266,15 @@ pub fn cherry_pick_continue(repo_path: String) -> Result<CherryPickResult, Strin
     Ok(CherryPickResult::Success)
 }
 
-fn is_binary(bytes: &[u8]) -> bool {
-    bytes.contains(&0)
-}
 
 fn decode_bytes(bytes: &[u8], encoding_name: &str) -> Option<String> {
-    if is_binary(bytes) {
-        return None;
+    let force_enc = if encoding_name.is_empty() { None } else { Some(encoding_name) };
+    let result = crate::git::encoding::detect_and_decode(bytes, force_enc);
+    if result.is_binary {
+        None
+    } else {
+        Some(result.content)
     }
-    let enc = encoding_rs::Encoding::for_label(encoding_name.as_bytes())
-        .unwrap_or(encoding_rs::UTF_8);
-    let (decoded, _, _) = enc.decode(bytes);
-    Some(decoded.to_string())
 }
 
 #[tauri::command]
@@ -315,11 +312,22 @@ pub fn get_conflict_diff(repo_path: String, path: String, encoding: String) -> R
 }
 
 #[tauri::command]
-pub fn resolve_conflict_file(repo_path: String, path: String, resolved_content: String) -> Result<(), String> {
+pub fn resolve_conflict_file(repo_path: String, path: String, resolved_content: String, encoding: Option<String>) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.message().to_string())?;
     
     let full_path = Path::new(&repo_path).join(&path);
-    std::fs::write(&full_path, resolved_content)
+    let bytes_to_write = if let Some(enc_name) = encoding {
+        if let Some(enc) = encoding_rs::Encoding::for_label(enc_name.as_bytes()) {
+            let (encoded, _, _) = enc.encode(&resolved_content);
+            encoded.into_owned()
+        } else {
+            resolved_content.into_bytes()
+        }
+    } else {
+        resolved_content.into_bytes()
+    };
+
+    std::fs::write(&full_path, bytes_to_write)
         .map_err(|e| format!("Failed to write resolved file: {}", e))?;
         
     let mut index = repo.index().map_err(|e| e.message().to_string())?;

@@ -46,12 +46,10 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
   return (
     <div className="flex flex-col">
       <div 
+        tabIndex={0}
         onClick={() => { 
           if (hasChildren) {
             setExpanded(!expanded); 
-          } else if (node.isBranch && remotePrefix && !isHead) {
-            const fullRef = `${remotePrefix}/${node.fullPath}`;
-            useAppStore.setState({ forceCheckoutTarget: fullRef, forceCheckoutPhase: 'confirm_reset' });
           }
         }}
         onContextMenu={(e) => {
@@ -64,7 +62,25 @@ export const BranchTreeItem: React.FC<BranchTreeItemProps> = ({
         onDoubleClick={async () => {
           if (node.isBranch && !isHead) {
             const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
-            await safeSwitchBranch(fullRef);
+            if (remotePrefix) {
+              useAppStore.setState({ forceCheckoutTarget: fullRef, forceCheckoutPhase: 'confirm_reset' });
+            } else {
+              await safeSwitchBranch(fullRef);
+            }
+          }
+        }}
+        onKeyDown={async (e) => {
+          if (e.key === 'Enter') {
+            if (hasChildren) {
+              setExpanded(!expanded);
+            } else if (node.isBranch && !isHead) {
+              const fullRef = remotePrefix ? `${remotePrefix}/${node.fullPath}` : node.fullPath;
+              if (remotePrefix) {
+                useAppStore.setState({ forceCheckoutTarget: fullRef, forceCheckoutPhase: 'confirm_reset' });
+              } else {
+                await safeSwitchBranch(fullRef);
+              }
+            }
           }
         }}
         className={cn(

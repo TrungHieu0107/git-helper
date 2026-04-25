@@ -98,19 +98,18 @@ pub fn get_diff(repo_path: String, path: String, staged: bool) -> Result<String,
         repo.diff_index_to_workdir(None, Some(&mut opts)).map_err(|e| e.message().to_string())?
     };
 
-    let mut result = String::new();
+    let mut result_bytes = Vec::new();
     diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
         let origin = line.origin();
         if origin == '+' || origin == '-' || origin == ' ' {
-            result.push(origin);
+            result_bytes.push(origin as u8);
         }
-        if let Ok(content) = std::str::from_utf8(line.content()) {
-            result.push_str(content);
-        }
+        result_bytes.extend_from_slice(line.content());
         true
     }).map_err(|e| e.message().to_string())?;
     
-    Ok(result)
+    let decoded = crate::git::encoding::detect_and_decode(&result_bytes, None);
+    Ok(decoded.content)
 }
 
 #[derive(Serialize)]

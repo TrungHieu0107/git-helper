@@ -118,6 +118,9 @@ export interface UISlice {
 
   toolbarGroupBackground: string;
   setToolbarGroupBackground: (color: string) => void;
+
+  graphColumnWidth: number;
+  setGraphColumnWidth: (width: number) => void;
 }
 
 export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => ({
@@ -216,4 +219,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
 
   toolbarGroupBackground: '#1a1a1a',
   setToolbarGroupBackground: (toolbarGroupBackground) => set(() => ({ toolbarGroupBackground })),
+
+  graphColumnWidth: 300,
+  setGraphColumnWidth: (width) => set(() => ({ graphColumnWidth: width })),
 });

@@ -21,7 +21,7 @@ const COLORS = [
 
 const color = (i: number) => COLORS[i % COLORS.length];
 
-export const SkeletonRow = React.memo(({ virtualRow, rowH, cw, gw }: { virtualRow: any, rowH: number, cw: any, gw: number }) => {
+export const SkeletonRow = React.memo(({ virtualRow, rowH, cw, graphColumnWidth }: { virtualRow: any, rowH: number, cw: any, graphColumnWidth: number }) => {
   return (
     <div 
       className="absolute left-0 w-full flex items-center px-2 pointer-events-none opacity-20"
@@ -30,7 +30,7 @@ export const SkeletonRow = React.memo(({ virtualRow, rowH, cw, gw }: { virtualRo
       <div className="shrink-0" style={{ width: cw.label }}>
         <Skeleton width="60%" height={16} borderRadius="12px" />
       </div>
-      <div style={{ width: gw + 5 }} />
+      <div style={{ width: graphColumnWidth + 5 }} />
       <div className="flex-1 flex items-center pl-4 pr-4">
         <Skeleton width="80%" height={14} />
       </div>
@@ -100,15 +100,15 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
           e.stopPropagation();
           if (isHead || isTag) return;
           if (isDropdown) setOpen(false);
-          await safeSwitchBranch((info.isRemote && !info.isLocal) ? `origin/${name}` : name);
-        }}
-        onClick={(e) => {
           if (isRemoteOnly) {
-            e.stopPropagation();
-            if (isDropdown) setOpen(false);
             const fullRef = `origin/${name}`;
             useAppStore.setState({ forceCheckoutTarget: fullRef, forceCheckoutPhase: 'confirm_reset' });
+          } else {
+            await safeSwitchBranch(name);
           }
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
         }}
         className={cn(
           "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap min-w-0 cursor-pointer select-none border transition-all shadow-sm",
@@ -182,14 +182,14 @@ export interface CommitRowProps {
   sel: number | null;
   activeOids: Set<string>;
   cw: any;
-  gw: number;
+  graphColumnWidth: number;
   setHov: (r: number | null) => void;
   setSel: (r: number) => void;
   handleContextMenu: (e: React.MouseEvent, n: CommitNode) => void;
 }
 
 export const CommitRow = React.memo(({
-  n, row, virtualRow, rowH, hov, sel, activeOids, cw, gw, setHov, setSel, handleContextMenu
+  n, row, virtualRow, rowH, hov, sel, activeOids, cw, graphColumnWidth, setHov, setSel, handleContextMenu
 }: CommitRowProps) => {
   const [copied, setCopied] = useState(false);
   const isActive = activeOids.has(n.oid);
@@ -226,8 +226,8 @@ export const CommitRow = React.memo(({
       <div className="pl-3 overflow-visible shrink-0" style={{ width: cw.label }}>
         <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActive} />
       </div>
-      <div style={{ width: gw }} />
-      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0">
+      <div className="shrink-0" style={{ width: graphColumnWidth }} />
+      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full relative z-20 bg-background/80 backdrop-blur-md shadow-[-10px_0_15px_rgba(0,0,0,0.1)]">
         {n.node_type === 'stash' ? (
           <div className="flex items-center gap-2.5 min-w-0">
              <span className="bg-dracula-orange/10 text-dracula-orange border border-dracula-orange/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter shrink-0 shadow-sm">STASH</span>
@@ -243,7 +243,7 @@ export const CommitRow = React.memo(({
         )}
       </div>
       <div 
-        className="pl-4 flex items-center gap-2 group/hash relative" 
+        className="pl-4 flex items-center gap-2 group/hash relative h-full bg-background/80 backdrop-blur-md"
         style={{ width: cw.hash }}
         onClick={handleCopy}
       >
@@ -252,7 +252,7 @@ export const CommitRow = React.memo(({
           {copied ? <Check size={14} className="text-dracula-green" /> : <Copy size={14} className="text-muted-foreground/40" />}
         </button>
       </div>
-      <div className="pl-4 flex items-center pr-4" style={{ width: cw.author }}>
+      <div className="pl-4 flex items-center pr-4 h-full bg-background/80 backdrop-blur-md" style={{ width: cw.author }}>
          <span className="text-[12px] text-muted-foreground/80 truncate font-semibold group-hover/row:text-foreground transition-colors tracking-tight">{authorFirstName}</span>
       </div>
     </div>
@@ -266,7 +266,7 @@ export interface WipRowProps {
   hov: number | null;
   sel: number | null;
   cw: any;
-  gw: number;
+  graphColumnWidth: number;
   status: any;
   staged: any[];
   unstaged: any[];
@@ -275,7 +275,7 @@ export interface WipRowProps {
 }
 
 export const WipRow = React.memo(({
-  virtualRow, rowH, hov, sel, cw, gw, status, staged, unstaged, setHov, setSel
+  virtualRow, rowH, hov, sel, cw, graphColumnWidth, status, staged, unstaged, setHov, setSel
 }: WipRowProps) => {
   const stagedCount = status?.staged_count ?? staged.length;
   const unstagedCount = status?.unstaged_count ?? unstaged.length;
@@ -295,11 +295,11 @@ export const WipRow = React.memo(({
       onMouseEnter={() => setHov(0)} 
       onMouseLeave={() => setHov(null)}
     >
-      <div className="pl-3 flex items-center" style={{ width: cw.label }}>
+      <div className="pl-3 flex items-center shrink-0" style={{ width: cw.label }}>
         <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider">WIP</span>
       </div>
-      <div style={{ width: gw }} />
-      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full">
+      <div className="shrink-0" style={{ width: graphColumnWidth }} />
+      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full relative z-20 bg-background/80 backdrop-blur-md shadow-[-10px_0_15px_rgba(0,0,0,0.1)]">
         <div className="h-[calc(100%-6px)] rounded-xl border border-primary/10 bg-primary/5 flex items-center px-3 gap-4 shadow-sm backdrop-blur-sm group/wip-pill hover:border-primary/20 transition-all">
           <HardDrive size={14} className="text-primary/60 group-hover/wip-pill:scale-110 transition-transform" />
           <div className="flex items-center gap-3">
@@ -315,10 +315,10 @@ export const WipRow = React.memo(({
           </div>
         </div>
       </div>
-      <div className="pl-4 flex items-center" style={{ width: cw.hash }}>
+      <div className="pl-4 flex items-center h-full bg-background/80 backdrop-blur-md" style={{ width: cw.hash }}>
         <Clock size={12} className="text-muted-foreground/20" />
       </div>
-      <div className="pl-4 pr-4 flex items-center" style={{ width: cw.author }}>
+      <div className="pl-4 pr-4 flex items-center h-full bg-background/80 backdrop-blur-md" style={{ width: cw.author }}>
         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Working Tree</span>
       </div>
     </div>

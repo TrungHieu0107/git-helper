@@ -994,9 +994,9 @@ export async function loadConflictFile(repoPath: string, path: string) {
   }
 }
 
-export async function resolveConflictFile(repoPath: string, path: string, resolvedContent: string) {
+export async function resolveConflictFile(repoPath: string, path: string, resolvedContent: string, encoding?: string) {
   try {
-    await invoke('resolve_conflict_file', { repoPath, path, resolvedContent });
+    await invoke('resolve_conflict_file', { repoPath, path, resolvedContent, encoding: encoding || null });
     
     // Remove from store's conflict files list natively for fast UI update
     const state = useAppStore.getState();

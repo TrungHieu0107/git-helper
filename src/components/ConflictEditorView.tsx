@@ -181,7 +181,7 @@ export function ConflictEditorView() {
   const handleResolve = () => {
     if (!resultEditorRef.current || !activeConflictFile) return;
     const resolvedContent = resultEditorRef.current.getValue();
-    resolveConflictFile(activeRepoPath!, activeConflictFile, resolvedContent);
+    resolveConflictFile(activeRepoPath!, activeConflictFile, resolvedContent, conflictVersions.encoding);
     
     const store = useAppStore.getState();
     const currentMsg = store.commitMessage;
