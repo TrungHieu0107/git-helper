@@ -63,12 +63,12 @@ export function App() {
     document.documentElement.style.setProperty('--toolbar-group-background', toolbarGroupBackground);
     
     // Layout Density logic
-    const rowHeight = layoutDensity === 'compact' ? 28 : 36;
+    const rowHeight = layoutDensity === 'compact' ? 24 : 32;
     const gapMultiplier = layoutDensity === 'compact' ? 1 : 1.5;
     
     document.documentElement.style.setProperty('--row-height', `${rowHeight}px`);
-    document.documentElement.style.setProperty('--app-gap-sm', `${8 * gapMultiplier}px`);
-    document.documentElement.style.setProperty('--app-gap-md', `${12 * gapMultiplier}px`);
+    document.documentElement.style.setProperty('--app-gap-sm', layoutDensity === 'compact' ? '5px' : '12px');
+    document.documentElement.style.setProperty('--app-gap-md', layoutDensity === 'compact' ? '10px' : '16px');
   }, [fontSize, backgroundColor, panelBackgroundColor, borderColor, layoutDensity, toolbarGroupBackground]);
 
   useEffect(() => {

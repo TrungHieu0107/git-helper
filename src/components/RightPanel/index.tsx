@@ -228,8 +228,8 @@ export function RightPanel() {
         )}
 
         {isCollapsed ? (
-          <button onClick={() => setIsCollapsed(false)} className="p-2 hover:bg-white/5 rounded-md text-muted-foreground/60 hover:text-foreground mt-3 transition-colors">
-             <ChevronsLeft size={16} />
+          <button onClick={() => setIsCollapsed(false)} className="p-1.5 hover:bg-white/5 rounded-md text-muted-foreground/60 hover:text-foreground mt-3 transition-colors">
+             <ChevronsLeft size={14} />
           </button>
         ) : isViewingCommit ? (
           <div className="flex flex-col h-full relative">
@@ -252,20 +252,20 @@ export function RightPanel() {
 
             <div ref={listContainerRef} className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
                {cherryPickState === 'conflict' && cherryPickConflictFiles.length > 0 && (
-                 <div className="flex flex-col p-2 shrink-0">
-                   <div className="flex items-center text-[11px] font-bold uppercase tracking-wider text-dracula-red mb-2 px-1 gap-2">
-                     <AlertTriangle size={14} /> Conflicts ({cherryPickConflictFiles.length})
+                 <div className="flex flex-col p-1.5 shrink-0">
+                   <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-dracula-red mb-1.5 px-1 gap-1.5">
+                     <AlertTriangle size={12} /> Conflicts ({cherryPickConflictFiles.length})
                    </div>
                    <div className="flex flex-col bg-secondary/40 rounded-lg border border-dracula-red/30 py-1 overflow-hidden">
                      {cherryPickConflictFiles.map((f, i) => (
                        <div 
                           key={i}
                           onClick={() => activeRepoPath && loadConflictFile(activeRepoPath, f)}
-                          className={`flex items-center justify-between h-[26px] px-2 rounded-md cursor-pointer transition-all mx-1 ${selectedConflictFile === f ? 'bg-dracula-red/20 text-dracula-red' : 'hover:bg-white/5 text-foreground'}`}
+                          className={`flex items-center justify-between h-[22px] px-1.5 rounded-md cursor-pointer transition-all mx-1 ${selectedConflictFile === f ? 'bg-dracula-red/20 text-dracula-red' : 'hover:bg-white/5 text-foreground'}`}
                        >
-                          <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                             <AlertTriangle size={12} className="text-dracula-red shrink-0" />
-                             <span className="text-[12px] font-mono truncate">{f}</span>
+                          <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
+                             <AlertTriangle size={11} className="text-dracula-red shrink-0" />
+                             <span className="text-[11px] font-mono truncate">{f}</span>
                           </div>
                        </div>
                      ))}
@@ -273,14 +273,14 @@ export function RightPanel() {
                  </div>
                )}
 
-               <div className="flex flex-col p-2" style={{ flex: unstagedFlex, minHeight: 0 }}>
-                    <div className="flex items-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 shrink-0 justify-between">
-                       <div className="flex items-center gap-2">
+               <div className="flex flex-col p-1.5" style={{ flex: unstagedFlex, minHeight: 0 }}>
+                    <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 px-1 shrink-0 justify-between">
+                       <div className="flex items-center gap-1.5">
                           <span className="text-dracula-orange">UNSTAGED</span>
-                          <span className="bg-secondary/20 px-1.5 py-0.5 rounded-full border border-dracula-orange/20 text-dracula-orange/80">{filteredUnstaged.length}</span>
+                          <span className="bg-secondary/20 px-1 py-0 rounded-full border border-dracula-orange/20 text-dracula-orange/80">{filteredUnstaged.length}</span>
                        </div>
                        {unstagedFiles.length > 0 && (
-                         <button onClick={stageAll} className="text-dracula-green hover:bg-dracula-green/10 px-2 py-0.5 rounded-md border border-dracula-green/20 transition-all font-bold uppercase tracking-wide text-[10px]">
+                         <button onClick={stageAll} className="text-dracula-green hover:bg-dracula-green/10 px-1.5 py-0 rounded-md border border-dracula-green/20 transition-all font-bold uppercase tracking-wide text-[9px]">
                            Stage All
                          </button>
                        )}
@@ -313,26 +313,26 @@ export function RightPanel() {
                          />
                        )
                      ) : (
-                       <div className="text-[11px] italic px-6 py-4 opacity-40 text-center">No modified files</div>
+                       <div className="text-[10px] italic px-4 py-3 opacity-40 text-center">No modified files</div>
                      )}
                    </div>
                </div>
 
                 <div 
                   onMouseDown={startVerticalResizing}
-                  className="h-2 bg-secondary/10 border-y border-border/40 w-full cursor-row-resize hover:bg-dracula-cyan/20 transition-all shrink-0 flex items-center justify-center group"
+                  className="h-1.5 bg-secondary/10 border-y border-border/40 w-full cursor-row-resize hover:bg-dracula-cyan/20 transition-all shrink-0 flex items-center justify-center group"
                 >
-                   <div className="w-8 h-1 bg-border/40 rounded-full group-hover:bg-dracula-cyan transition-colors" />
+                   <div className="w-6 h-0.5 bg-border/40 rounded-full group-hover:bg-dracula-cyan transition-colors" />
                 </div>
 
-               <div className="flex flex-col p-2" style={{ flex: stagedFlex, minHeight: 0 }}>
-                  <div className="flex items-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1 shrink-0 justify-between">
-                     <div className="flex items-center gap-2">
+               <div className="flex flex-col p-1.5" style={{ flex: stagedFlex, minHeight: 0 }}>
+                  <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 px-1 shrink-0 justify-between">
+                     <div className="flex items-center gap-1.5">
                         <span className="text-dracula-green">STAGED</span>
-                        <span className="bg-secondary/20 px-1.5 py-0.5 rounded-full border border-dracula-green/20 text-dracula-green/80">{filteredStaged.length}</span>
+                        <span className="bg-secondary/20 px-1 py-0 rounded-full border border-dracula-green/20 text-dracula-green/80">{filteredStaged.length}</span>
                      </div>
                      {stagedFiles.length > 0 && (
-                       <button onClick={unstageAll} className="text-dracula-red hover:bg-dracula-red/10 px-2 py-0.5 rounded-md border border-dracula-red/20 transition-all font-bold uppercase tracking-wide text-[10px]">
+                       <button onClick={unstageAll} className="text-dracula-red hover:bg-dracula-red/10 px-1.5 py-0 rounded-md border border-dracula-red/20 transition-all font-bold uppercase tracking-wide text-[9px]">
                          Unstage All
                        </button>
                      )}
@@ -348,7 +348,7 @@ export function RightPanel() {
                               status={f.status} 
                               onAction={() => unstageFile(f.path)}
                               actionLabel="Unstage"
-                              onClick={() => handleFileClick(f.path, true)}
+                              onClick={() => handleFileClick(p, true)}
                               onContextMenu={(e) => handleFileContextMenu(e, f.path, true)}
                               highlight={fileFilter}
                               isCompact={width < 450}
@@ -365,7 +365,7 @@ export function RightPanel() {
                         />
                       )
                     ) : (
-                      <div className="text-[11px] italic px-6 py-4 opacity-40 text-center">No files staged</div>
+                      <div className="text-[10px] italic px-4 py-3 opacity-40 text-center">No files staged</div>
                     )}
                   </div>
                </div>
