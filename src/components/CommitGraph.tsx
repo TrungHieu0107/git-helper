@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore, CommitNode } from '../store';
-import { loadMoreCommits } from '../lib/repo';
+import { loadMoreCommits, loadRepo } from '../lib/repo';
 import { useResizableColumns, ResizeHandle } from './ResizableColumns';
 import { CommitRow, WipRow, SkeletonRow } from './CommitGraph/CommitRow';
 import { CommitContextMenu, ContextMenuPosition } from './CommitContextMenu';
@@ -269,7 +269,7 @@ export function CommitGraph() {
     count: totalRows,
     getScrollElement: () => parentRef.current,
     estimateSize: () => rowH,
-    overscan: 25,
+    overscan: 30,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
@@ -373,6 +373,29 @@ export function CommitGraph() {
       animate={{ opacity: 1 }}
       className="flex-1 flex flex-col bg-background h-full overflow-hidden text-sm selection:bg-primary/20"
     >
+      {/* Branch Filter Toolbar */}
+      <div className="h-10 flex items-center px-4 gap-2 border-b border-border/40 bg-background/50 backdrop-blur-sm shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mr-2">Display:</span>
+        {(['all', 'local', 'remote', 'active'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => {
+              useAppStore.getState().setBranchFilter(f);
+              const path = useAppStore.getState().activeRepoPath;
+              if (path) loadRepo(path);
+            }}
+            className={cn(
+              "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all",
+              useAppStore.getState().branchFilter === f
+                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_2px_10px_rgba(var(--primary),0.1)]"
+                : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 border border-transparent"
+            )}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
       {/* Header */}
       <div className="h-[var(--toolbar-height)] flex items-center border-b border-border/40 bg-background/95 backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm border-l-4 border-transparent">
         <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.label }}>

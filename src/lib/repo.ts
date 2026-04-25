@@ -277,12 +277,27 @@ export async function loadRepo(path: string) {
   useAppStore.setState({ isLoadingRepo: true, repoError: null });
   
   try {
+    const filter = useAppStore.getState().branchFilter;
+    let visibleBranches: string[] | undefined = undefined;
+    if (filter !== 'all') {
+      const branches = useAppStore.getState().branches;
+      if (filter === 'local') visibleBranches = branches.filter(b => !b.is_remote).map(b => b.name);
+      else if (filter === 'remote') visibleBranches = branches.filter(b => b.is_remote).map(b => b.name);
+      else if (filter === 'active') visibleBranches = useAppStore.getState().activeBranch ? [useAppStore.getState().activeBranch!] : undefined;
+    }
+
     // Parallel fetch for all repo data to reduce latency
     const [info, status, branches, logResponse, backendStashes, fileStatuses] = await Promise.all([
       invoke<RepoInfo>('open_repo', { path }),
       invoke<RepoStatus>('get_repo_status', { path }),
       invoke<BranchInfo[]>('list_branches', { repoPath: path }),
-      invoke<LogResponse>('get_log', { repoPath: path, limit: 200, offset: 0, refresh: true }),
+      invoke<LogResponse>('get_log', { 
+        repoPath: path, 
+        limit: 500, 
+        offset: 0, 
+        refresh: true,
+        visible_branches: visibleBranches
+      }),
       invoke<any[]>('list_stashes', { repoPath: path }),
       invoke<FileStatus[]>('get_status', { repoPath: path })
     ]);
@@ -356,12 +371,21 @@ export async function loadMoreCommits() {
   useAppStore.setState({ isLoadingMore: true });
   
   try {
+    const filter = state.branchFilter;
+    let visibleBranches: string[] | undefined = undefined;
+    if (filter !== 'all') {
+      if (filter === 'local') visibleBranches = state.branches.filter(b => !b.is_remote).map(b => b.name);
+      else if (filter === 'remote') visibleBranches = state.branches.filter(b => b.is_remote).map(b => b.name);
+      else if (filter === 'active') visibleBranches = state.activeBranch ? [state.activeBranch] : undefined;
+    }
+
     // Use commitOffset (actual commit count, excluding stashes) for correct revwalk pagination
     const logResponse = await invoke<LogResponse>('get_log', { 
       repoPath: state.activeRepoPath, 
-      limit: 200, 
+      limit: 500, 
       offset: state.commitOffset,
-      refresh: false
+      refresh: false,
+      visible_branches: visibleBranches
     });
     
     useAppStore.setState({ 

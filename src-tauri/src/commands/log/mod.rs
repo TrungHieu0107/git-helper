@@ -144,7 +144,8 @@ pub fn get_log(
     repo_path: String, 
     limit: usize, 
     offset: usize,
-    refresh: Option<bool>
+    refresh: Option<bool>,
+    visible_branches: Option<Vec<String>>
 ) -> Result<LogResponse, String> {
     let mut repo = Repository::open(&repo_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
@@ -221,10 +222,23 @@ pub fn get_log(
     };
 
     // Push starting points
-    for oid in refs_map.keys() {
-        let _ = revwalk.push(*oid);
+    if let Some(branches) = visible_branches {
+        for name in branches {
+            if let Ok(oid) = repo.revparse_single(&name).map(|obj| obj.id()) {
+                let _ = revwalk.push(oid);
+            }
+        }
+    } else {
+        // Default: HEAD and all local branches
+        let _ = revwalk.push_head();
+        if let Ok(branches) = repo.branches(Some(BranchType::Local)) {
+            for branch in branches.flatten() {
+                if let Ok(oid) = branch.0.get().peel_to_commit().map(|c| c.id()) {
+                    let _ = revwalk.push(oid);
+                }
+            }
+        }
     }
-    let _ = revwalk.push_head();
 
     // ── Optimized Batch Detail Extraction ─────────────────────────────
     // Collect OIDs first so we can process them in parallel
@@ -282,15 +296,29 @@ pub fn get_log(
         })
     }).collect();
 
-    let mut result_nodes = Vec::new();
-    let mut active_lanes: Vec<Option<Oid>> = Vec::new();
-    let mut color_assignments: HashMap<usize, usize> = HashMap::new();
-    let mut next_color_idx = 0;
+    // ── Graph State Continuity ────────────────────────────────────────
+    let (mut active_lanes, mut color_assignments, mut next_color_idx) = {
+        let mut states = state.graph_states.lock().unwrap();
+        let should_reset = refresh.unwrap_or(false) || offset == 0;
+        if should_reset {
+            states.insert(repo_path.clone(), crate::GraphState::default());
+        }
+        let s = states.entry(repo_path.clone()).or_default();
+        (s.active_lanes.clone(), s.color_assignments.clone(), s.next_color_idx)
+    };
 
+    let mut result_nodes = Vec::new();
     for oid in oids {
-        let (parents_oids, author_name, author_email, timestamp, message, short_oid): &(Vec<Oid>, String, String, i64, String, String) = match commit_metadata.get(&oid) {
+        let (parents_oids, author_name, author_email, timestamp, full_message, short_oid): &(Vec<Oid>, String, String, i64, String, String) = match commit_metadata.get(&oid) {
             Some(m) => m,
             None => continue,
+        };
+
+        // Truncate message for IPC performance
+        let message = if full_message.len() > 120 {
+            format!("{}...", &full_message[..117])
+        } else {
+            full_message.clone()
         };
 
         // Find lane for this commit
@@ -434,7 +462,7 @@ pub fn get_log(
             author: author_name.clone(),
             email: author_email.clone(),
             timestamp: *timestamp,
-            message: message.clone(),
+            message,
             refs: refs_map.get(&oid).cloned().unwrap_or_default(),
             lane: lane_idx,
             color_idx,
@@ -443,6 +471,15 @@ pub fn get_log(
             base_oid: None,
             stash_index: None,
         });
+    }
+
+    // Save state back for next chunk
+    {
+        let mut states = state.graph_states.lock().unwrap();
+        let s = states.entry(repo_path.clone()).or_default();
+        s.active_lanes = active_lanes;
+        s.color_assignments = color_assignments;
+        s.next_color_idx = next_color_idx;
     }
 
     Ok(LogResponse {

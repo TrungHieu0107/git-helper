@@ -57,6 +57,7 @@ export interface LogSlice {
   isLoadingCommitDetail: boolean;
   activeCommitOid: string | null;
   selectedRowIndex: number | null;
+  branchFilter: 'all' | 'local' | 'remote' | 'active';
 
   setCommitLog: (log: CommitNode[]) => void;
   appendCommitLog: (log: CommitNode[]) => void;
@@ -66,6 +67,7 @@ export interface LogSlice {
   setIsLoadingCommitDetail: (isLoading: boolean) => void;
   setActiveCommitOid: (oid: string | null) => void;
   setSelectedRowIndex: (index: number | null) => void;
+  setBranchFilter: (filter: 'all' | 'local' | 'remote' | 'active') => void;
 }
 
 export const createLogSlice: StateCreator<AppStore, [], [], LogSlice> = (set) => ({
@@ -78,6 +80,7 @@ export const createLogSlice: StateCreator<AppStore, [], [], LogSlice> = (set) =>
   isLoadingCommitDetail: false,
   activeCommitOid: null,
   selectedRowIndex: null,
+  branchFilter: 'all',
 
   setCommitLog: (log) => set(() => ({ commitLog: log })),
   appendCommitLog: (log) => set((state) => ({ commitLog: [...state.commitLog, ...log] })),
@@ -87,4 +90,5 @@ export const createLogSlice: StateCreator<AppStore, [], [], LogSlice> = (set) =>
   setIsLoadingCommitDetail: (isLoading) => set(() => ({ isLoadingCommitDetail: isLoading })),
   setActiveCommitOid: (oid) => set(() => ({ activeCommitOid: oid })),
   setSelectedRowIndex: (index) => set(() => ({ selectedRowIndex: index })),
+  setBranchFilter: (filter) => set(() => ({ branchFilter: filter })),
 });

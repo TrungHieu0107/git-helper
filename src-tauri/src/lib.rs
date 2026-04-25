@@ -10,8 +10,16 @@ pub struct RefCache {
     pub refs: HashMap<Oid, Vec<String>>,
 }
 
+#[derive(Default)]
+pub struct GraphState {
+    pub active_lanes: Vec<Option<Oid>>,
+    pub color_assignments: HashMap<usize, usize>,
+    pub next_color_idx: usize,
+}
+
 pub struct AppState {
     pub ref_cache: Mutex<Option<RefCache>>,
+    pub graph_states: Mutex<HashMap<String, GraphState>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,6 +27,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppState {
             ref_cache: Mutex::new(None),
+            graph_states: Mutex::new(HashMap::new()),
         })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
