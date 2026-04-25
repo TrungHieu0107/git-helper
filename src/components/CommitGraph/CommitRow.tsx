@@ -45,6 +45,7 @@ export const SkeletonRow = React.memo(({ virtualRow, rowH, cw, graphColumnWidth 
 });
 
 // ── BranchLabels Component ───────────────────────────────────────────
+// ── BranchLabels Component ───────────────────────────────────────────
 function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: number, isActive: boolean }) {
   const [open, setOpen] = useState(false);
   const activeBranch = useAppStore(s => s.activeBranch);
@@ -97,7 +98,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       <motion.span 
         key={name} 
         onDoubleClick={async (e) => {
-          e.stopPropagation();
+          e.stopPropagation(); // CỰC KỲ QUAN TRỌNG: Ngăn chặn click lan ra CommitRow
           if (isHead || isTag) return;
           if (isDropdown) setOpen(false);
           if (isRemoteOnly) {
@@ -108,7 +109,7 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
           }
         }}
         onClick={(e) => {
-          e.stopPropagation();
+          e.stopPropagation(); // Ngăn chặn việc chọn dòng khi click vào badge
         }}
         className={cn(
           "flex items-center gap-1.5 px-1.5 py-0 rounded-full text-[10px] font-bold whitespace-nowrap min-w-0 cursor-pointer select-none border transition-all shadow-sm",
@@ -144,30 +145,37 @@ function BranchLabels({ refs, colorIdx, isActive }: { refs: string[], colorIdx: 
       onMouseEnter={() => others.length > 0 && setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
+      {/* PRIMARY BADGE */}
       {renderBadge(primary as any)}
 
+      {/* OVERFLOW TRIGGER (+N) */}
       {others.length > 0 && (
-        <div className="bg-secondary/40 text-muted-foreground border border-border/40 px-1 py-0 rounded-full text-[9px] font-bold flex items-center gap-1 cursor-default hover:text-foreground hover:border-border transition-all h-[18px]">
-          +{others.length}
-          <ChevronDown size={10} className={cn("transition-transform duration-300", open && "rotate-180")} />
+        <div 
+          className="group/trigger relative flex items-center h-full"
+          onClick={(e) => e.stopPropagation()} // Đảm bảo click vào nút +N không trigger chọn dòng
+        >
+          <div className="bg-secondary/40 text-muted-foreground border border-border/40 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 cursor-default hover:text-foreground hover:bg-secondary/60 hover:border-border transition-all h-[18px] ml-0.5 shadow-sm">
+            +{others.length}
+            <ChevronDown size={10} className={cn("transition-transform duration-300", open && "rotate-180")} />
+          </div>
+
+          <AnimatePresence>
+            {open && (
+              <div className="absolute top-full right-0 pt-1.5 z-[100] w-max">
+                <motion.div 
+                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                  transition={{ duration: 0.1, ease: "easeOut" }}
+                  className="bg-[#1e2227] border border-gray-700 rounded-lg shadow-2xl p-2 flex flex-col gap-1.5 min-w-[130px] ring-1 ring-black/20"
+                >
+                  {others.map((entry: any) => renderBadge(entry, true))}
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       )}
-
-      <AnimatePresence>
-        {open && (
-          <motion.div 
-            initial={{ opacity: 0, y: 4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute top-full left-0 pt-2 z-[50] w-max before:content-[''] before:absolute before:-top-4 before:inset-x-0 before:h-4"
-          >
-            <div className="bg-background backdrop-blur-xl border border-border/40 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] p-1.5 flex flex-col gap-1 w-full min-w-[120px]">
-              {others.map((entry: any) => renderBadge(entry, true))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -205,11 +213,13 @@ export const CommitRow = React.memo(({
   return (
     <div 
       key={n.oid}
-      className="absolute left-0 w-full cursor-pointer group group/row"
+      className={cn(
+        "absolute left-0 w-full cursor-pointer group group/row hover:z-[60]",
+        sel === row ? "z-[50]" : "z-[20]"
+      )}
       style={{ 
         height: rowH,
-        transform: `translateY(${virtualRow.start}px)`,
-        zIndex: sel === row ? 50 : 20
+        transform: `translateY(${virtualRow.start}px)`
       }}
       onClick={() => {
         setSel(row);
