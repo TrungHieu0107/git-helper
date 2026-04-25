@@ -11,10 +11,9 @@ import { AlertCircle, Search } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────
 // ── Constants ────────────────────────────────────────────────────────
-const LANE_W = 20;
-const NODE_R = 9;
-const MERGE_DOT_R = 4;
-const LANE_PAD = NODE_R + 10;
+const LANE_W = 28;
+const NODE_R = 12;
+const LANE_PAD = NODE_R + 14;
 const DEF_LABEL_W = 160;
 const DEF_HASH_W = 80;
 const DEF_AUTHOR_W = 120;
@@ -35,31 +34,90 @@ const color = (i: number) => COLORS[i % COLORS.length];
 const lx = (lane: number) => LANE_PAD + lane * LANE_W;
 const ly = (row: number, rowH: number) => row * rowH + rowH / 2;
 
+// ── Helpers ──────────────────────────────────────────────────────────
+function md5(s: string) {
+  let a = 0, b = 0, c = 0, d = 0;
+  const k = [
+    0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+    0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+    0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+    0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+    0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+    0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+    0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+    0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+  ];
+  const r = [
+    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+  ];
+  const h = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
+  const words: number[] = [];
+  const str = unescape(encodeURIComponent(s));
+  for (let i = 0; i < str.length; i++) words[i >> 2] |= str.charCodeAt(i) << ((i % 4) << 3);
+  words[str.length >> 2] |= 0x80 << ((str.length % 4) << 3);
+  words[(((str.length + 8) >> 6) << 4) + 14] = str.length << 3;
+  for (let i = 0; i < words.length; i += 16) {
+    let [A, B, C, D] = h;
+    for (let j = 0; j < 64; j++) {
+      let f, g;
+      if (j < 16) { f = (B & C) | (~B & D); g = j; }
+      else if (j < 32) { f = (D & B) | (~D & C); g = (5 * j + 1) % 16; }
+      else if (j < 48) { f = B ^ C ^ D; g = (3 * j + 5) % 16; }
+      else { f = C ^ (B | ~D); g = (7 * j) % 16; }
+      const temp = D;
+      D = C;
+      C = B;
+      B = (B + ((A + f + k[j] + (words[i + g] || 0)) << r[j] | (A + f + k[j] + (words[i + g] || 0)) >>> (32 - r[j]))) | 0;
+      A = temp;
+    }
+    h[0] = (h[0] + A) | 0; h[1] = (h[1] + B) | 0; h[2] = (h[2] + C) | 0; h[3] = (h[3] + D) | 0;
+  }
+  return h.map(x => (x >>> 0).toString(16).padStart(8, '0').split('').reverse().join('').match(/../g)!.reverse().join('')).join('');
+}
+
+const getAvatarUrl = (email: string) => `https://www.gravatar.com/avatar/${md5(email.trim().toLowerCase())}?s=32&d=identicon`;
+
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
 
-function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 8) {
-  if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
-  if (y1 === y2) return `M ${x1} ${y1} L ${x2} ${y2}`;
-  
+function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 10) {
+  // Khoảng cách theo trục X và Y
   const dx = x2 - x1;
   const dy = y2 - y1;
+  
+  // Nếu thẳng hàng (cùng lane) -> Vẽ dọc, chừa khoảng NODE_R để không đâm vào tâm
+  if (x1 === x2) {
+    const startY = y1 + Math.sign(dy) * NODE_R;
+    const endY = y2 - Math.sign(dy) * NODE_R;
+    return `M ${x1} ${startY} L ${x2} ${endY}`;
+  }
+
   const dirX = Math.sign(dx);
   const dirY = Math.sign(dy);
   const rad = Math.min(r, Math.abs(dx) / 2, Math.abs(dy) / 2);
 
-  // Offset cho việc rẽ nhánh/merge (thường bằng nửa chiều cao của 1 hàng, giả sử ~16px)
-  const yOffset = Math.min(16, Math.abs(dy) / 2) * dirY;
-  
-  if (type === 'merge') {
-    // Đối với merge, đường line chạy dọc xuống gần tới node parent rồi mới rẽ ngang
-    const yMid = y2 - yOffset;
-    return `M ${x1} ${y1} L ${x1} ${yMid - dirY * rad} Q ${x1} ${yMid} ${x1 + dirX * rad} ${yMid} L ${x2 - dirX * rad} ${yMid} Q ${x2} ${yMid} ${x2} ${yMid + dirY * rad} L ${x2} ${y2}`;
-  } else {
-    // Đối với branch-off, đường line rẽ ngang ngay sau khi rời khỏi node child
-    const yMid = y1 + yOffset;
-    return `M ${x1} ${y1} L ${x1} ${yMid - dirY * rad} Q ${x1} ${yMid} ${x1 + dirX * rad} ${yMid} L ${x2 - dirX * rad} ${yMid} Q ${x2} ${yMid} ${x2} ${yMid + dirY * rad} L ${x2} ${y2}`;
-  }
+  // Thuật toán Manhattan: Rẽ ngang ngay tại node (Horizontal-First)
+  // 1. Điểm neo xuất phát (từ HÔNG của Node Trên)
+  const startX = x1 + dirX * NODE_R;
+  const startY = y1;
+
+  // 2. Điểm neo kết thúc (vào ĐỈNH của Node Dưới)
+  const endX = x2;
+  const endY = y2 - dirY * NODE_R;
+
+  // 3. Điểm rẽ (Ngang -> Dọc)
+  const turn1X = x2 - dirX * rad;
+  const turn1Y = y1;
+  const turn2X = x2;
+  const turn2Y = y1 + dirY * rad;
+
+  return `M ${startX} ${startY} 
+          L ${turn1X} ${turn1Y} 
+          Q ${x2} ${y1} ${turn2X} ${turn2Y} 
+          L ${endX} ${endY}`;
 }
 
 function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number, oidMap: Map<string, number>, rowH: number): Edge[] {
@@ -377,6 +435,11 @@ export function CommitGraph() {
             width={gw} 
             height={virtualizer.getTotalSize()}
           >
+            <defs>
+              <clipPath id="avatar-clip">
+                <circle cx="0" cy="0" r={NODE_R} />
+              </clipPath>
+            </defs>
             {/* Stash connections */}
             {stashEdges
               .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
@@ -411,8 +474,8 @@ export function CommitGraph() {
 
               const cx = lx(n.lane), cy = ly(row, rowH);
               const c = color(n.color_idx);
+              const r = NODE_R;
               const isMerge = (n.parents?.length ?? 0) > 1;
-              const r = isMerge ? MERGE_DOT_R : NODE_R;
 
               if (n.node_type === 'stash') {
                 return (
@@ -427,22 +490,12 @@ export function CommitGraph() {
               const isActive = activeOids.has(n.oid);
               const authorChar = (n.author?.[0] ?? '?').toUpperCase();
 
-              if (isMerge) {
-                return (
-                  <g key={n.oid} transform={`translate(${cx}, ${cy})`}>
-                    <circle r={r} fill={c} className="shadow-lg" />
-                    {/* For dots (r=4), text might be too small, but we'll try or skip if too small */}
-                    {r > 6 && (
-                      <text textAnchor="middle" dominantBaseline="central" fill="#191a21" fontSize={8} fontWeight={900}>
-                        {authorChar}
-                      </text>
-                    )}
-                  </g>
-                );
-              }
+              const avatarUrl = getAvatarUrl(n.author_email || '');
+              const clipId = "avatar-clip";
 
               return (
                 <g key={n.oid} transform={`translate(${cx}, ${cy})`}>
+                  {/* Fallback circle with initial */}
                   <circle 
                     r={r} 
                     fill={isActive ? c : "#21222c"} 
@@ -454,12 +507,33 @@ export function CommitGraph() {
                     textAnchor="middle" 
                     dominantBaseline="central" 
                     fill={isActive ? "#191a21" : c} 
-                    fontSize={10} 
+                    fontSize={11} 
                     fontWeight={900} 
-                    opacity={isActive ? 1 : 0.9}
+                    opacity={isActive ? 1 : 0.8}
                   >
                     {authorChar}
                   </text>
+                  
+                  {/* Real Avatar with ClipPath */}
+                  <image
+                    href={avatarUrl}
+                    x={-r}
+                    y={-r}
+                    width={r * 2}
+                    height={r * 2}
+                    clipPath={`url(#${clipId})`}
+                    preserveAspectRatio="xMidYMid slice"
+                    opacity={1}
+                  />
+                  
+                  {/* Interactive stroke overlay (on top of image) */}
+                  <circle 
+                    r={r} 
+                    fill="none" 
+                    stroke={c} 
+                    strokeWidth={isActive ? 2 : 1.5} 
+                    opacity={0.8}
+                  />
                 </g>
               );
             })}
