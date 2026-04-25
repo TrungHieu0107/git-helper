@@ -10,4 +10,5 @@
 - **Advanced Conflict Resolution**: Integrated Monaco editor with hunk-based resolution.
 - **Dracula Aesthetic**: High-contrast, glassmorphic UI design.
 - **Stability Focused**: Rigid checkout rules and build-safety checks.
+- **Improved UI**: Optimized commit graph with 25% smaller avatars (NODE_R=9) for higher density.
 - **Fixed**: E0433 compilation error in log command.
