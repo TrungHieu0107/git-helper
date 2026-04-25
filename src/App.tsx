@@ -63,7 +63,7 @@ export function App() {
     document.documentElement.style.setProperty('--toolbar-group-background', toolbarGroupBackground);
     
     // Layout Density logic
-    const rowHeight = layoutDensity === 'compact' ? 24 : 32;
+    const rowHeight = layoutDensity === 'compact' ? 29 : 37;
     const gapMultiplier = layoutDensity === 'compact' ? 1 : 1.5;
     
     document.documentElement.style.setProperty('--row-height', `${rowHeight}px`);

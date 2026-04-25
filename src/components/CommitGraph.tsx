@@ -231,7 +231,7 @@ export function CommitGraph() {
   const hasMoreCommits = useAppStore(s => s.hasMoreCommits);
   const commitSearchInput = useAppStore(s => s.commitSearchInput);
   const layoutDensity = useAppStore(s => s.layoutDensity);
-  const rowH = layoutDensity === 'compact' ? 24 : 32;
+  const rowH = layoutDensity === 'compact' ? 29 : 37;
 
   const [debouncedSearch, setDebouncedSearch] = useState(commitSearchInput);
   
