@@ -1,6 +1,6 @@
 # GitKit Summary
 ## Version: 2.1.2
-## Last updated: 2026-04-25 – Optimized Commit Row Hover Highlight & Checkout Flow
+## Last updated: 2026-04-25 – Implemented GitKraken-style Graph Overlay & Manhattan Routing
 ## Project: GitKit
 
-GitKit now features a robust file encoding detection mechanism for displaying non-UTF-8 files correctly, and a brand new resizable Graph Column layout. Commit rows have been optimized with a pure CSS hover highlight using Tailwind's `group-hover` pattern, significantly improving virtualization performance by eliminating per-hover React state updates. Additionally, branch checkouts have been normalized to strictly require a double-click (or 'Enter' keypress), preventing accidental disruptive switches.
+GitKit has been modernized with a 3-layer Z-index architecture for commit rows, featuring opaque masking to hide overlapping graph lines and a unified selection highlight for perfect color consistency. The graph now uses Manhattan Routing (S-curves) for a premium IDE feel. Additionally, a new comprehensive `Stability & Build Rules` document has been established to ensure zero-crash development and strict compilation guarantees across the Tauri/React codebase.
