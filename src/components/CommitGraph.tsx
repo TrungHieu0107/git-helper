@@ -12,7 +12,7 @@ import { AlertCircle, Search } from 'lucide-react';
 // ── Constants ────────────────────────────────────────────────────────
 // ── Constants ────────────────────────────────────────────────────────
 const LANE_W = 28;
-const NODE_R = 12;
+const NODE_R = 9;
 const LANE_PAD = NODE_R + 14;
 const DEF_LABEL_W = 160;
 const DEF_HASH_W = 80;
