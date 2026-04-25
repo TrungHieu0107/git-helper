@@ -1,6 +1,6 @@
 # GitKit Summary
 ## Version: 2.3.0
-## Last updated: 2026-04-25 – Asymmetric Edge Routing & Compact UI
+## Last updated: 2026-04-25 – Standardized Stash Routing & Asymmetric Graph
 ## Project: GitKit
 
-GitKit has been refactored with a high-density "Compact UI" design system and a professional GitKraken-style Asymmetric Edge Routing algorithm. The commit graph now features perfect anchor points, avoiding node center intersections for a cleaner, premium visual experience.
+GitKit now features a unified, Manhattan-routed commit graph. All edges, including Stash connections, follow a professional asymmetric routing logic with perfect anchor points. Stash edges are distinguished by a refined dashed style and are layered beneath main commit connections to maintain visual clarity in complex branching scenarios.

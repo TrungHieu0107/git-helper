@@ -27,3 +27,8 @@
 - **Files**: `src/components/CommitGraph.tsx`
 - **Change**: Replaced the symmetric Manhattan routing with an asymmetric algorithm. Forking (branching to the right) now exits from the right side of the child and enters the top of the parent. Merging (to the left) exits from the bottom of the child and enters the right side of the parent. This ensures lines always touch node boundaries and never intersect node centers.
 - **Verification**: Verified graph visual integrity and edge anchor points.
+
+### [2026-04-25] - Feature: Standardized Stash Edge Routing
+- **Files**: `src/components/CommitGraph.tsx`
+- **Change**: Standardized Stash edge routing to use the same asymmetric Manhattan algorithm as main commits. Swapped coordinate ordering in `buildStashEdges` to ensure correct child-to-parent (top-to-bottom) flow. Updated SVG styling to use `strokeDasharray="6, 4"` and `opacity={0.7}` for better visual distinction and layering.
+- **Verification**: Verified Stash connections align with the Manhattan grid and render correctly below main edges.

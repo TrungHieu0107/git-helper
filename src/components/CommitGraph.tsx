@@ -218,11 +218,11 @@ function buildStashEdges(commits: CommitNode[], off: number, minIdx: number, max
     const pRow = baseIdx + off;
     
     if (Math.min(row, pRow) <= maxIdx && Math.max(row, pRow) >= minIdx) {
-      const x1 = lx(commits[baseIdx].lane); 
-      const y1 = ly(pRow, rowH);                 
-      const x2 = lx(c.lane);               
-      const y2 = ly(row, rowH);                  
-      const path = roundedPath(x1, y1, x2, y2, 'merge');
+      const x1 = lx(c.lane);                // Child (Stash)
+      const y1 = ly(row, rowH);                  
+      const x2 = lx(commits[baseIdx].lane); // Parent (Base)
+      const y2 = ly(pRow, rowH);                 
+      const path = roundedPath(x1, y1, x2, y2, 'branch-off');
       out.push({ 
         path, 
         colorIdx: c.color_idx, 
@@ -484,8 +484,8 @@ export function CommitGraph() {
               .filter(e => e.r1 <= maxVis && e.r2 >= minVis)
               .map((e, i) => (
                 <path key={`se-${i}`} d={e.path} fill="none"
-                  stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.4}
-                  strokeDasharray="4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  stroke={color(e.colorIdx)} strokeWidth={2} opacity={0.7}
+                  strokeDasharray="6, 4" strokeLinecap="round" strokeLinejoin="round" />
               ))}
 
             {/* Commit connections */}
