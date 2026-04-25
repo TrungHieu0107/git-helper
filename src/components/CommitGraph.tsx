@@ -231,7 +231,7 @@ export function CommitGraph() {
   const hasMoreCommits = useAppStore(s => s.hasMoreCommits);
   const commitSearchInput = useAppStore(s => s.commitSearchInput);
   const layoutDensity = useAppStore(s => s.layoutDensity);
-  const rowH = layoutDensity === 'compact' ? 28 : 36;
+  const rowH = layoutDensity === 'compact' ? 24 : 32;
 
   const [debouncedSearch, setDebouncedSearch] = useState(commitSearchInput);
   
@@ -374,8 +374,8 @@ export function CommitGraph() {
       className="flex-1 flex flex-col bg-background h-full overflow-hidden text-sm selection:bg-primary/20"
     >
       {/* Branch Filter Toolbar */}
-      <div className="h-10 flex items-center px-4 gap-2 border-b border-border/40 bg-background/50 backdrop-blur-sm shrink-0">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/50 mr-2">Display:</span>
+      <div className="h-8 flex items-center px-3 gap-1.5 border-b border-border/40 bg-background/50 backdrop-blur-sm shrink-0">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 mr-1.5">Display:</span>
         {(['all', 'local', 'remote', 'active'] as const).map(f => (
           <button
             key={f}
@@ -385,7 +385,7 @@ export function CommitGraph() {
               if (path) loadRepo(path);
             }}
             className={cn(
-              "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all",
+              "px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-all",
               useAppStore.getState().branchFilter === f
                 ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_2px_10px_rgba(var(--primary),0.1)]"
                 : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50 border border-transparent"
@@ -398,23 +398,23 @@ export function CommitGraph() {
 
       {/* Header */}
       <div className="h-[var(--toolbar-height)] flex items-center border-b border-border/40 bg-background/95 backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm border-l-4 border-transparent">
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.label }}>
+        <div className="pl-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.label }}>
           Branches / Tags
         </div>
         <ResizeHandle onMouseDown={onMouseDown('label')} />
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: graphColumnWidth }}>
+        <div className="pl-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: graphColumnWidth }}>
           Graph
         </div>
         <ResizeHandle onMouseDown={onGraphResize} />
-        <div className="flex-1 pl-6 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 min-w-[200px]">
+        <div className="flex-1 pl-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 min-w-[200px]">
           Commit Message
         </div>
         <ResizeHandle onMouseDown={onMouseDown('hash')} />
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.hash }}>
+        <div className="pl-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.hash }}>
           Hash
         </div>
         <ResizeHandle onMouseDown={onMouseDown('author')} />
-        <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-4 shrink-0" style={{ width: cw.author }}>
+        <div className="pl-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 pr-3 shrink-0" style={{ width: cw.author }}>
           Author
         </div>
       </div>

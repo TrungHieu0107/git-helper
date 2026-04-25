@@ -1,6 +1,6 @@
 # Change Log
-## Version: 2.1.0
-## Last updated: 2026-04-22 – Final UI/UX Polishing & Build Stability
+## Version: 2.2.0
+## Last updated: 2026-04-25 – Compact UI & Performance Optimization
 ## Project: GitKit
 
 | Date | Change | Reason |
@@ -23,3 +23,6 @@
 | 2026-04-25T11:24:00+07:00 | Implemented Node Avatars & Refined Manhattan Routing | Integrated Gravatar support for commit nodes with fallback author initials. Optimized Manhattan Routing to use a midpoint Z-curve for all edges, significantly improving the graph's visual flow. Increased lane spacing and node size for better legibility. |
 | 2026-04-25T11:28:00+07:00 | Optimized Graph Intersection & Horizontal-First Routing | Implemented "Horizontal-First" Manhattan routing where side branches depart from node equators. Integrated Anchor Points (NODE_R offset) to prevent lines from intersecting node centers. Standardized all nodes to `NODE_R=12` and enabled `preserveAspectRatio` for pixel-perfect avatars. |
 | 2026-04-25T11:40:00+07:00 | Implemented Ultra-Scale Performance Optimizations | Expanded Rust `AppState` to persist graph lanes across pagination (Graph Continuity). Updated `get_log` to support branch filtering and message truncation (100 chars) to reduce IPC payload. Increased Frontend chunk size to 500 and added Branch Filter UI. Optimized `overscan` for smoother virtualization. |
+| 2026-04-25T11:43:00+07:00 | Fixed Git Log Compilation Error | Added `use git2::BranchType;` to `log/mod.rs` to resolve E0433 error where `BranchType` was undeclared. Verified with successful cargo check. |
+| 2026-04-25T11:45:00+07:00 | Reduced Avatar Size | Reduced `NODE_R` from 12 to 9 (25% reduction) in `CommitGraph.tsx` to streamline the graph visuals while maintaining avatar visibility. |
+| 2026-04-25T11:50:00+07:00 | Implemented Compact UI Design System | Refactored spacing tokens in `index.css` and applied them to Button, Badge, Input, Sidebar, TopToolbar, and CommitGraph. Standardized on 5-10px spacing (px-2.5, py-1.5, gap-1.5). Reduced row height in CommitGraph to 24px and toolbar height to 32px. Reduced font sizes across components to text-xs/text-[10px] where appropriate for a high-density, professional IDE aesthetic. |

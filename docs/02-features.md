@@ -1,6 +1,6 @@
 # 02 - Features
-## Version: 1.0.0
-## Last updated: 2026-04-25 – Initial documentation setup
+## Version: 1.1.0
+## Last updated: 2026-04-25 – Compact UI & Performance Update
 ## Project: GitKit (git-helper)
 
 - **Ultra-Scale Graph**: Supports 1M+ commits via virtualization and Rust-powered log processing.
@@ -10,5 +10,5 @@
 - **Advanced Conflict Resolution**: Integrated Monaco editor with hunk-based resolution.
 - **Dracula Aesthetic**: High-contrast, glassmorphic UI design.
 - **Stability Focused**: Rigid checkout rules and build-safety checks.
-- **Improved UI**: Optimized commit graph with 25% smaller avatars (NODE_R=9) for higher density.
-- **Fixed**: E0433 compilation error in log command.
+- **Compact UI Design System**: Standardized 5-10px spacing and high-density layouts (24px row height).
+- **Virtualized Performance**: 500-commit chunks and optimized overscan for buttery-smooth scrolling.

@@ -73,15 +73,20 @@
     --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-    /* Sizing & Gaps - Pro Layout Density */
-    --app-font-size: 13px;
-    --app-gap-xs: 4px;
-    --app-gap-sm: 8px;
-    --app-gap-md: 12px;
-    --app-gap-lg: 16px;
+    /* Sizing & Gaps - Compact UI Spec (5-10px) */
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-base: 16px;
+    --font-lg: 18px;
+    --font-xl: 20px;
+
+    --gap-xs: 4px;
+    --gap-sm: 6px;
+    --gap-md: 8px;
+    --gap-lg: 10px;
     
-    --row-height: 28px; /* Standard desktop row height */
-    --toolbar-height: 40px;
+    --row-height: 28px; 
+    --toolbar-height: 36px;
     
     /* Animation Tokens */
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -96,7 +101,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
-  font-size: var(--app-font-size);
+  font-size: var(--font-sm);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -137,7 +142,7 @@ body {
 /* ── Typography Scale ────────────────────────────────────────────── */
 
 .section-header-text {
-  font-size: calc(var(--app-font-size) * 0.7); /* Relative sizing */
+  font-size: var(--font-xs);
   text-transform: uppercase;
   letter-spacing: 0.15em;
   color: var(--color-muted-foreground);
@@ -145,18 +150,18 @@ body {
 }
 
 .branch-name-text {
-  font-size: var(--app-font-size);
+  font-size: var(--font-sm);
   color: var(--color-foreground);
 }
 
 .hash-mono-text {
-  font-size: calc(var(--app-font-size) * 0.9);
+  font-size: var(--font-xs);
   font-family: var(--font-mono);
   color: var(--color-dracula-comment);
 }
 
 .commit-msg-text {
-  font-size: var(--app-font-size);
+  font-size: var(--font-sm);
   color: var(--color-foreground);
 }
 

@@ -66,11 +66,11 @@ export function TopToolbar() {
     <motion.div 
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="h-[var(--toolbar-height)] w-full bg-panel-background/80 backdrop-blur-3xl border-b border-border/40 flex items-center px-6 shrink-0 justify-between select-none shadow-[0_1px_10px_rgba(0,0,0,0.1)] z-50 overflow-visible"
+      className="h-[var(--toolbar-height)] w-full bg-panel-background/80 backdrop-blur-3xl border-b border-border/40 flex items-center px-3 shrink-0 justify-between select-none shadow-[0_1px_10px_rgba(0,0,0,0.1)] z-50 overflow-visible"
     >
       
       {/* Left: Repo Selector & Navigation */}
-      <div className="flex-1 flex items-center min-w-0 gap-4">
+      <div className="flex-1 flex items-center min-w-0 gap-2">
         <RepoSelector />
         <Separator orientation="vertical" className="h-4 opacity-20" />
         <div className="flex items-center gap-1">
@@ -227,33 +227,33 @@ export function TopToolbar() {
       {/* Right: Meta Actions */}
       <div className="flex-1 flex items-center justify-end gap-2">
         <div className="flex items-center gap-1 bg-secondary/10 p-1 rounded-xl border border-border/20">
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98" onClick={() => toast.info("Search coming soon")}>
-            <Search size={18} />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98" onClick={() => toast.info("Search coming soon")}>
+            <Search size={16} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
-            className={cn("h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98", isLoadingRepo && "text-primary")}
+            className={cn("h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98", isLoadingRepo && "text-primary")}
             onClick={handleRefresh}
           >
-            <RotateCw size={18} className={cn(isLoadingRepo && "animate-spin")} />
+            <RotateCw size={16} className={cn(isLoadingRepo && "animate-spin")} />
           </Button>
           <Separator orientation="vertical" className="h-4 mx-0.5 opacity-20" />
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98"
             onClick={openTerminal}
           >
-            <Terminal size={18} />
+            <Terminal size={16} />
           </Button>
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setActiveTabId('settings')}
-            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all active:scale-98"
           >
-            <Settings size={18} />
+            <Settings size={16} />
           </Button>
         </div>
       </div>
@@ -402,14 +402,14 @@ function RepoSelector() {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-3 py-1.5 hover:bg-secondary/40 rounded-xl transition-all duration-300 group border border-transparent hover:border-border/30 active:scale-95"
+        className="flex items-center gap-2 px-2 py-1 hover:bg-secondary/40 rounded-lg transition-all duration-300 group border border-transparent hover:border-border/30 active:scale-95"
       >
-        <div className="w-7 h-7 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center text-primary-foreground font-bold text-[12px] shadow-[0_4px_12px_rgba(189,147,249,0.3)] group-hover:shadow-[0_4px_20px_rgba(189,147,249,0.5)] transition-all group-hover:-translate-y-0.5">
+        <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-[11px] shadow-[0_4px_12px_rgba(189,147,249,0.3)] group-hover:shadow-[0_4px_20px_rgba(189,147,249,0.5)] transition-all group-hover:-translate-y-0.5">
           {repoInfo?.name[0]?.toUpperCase() || 'G'}
         </div>
         <div className="flex flex-col text-left min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-[14px] font-bold tracking-tight text-foreground/90 truncate max-w-[120px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-bold tracking-tight text-foreground/90 truncate max-w-[120px]">
               {repoInfo?.name || 'GitKit'}
             </span>
             <ChevronDown size={14} className={cn("text-muted-foreground/40 transition-transform duration-300", isOpen && "rotate-180")} />

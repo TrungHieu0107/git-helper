@@ -23,11 +23,11 @@ const buttonVariants = cva(
         glass: "bg-white/5 border border-white/10 backdrop-blur-md hover:bg-white/10 text-foreground shadow-xl",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        xs: "h-7 px-2 rounded-sm text-[11px]",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "h-8 px-3 py-1.5",
+        xs: "h-6 px-1.5 rounded-sm text-[10px]",
+        sm: "h-7 rounded-md px-2 text-xs",
+        lg: "h-9 rounded-md px-4",
+        icon: "h-8 w-8",
       },
     },
     defaultVariants: {
@@ -52,7 +52,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps & HTMLMotionProps
   ({ className, variant, size, leftIcon, rightIcon, isLoading, children, disabled, ...props }, ref) => {
     return (
       <motion.button
-        className={cn(buttonVariants({ variant, size, className }), "gap-2")}
+        className={cn(buttonVariants({ variant, size, className }), "gap-1.5")}
         ref={ref}
         whileHover={{ y: -1 }}
         whileTap={{ scale: 0.98 }}
@@ -60,7 +60,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps & HTMLMotionProps
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
         ) : (
           leftIcon
         )}

@@ -215,37 +215,36 @@ export function Sidebar() {
           variant="ghost" 
           size="icon" 
           onClick={() => setIsCollapsed(false)} 
-          className="mt-4 h-9 w-9 hover:bg-secondary"
+          className="mt-2 h-8 w-8 hover:bg-secondary"
         >
-           <ChevronsRight size={16} />
+           <ChevronsRight size={14} />
         </Button>
       ) : (
         <>
-          {/* Sidebar Header */}
-          <div className="p-3 pb-2 flex flex-col gap-3">
-            <div className="flex justify-between items-center pl-1">
-               <span className="text-[11px] font-semibold uppercase tracking-widest opacity-40">Navigation</span>
+          <div className="p-2 pb-1 flex flex-col gap-2">
+            <div className="flex justify-between items-center pl-0.5">
+               <span className="text-[10px] font-semibold uppercase tracking-widest opacity-40">Navigation</span>
                <Button 
                  variant="ghost" 
                  size="icon" 
                  onClick={() => setIsCollapsed(true)} 
-                 className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                 className="h-6 w-6 text-muted-foreground hover:text-foreground"
                >
-                   <ChevronsLeft size={16} />
+                   <ChevronsLeft size={14} />
                </Button>
             </div>
         
-            <div className="relative group mt-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
+            <div className="relative group mt-0.5">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors z-10" />
               <Input
                 placeholder="Filter everything..."
                 value={filter}
                 onChange={e => setFilter(e.target.value)}
-                className="pl-9 h-8 bg-black/10 border-transparent focus-visible:ring-primary/30 text-[13px] rounded-lg placeholder:text-muted-foreground/30"
+                className="pl-8 h-7 bg-black/10 border-transparent focus-visible:ring-primary/30 text-[12px] rounded-md placeholder:text-muted-foreground/30"
               />
               {filter && (
-                <button onClick={() => setFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <X size={14} />
+                <button onClick={() => setFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X size={12} />
                 </button>
               )}
             </div>
@@ -254,7 +253,7 @@ export function Sidebar() {
           <Separator className="mx-3 w-auto opacity-50" />
 
           {/* Sidebar Content */}
-          <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden px-2 pt-2 gap-0 relative">
+          <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden px-1.5 pt-1.5 gap-0 relative">
             
             {/* Local Branches */}
             <div className={cn("flex flex-col min-h-0", localOpen ? "shrink" : "shrink-0")} style={{ flex: localOpen ? localFlex : '0 0 auto' }}>
@@ -265,10 +264,10 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-1"
+                      className="flex-1 flex flex-col mt-0.5 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-0.5"
                     >
                       {filteredLocalTree.length === 0 ? (
-                        <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No local branches</div>
+                        <div className="text-[10px] text-muted-foreground/60 italic p-2.5 text-center">No local branches</div>
                       ) : (
                         filteredLocalTree.map(node => (
                           <BranchTreeItem key={node.fullPath} node={node} activeBranch={activeBranch} level={0} filter={filter} setBranchContextMenu={setBranchContextMenu} />
@@ -292,10 +291,10 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-1"
+                      className="flex-1 flex flex-col mt-0.5 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-0.5"
                     >
                      {filteredRemoteTree.size === 0 ? (
-                       <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">No remote repositories</div>
+                       <div className="text-[10px] text-muted-foreground/60 italic p-2.5 text-center">No remote repositories</div>
                      ) : (
                        Array.from(filteredRemoteTree.entries()).map(([remote, tree]) => (
                          <div key={remote}>
@@ -323,10 +322,10 @@ export function Sidebar() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex-1 flex flex-col mt-1 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-1 px-1 gap-1"
+                      className="flex-1 flex flex-col mt-0.5 overflow-y-auto custom-scrollbar bg-panel-background/40 rounded-lg border border-border/40 py-0.5 px-0.5 gap-0.5"
                     >
                      {filteredStashes.length === 0 ? (
-                       <div className="text-[11px] text-muted-foreground/60 italic p-4 text-center">Empty stash</div>
+                       <div className="text-[10px] text-muted-foreground/60 italic p-2.5 text-center">Empty stash</div>
                      ) : (
                         filteredStashes.map((s: StashEntry) => (
                           <StashEntryItem 
