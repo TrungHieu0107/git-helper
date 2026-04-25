@@ -1,4 +1,4 @@
-use git2::{Repository, Sort, Oid};
+use git2::{Repository, Sort, Oid, BranchType};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::cell::RefCell;

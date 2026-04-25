@@ -1,6 +1,6 @@
 # GitKit Summary
-## Version: 2.1.2
-## Last updated: 2026-04-25 – Optimized Graph Intersection & Horizontal-First Routing
+## Version: 2.2.0
+## Last updated: 2026-04-25 – Ultra-Scale Performance Optimizations (1M+ Commits)
 ## Project: GitKit
 
-GitKit's commit graph has been refined to eliminate visual intersections by using Anchor Points, ensuring lines depart and arrive at node edges rather than centers. The routing algorithm now prioritizes a "Horizontal-First" flow for side branches, emerging from node equators for a professional IDE aesthetic. All avatars have been standardized to `12px` radius with `preserveAspectRatio` optimization for pixel-perfect clarity.
+GitKit now supports smooth rendering for massive repositories (1M+ commits) by offloading graph continuity calculations and branch filtering to the Rust backend. A persistent `LogState` in the backend ensures graph lanes remain consistent across pagination chunks, while message truncation and branch pruning significantly reduce IPC overhead. The frontend has been optimized with 500-commit chunks and a new Branch Filter UI (Local/Remote/Active/All) for professional-grade repository exploration.
