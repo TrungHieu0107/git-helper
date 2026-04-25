@@ -84,39 +84,53 @@ const getAvatarUrl = (email: string) => `https://www.gravatar.com/avatar/${md5(e
 type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
 
 function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 10) {
-  // Khoảng cách theo trục X và Y
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  
-  // Nếu thẳng hàng (cùng lane) -> Vẽ dọc, chừa khoảng NODE_R để không đâm vào tâm
-  if (x1 === x2) {
-    const startY = y1 + Math.sign(dy) * NODE_R;
-    const endY = y2 - Math.sign(dy) * NODE_R;
-    return `M ${x1} ${startY} L ${x2} ${endY}`;
+  // Xác định node trên (Top) và node dưới (Bottom)
+  const topX = y1 < y2 ? x1 : x2;
+  const topY = y1 < y2 ? y1 : y2;
+  const bottomX = y1 < y2 ? x2 : x1;
+  const bottomY = y1 < y2 ? y2 : y1;
+
+  // 1. Trường hợp 2 node cùng lane (thẳng hàng dọc)
+  if (Math.abs(topX - bottomX) < 1) {
+    return `M ${bottomX} ${bottomY - NODE_R} L ${topX} ${topY + NODE_R}`;
   }
 
+  // 2. Xác định hướng đi ngang: rẽ trái hay rẽ phải?
+  const dx = topX - bottomX;
+  const dy = topY - bottomY;
   const dirX = Math.sign(dx);
-  const dirY = Math.sign(dy);
-  const rad = Math.min(r, Math.abs(dx) / 2, Math.abs(dy) / 2);
 
-  // Thuật toán Manhattan: Rẽ ngang ngay tại node (Horizontal-First)
-  // 1. Điểm neo xuất phát (từ HÔNG của Node Trên)
-  const startX = x1 + dirX * NODE_R;
-  const startY = y1;
+  // Tính toán an toàn để tránh góc bo bẻ gập ngược
+  const safeRadius = Math.min(
+    r, 
+    Math.abs(dx) / 2, 
+    Math.abs(dy) - NODE_R
+  );
 
-  // 2. Điểm neo kết thúc (vào ĐỈNH của Node Dưới)
-  const endX = x2;
-  const endY = y2 - dirY * NODE_R;
+  // 3. Tính toán các Tọa độ (Anchor Points)
+  // Bắt đầu từ mép hông của Node dưới (tránh đâm xuyên tâm)
+  const startX = bottomX + (dirX * NODE_R);
+  const startY = bottomY;
 
-  // 3. Điểm rẽ (Ngang -> Dọc)
-  const turn1X = x2 - dirX * rad;
-  const turn1Y = y1;
-  const turn2X = x2;
-  const turn2Y = y1 + dirY * rad;
+  // Điểm chuẩn bị bo góc
+  const curveStartX = topX - (dirX * safeRadius);
+  const curveStartY = bottomY;
 
-  return `M ${startX} ${startY} 
-          L ${turn1X} ${turn1Y} 
-          Q ${x2} ${y1} ${turn2X} ${turn2Y} 
+  // Tọa độ của điểm góc vuông lý tưởng (Control Point)
+  const controlPointX = topX;
+  const controlPointY = bottomY;
+
+  // Điểm hoàn thành bo góc (bắt đầu đi thẳng lên)
+  const curveEndX = topX;
+  const curveEndY = bottomY - safeRadius;
+
+  // Điểm kết thúc: chạm vào đáy của Node trên
+  const endX = topX;
+  const endY = topY + NODE_R;
+
+  return `M ${startX} ${startY}
+          L ${curveStartX} ${curveStartY}
+          Q ${controlPointX} ${controlPointY} ${curveEndX} ${curveEndY}
           L ${endX} ${endY}`;
 }
 

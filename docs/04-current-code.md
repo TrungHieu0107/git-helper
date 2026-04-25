@@ -22,3 +22,8 @@
 - **Files**: `src/components/CommitGraph.tsx`, `src/App.tsx`
 - **Change**: Increased commit row height by 5px (24px -> 29px for compact, 32px -> 37px for normal) to improve legibility while keeping avatar size constant.
 - **Verification**: Verified row spacing and alignment.
+
+### [2026-04-25] - UI/UX: Improved Graph Routing Algorithm
+- **Files**: `src/components/CommitGraph.tsx`
+- **Change**: Replaced the Z-curve Manhattan routing with a "Horizontal -> Rounded Corner -> Vertical Up" algorithm (GitKraken-style). Edges now start from the side of the bottom node and end at the bottom of the top node, preventing lines from intersecting avatar centers.
+- **Verification**: Verified path generation logic and edge cases (same lane, opposite directions).
