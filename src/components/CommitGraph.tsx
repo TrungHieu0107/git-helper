@@ -41,26 +41,24 @@ type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean
 function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', r: number = 8) {
   if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
   if (y1 === y2) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  
   const dx = x2 - x1;
   const dy = y2 - y1;
-  const rad = Math.min(r, Math.abs(dx), Math.abs(dy));
   const dirX = Math.sign(dx);
   const dirY = Math.sign(dy);
+  const rad = Math.min(r, Math.abs(dx) / 2, Math.abs(dy) / 2);
 
+  // Offset cho việc rẽ nhánh/merge (thường bằng nửa chiều cao của 1 hàng, giả sử ~16px)
+  const yOffset = Math.min(16, Math.abs(dy) / 2) * dirY;
+  
   if (type === 'merge') {
-    const arcStartX = x2 - dirX * rad;
-    const arcStartY = y1;
-    const arcEndX = x2;
-    const arcEndY = y1 + dirY * rad;
-    const sweep = (dirX * dirY > 0) ? 1 : 0;
-    return `M ${x1} ${y1} L ${arcStartX} ${arcStartY} A ${rad} ${rad} 0 0 ${sweep} ${arcEndX} ${arcEndY} L ${x2} ${y2}`;
+    // Đối với merge, đường line chạy dọc xuống gần tới node parent rồi mới rẽ ngang
+    const yMid = y2 - yOffset;
+    return `M ${x1} ${y1} L ${x1} ${yMid - dirY * rad} Q ${x1} ${yMid} ${x1 + dirX * rad} ${yMid} L ${x2 - dirX * rad} ${yMid} Q ${x2} ${yMid} ${x2} ${yMid + dirY * rad} L ${x2} ${y2}`;
   } else {
-    const arcStartX = x1;
-    const arcStartY = y2 - dirY * rad;
-    const arcEndX = x1 + dirX * rad;
-    const arcEndY = y2;
-    const sweep = (dirX * dirY > 0) ? 0 : 1;
-    return `M ${x1} ${y1} L ${arcStartX} ${arcStartY} A ${rad} ${rad} 0 0 ${sweep} ${arcEndX} ${arcEndY} L ${x2} ${y2}`;
+    // Đối với branch-off, đường line rẽ ngang ngay sau khi rời khỏi node child
+    const yMid = y1 + yOffset;
+    return `M ${x1} ${y1} L ${x1} ${yMid - dirY * rad} Q ${x1} ${yMid} ${x1 + dirX * rad} ${yMid} L ${x2 - dirX * rad} ${yMid} Q ${x2} ${yMid} ${x2} ${yMid + dirY * rad} L ${x2} ${y2}`;
   }
 }
 
@@ -258,7 +256,7 @@ export function CommitGraph() {
     return set;
   }, [filteredCommits, hasWip, oidMap]);
 
-  const [hov, setHov] = useState<number | null>(null);
+
   const sel = useAppStore(s => s.selectedRowIndex);
   const setSel = (index: number | null) => useAppStore.setState({ selectedRowIndex: index });
   
@@ -318,7 +316,7 @@ export function CommitGraph() {
       className="flex-1 flex flex-col bg-background h-full overflow-hidden text-sm selection:bg-primary/20"
     >
       {/* Header */}
-      <div className="h-[var(--toolbar-height)] flex items-center border-b border-border/40 bg-background backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm px-1">
+      <div className="h-[var(--toolbar-height)] flex items-center border-b border-border/40 bg-background/95 backdrop-blur-md sticky top-0 z-30 min-w-max shadow-sm border-l-4 border-transparent">
         <div className="pl-4 text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0" style={{ width: cw.label }}>
           Branches / Tags
         </div>
@@ -370,24 +368,7 @@ export function CommitGraph() {
           className="relative min-w-max" 
           style={{ height: `${virtualizer.getTotalSize()}px` }}
         >
-          {/* ═══ Background Highlight Layer ═══ */}
-          {virtualItems.map((virtualRow) => {
-            const row = virtualRow.index;
-            const isSel = sel === row;
-            const isHov = hov === row;
-            if (!isSel && !isHov) return null;
 
-            return (
-              <div 
-                key={`bg-${row}`}
-                className={cn(
-                  "absolute left-0 w-full pointer-events-none transition-all duration-200 z-[5]",
-                  isSel ? "bg-primary/10 border-y border-primary/10" : "bg-secondary/40"
-                )}
-                style={{ height: rowH, transform: `translateY(${virtualRow.start}px)` }}
-              />
-            );
-          })}
 
           {/* ═══ SVG Graph Layer ═══ */}
           <svg 
@@ -496,14 +477,13 @@ export function CommitGraph() {
                   key="WIP"
                   virtualRow={virtualRow}
                   rowH={rowH}
-                  hov={hov}
                   sel={sel}
                   cw={cw}
                   graphColumnWidth={graphColumnWidth}
                   status={status}
                   staged={staged}
                   unstaged={unstaged}
-                  setHov={setHov}
+
                   setSel={setSel}
                 />
               );
@@ -520,12 +500,11 @@ export function CommitGraph() {
                 row={row}
                 virtualRow={virtualRow}
                 rowH={rowH}
-                hov={hov}
                 sel={sel}
                 activeOids={activeOids}
                 cw={cw}
                 graphColumnWidth={graphColumnWidth}
-                setHov={setHov}
+
                 setSel={setSel}
                 handleContextMenu={handleContextMenu}
               />

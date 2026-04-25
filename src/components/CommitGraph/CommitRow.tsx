@@ -24,20 +24,20 @@ const color = (i: number) => COLORS[i % COLORS.length];
 export const SkeletonRow = React.memo(({ virtualRow, rowH, cw, graphColumnWidth }: { virtualRow: any, rowH: number, cw: any, graphColumnWidth: number }) => {
   return (
     <div 
-      className="absolute left-0 w-full flex items-center px-2 pointer-events-none opacity-20"
+      className="absolute left-0 w-full flex items-center pointer-events-none opacity-20"
       style={{ height: rowH, transform: `translateY(${virtualRow.start}px)` }}
     >
-      <div className="shrink-0" style={{ width: cw.label }}>
+      <div className="shrink-0 pl-4" style={{ width: cw.label }}>
         <Skeleton width="60%" height={16} borderRadius="12px" />
       </div>
-      <div style={{ width: graphColumnWidth + 5 }} />
-      <div className="flex-1 flex items-center pl-4 pr-4">
+      <div style={{ width: 5 + graphColumnWidth + 5 }} />
+      <div className="flex-1 flex items-center pl-6 pr-4">
         <Skeleton width="80%" height={14} />
       </div>
-      <div className="pl-4" style={{ width: cw.hash }}>
+      <div className="pl-[21px]" style={{ width: 5 + cw.hash }}>
         <Skeleton width="80%" height={14} />
       </div>
-      <div className="pl-4" style={{ width: cw.author }}>
+      <div className="pl-[21px] pr-4" style={{ width: 5 + cw.author }}>
         <Skeleton width="70%" height={14} />
       </div>
     </div>
@@ -178,18 +178,16 @@ export interface CommitRowProps {
   row: number;
   virtualRow: any;
   rowH: number;
-  hov: number | null;
   sel: number | null;
   activeOids: Set<string>;
   cw: any;
   graphColumnWidth: number;
-  setHov: (r: number | null) => void;
   setSel: (r: number) => void;
   handleContextMenu: (e: React.MouseEvent, n: CommitNode) => void;
 }
 
 export const CommitRow = React.memo(({
-  n, row, virtualRow, rowH, hov, sel, activeOids, cw, graphColumnWidth, setHov, setSel, handleContextMenu
+  n, row, virtualRow, rowH, sel, activeOids, cw, graphColumnWidth, setSel, handleContextMenu
 }: CommitRowProps) => {
   const [copied, setCopied] = useState(false);
   const isActive = activeOids.has(n.oid);
@@ -207,53 +205,67 @@ export const CommitRow = React.memo(({
   return (
     <div 
       key={n.oid}
-      className={cn(
-        "absolute left-0 w-full flex items-center cursor-pointer transition-all duration-200 group/row border-l-4",
-        hov === row ? "z-[60] border-transparent" : sel === row ? "z-[50] border-primary" : "z-[20] border-transparent"
-      )}
+      className="absolute left-0 w-full cursor-pointer group group/row"
       style={{ 
         height: rowH,
-        transform: `translateY(${virtualRow.start}px)`
+        transform: `translateY(${virtualRow.start}px)`,
+        zIndex: sel === row ? 50 : 20
       }}
       onClick={() => {
         setSel(row);
         selectCommitDetail(n.oid);
       }}
       onContextMenu={(e) => handleContextMenu(e, n)}
-      onMouseEnter={() => setHov(row)} 
-      onMouseLeave={() => setHov(null)}
     >
-      <div className="pl-3 overflow-visible shrink-0" style={{ width: cw.label }}>
-        <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActive} />
+      {/* ══ Layer 1: Opaque backgrounds to hide graph lines ══ */}
+      <div className="absolute inset-0 w-full h-full flex items-stretch z-[12] pointer-events-none">
+        <div className="shrink-0" style={{ width: cw.label }} />
+        <div className="shrink-0" style={{ width: 5 + graphColumnWidth + 5 }} />
+        <div className="flex-1 bg-background" />
+        <div className="shrink-0 bg-background" style={{ width: 5 + cw.hash }} />
+        <div className="shrink-0 bg-background" style={{ width: 5 + cw.author }} />
       </div>
-      <div className="shrink-0" style={{ width: graphColumnWidth }} />
-      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full relative z-20 bg-background/80 backdrop-blur-md shadow-[-10px_0_15px_rgba(0,0,0,0.1)]">
-        {n.node_type === 'stash' ? (
-          <div className="flex items-center gap-2.5 min-w-0">
-             <span className="bg-dracula-orange/10 text-dracula-orange border border-dracula-orange/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter shrink-0 shadow-sm">STASH</span>
-             <span className="truncate text-dracula-orange/80 text-[12px] italic font-medium">{n.message || 'Stashed changes'}</span>
-          </div>
-        ) : (
-          <span className={cn(
-            "truncate text-[13px] transition-colors duration-200",
-            isActive ? "text-foreground" : "text-foreground/70 group-hover/row:text-foreground"
-          )}>
-            {n.message}
-          </span>
-        )}
-      </div>
-      <div 
-        className="pl-4 flex items-center gap-2 group/hash relative h-full bg-background/80 backdrop-blur-md"
-        style={{ width: cw.hash }}
-        onClick={handleCopy}
-      >
-        <span className="font-mono text-[12px] text-muted-foreground/80 group-hover/hash:text-primary transition-colors">{n.short_oid}</span>
-        <button className="opacity-0 group-hover/hash:opacity-100 p-1 hover:bg-primary/10 rounded-lg transition-all duration-200">
-          {copied ? <Check size={14} className="text-dracula-green" /> : <Copy size={14} className="text-muted-foreground/40" />}
-        </button>
-      </div>
-      <div className="pl-4 flex items-center pr-4 h-full bg-background/80 backdrop-blur-md" style={{ width: cw.author }}>
-         <span className="text-[12px] text-muted-foreground/80 truncate font-semibold group-hover/row:text-foreground transition-colors tracking-tight">{authorFirstName}</span>
+
+      {/* ══ Layer 2: Hover & Active Highlight ══ */}
+      <div className={cn(
+        "absolute inset-0 w-full h-full z-[15] pointer-events-none transition-colors duration-150 border-l-4",
+        sel === row ? "bg-primary/10 border-primary" : "border-transparent group-hover/row:bg-white/[0.04]"
+      )} />
+
+      {/* ══ Layer 3: Content ══ */}
+      <div className="absolute inset-0 w-full h-full flex items-center z-[20]">
+        <div className="pl-4 overflow-visible shrink-0" style={{ width: cw.label }}>
+          <BranchLabels refs={n.refs} colorIdx={n.color_idx} isActive={isActive} />
+        </div>
+        <div className="shrink-0" style={{ width: 5 + graphColumnWidth + 5 }} />
+        <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full relative">
+          {n.node_type === 'stash' ? (
+            <div className="flex items-center gap-2.5 min-w-0">
+               <span className="bg-dracula-orange/10 text-dracula-orange border border-dracula-orange/20 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter shrink-0 shadow-sm">STASH</span>
+               <span className="truncate text-dracula-orange/80 text-[12px] italic font-medium transition-colors group-hover/row:text-dracula-orange">{n.message || 'Stashed changes'}</span>
+            </div>
+          ) : (
+            <span className={cn(
+              "truncate text-[13px] transition-colors duration-200",
+              isActive ? "text-foreground" : "text-foreground/70 group-hover/row:text-foreground"
+            )}>
+              {n.message}
+            </span>
+          )}
+        </div>
+        <div 
+          className="pl-[21px] flex items-center gap-2 group/hash relative h-full"
+          style={{ width: 5 + cw.hash }}
+          onClick={handleCopy}
+        >
+          <span className="font-mono text-[12px] text-muted-foreground/80 group-hover/row:text-foreground group-hover/hash:text-primary transition-colors">{n.short_oid}</span>
+          <button className="opacity-0 group-hover/hash:opacity-100 p-1 hover:bg-primary/10 rounded-lg transition-all duration-200">
+            {copied ? <Check size={14} className="text-dracula-green" /> : <Copy size={14} className="text-muted-foreground/40" />}
+          </button>
+        </div>
+        <div className="pl-[21px] flex items-center pr-4 h-full" style={{ width: 5 + cw.author }}>
+           <span className="text-[12px] text-muted-foreground/80 truncate font-semibold group-hover/row:text-foreground transition-colors tracking-tight">{authorFirstName}</span>
+        </div>
       </div>
     </div>
   );
@@ -263,19 +275,17 @@ export const CommitRow = React.memo(({
 export interface WipRowProps {
   virtualRow: any;
   rowH: number;
-  hov: number | null;
   sel: number | null;
   cw: any;
   graphColumnWidth: number;
   status: any;
   staged: any[];
   unstaged: any[];
-  setHov: (r: number | null) => void;
   setSel: (r: number) => void;
 }
 
 export const WipRow = React.memo(({
-  virtualRow, rowH, hov, sel, cw, graphColumnWidth, status, staged, unstaged, setHov, setSel
+  virtualRow, rowH, sel, cw, graphColumnWidth, status, staged, unstaged, setSel
 }: WipRowProps) => {
   const stagedCount = status?.staged_count ?? staged.length;
   const unstagedCount = status?.unstaged_count ?? unstaged.length;
@@ -283,43 +293,60 @@ export const WipRow = React.memo(({
   return (
     <div
       key="WIP"
-      className={cn(
-        "absolute left-0 w-full flex items-center cursor-pointer transition-all duration-200 border-l-4",
-        hov === 0 ? "z-[60] border-transparent" : sel === 0 ? "z-[50] border-primary" : "z-[20] border-transparent"
-      )}
-      style={{ height: rowH, transform: `translateY(${virtualRow.start}px)` }}
+      className="absolute left-0 w-full cursor-pointer group group/wip"
+      style={{ 
+        height: rowH, 
+        transform: `translateY(${virtualRow.start}px)`,
+        zIndex: sel === 0 ? 50 : 20
+      }}
       onClick={() => {
         setSel(0);
         useAppStore.setState({ selectedCommitDetail: null, isLoadingCommitDetail: false });
       }}
-      onMouseEnter={() => setHov(0)} 
-      onMouseLeave={() => setHov(null)}
     >
-      <div className="pl-3 flex items-center shrink-0" style={{ width: cw.label }}>
-        <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider">WIP</span>
+      {/* ══ Layer 1: Opaque backgrounds to hide graph lines ══ */}
+      <div className="absolute inset-0 w-full h-full flex items-stretch z-[12] pointer-events-none">
+        <div className="shrink-0" style={{ width: cw.label }} />
+        <div className="shrink-0" style={{ width: 5 + graphColumnWidth + 5 }} />
+        <div className="flex-1 bg-background" />
+        <div className="shrink-0 bg-background" style={{ width: 5 + cw.hash }} />
+        <div className="shrink-0 bg-background" style={{ width: 5 + cw.author }} />
       </div>
-      <div className="shrink-0" style={{ width: graphColumnWidth }} />
-      <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full relative z-20 bg-background/80 backdrop-blur-md shadow-[-10px_0_15px_rgba(0,0,0,0.1)]">
-        <div className="h-[calc(100%-6px)] rounded-xl border border-primary/10 bg-primary/5 flex items-center px-3 gap-4 shadow-sm backdrop-blur-sm group/wip-pill hover:border-primary/20 transition-all">
-          <HardDrive size={14} className="text-primary/60 group-hover/wip-pill:scale-110 transition-transform" />
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold text-dracula-green uppercase flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-dracula-green shadow-[0_0_8px_rgba(80,250,123,0.4)]" />
-              {stagedCount} Staged
-            </span>
-            <div className="w-px h-3 bg-border/40" />
-            <span className="text-[11px] font-bold text-dracula-orange uppercase flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-dracula-orange shadow-[0_0_8px_rgba(255,184,108,0.4)]" />
-              {unstagedCount} Unstaged
-            </span>
+
+      {/* ══ Layer 2: Hover & Active Highlight ══ */}
+      <div className={cn(
+        "absolute inset-0 w-full h-full z-[15] pointer-events-none transition-colors duration-150 border-l-4",
+        sel === 0 ? "bg-primary/10 border-primary" : "border-transparent group-hover/wip:bg-white/[0.04]"
+      )} />
+
+      {/* ══ Layer 3: Content ══ */}
+      <div className="absolute inset-0 w-full h-full flex items-center z-[20]">
+        <div className="pl-4 flex items-center shrink-0" style={{ width: cw.label }}>
+          <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider">WIP</span>
+        </div>
+        <div className="shrink-0" style={{ width: 5 + graphColumnWidth + 5 }} />
+        <div className="flex-1 flex items-center pl-6 pr-4 min-w-0 h-full relative">
+          <div className="h-[calc(100%-6px)] rounded-xl border border-primary/10 bg-primary/5 flex items-center px-3 gap-4 shadow-sm group/wip-pill hover:border-primary/20 transition-all">
+            <HardDrive size={14} className="text-primary/60 group-hover/wip-pill:scale-110 transition-transform" />
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-dracula-green uppercase flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-dracula-green shadow-[0_0_8px_rgba(80,250,123,0.4)]" />
+                {stagedCount} Staged
+              </span>
+              <div className="w-px h-3 bg-border/40" />
+              <span className="text-[11px] font-bold text-dracula-orange uppercase flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-dracula-orange shadow-[0_0_8px_rgba(255,184,108,0.4)]" />
+                {unstagedCount} Unstaged
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="pl-4 flex items-center h-full bg-background/80 backdrop-blur-md" style={{ width: cw.hash }}>
-        <Clock size={12} className="text-muted-foreground/20" />
-      </div>
-      <div className="pl-4 pr-4 flex items-center h-full bg-background/80 backdrop-blur-md" style={{ width: cw.author }}>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Working Tree</span>
+        <div className="pl-[21px] flex items-center h-full" style={{ width: 5 + cw.hash }}>
+          <Clock size={12} className="text-muted-foreground/20" />
+        </div>
+        <div className="pl-[21px] pr-4 flex items-center h-full" style={{ width: 5 + cw.author }}>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 transition-colors group-hover/wip:text-foreground/80">Working Tree</span>
+        </div>
       </div>
     </div>
   );
