@@ -195,7 +195,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
               )}
               <span className={cn(
                 "text-[13px] truncate font-mono tracking-tight transition-colors",
-                child.isFolder ? 'text-muted-foreground font-bold text-[var(--app-font-size)]' : 'text-foreground/90 group-hover:text-foreground'
+                child.isFolder ? 'text-muted-foreground font-medium text-[var(--app-font-size)]' : 'text-foreground/90 group-hover:text-foreground'
               )}>
                 {child.name}
               </span>
@@ -236,7 +236,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
             <div className="p-1.5 bg-primary/10 rounded-lg">
               <GitCommit size={16} className="text-primary" />
             </div>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
               Commit Detail
             </span>
           </div>
@@ -262,7 +262,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
               {(detail.author?.[0] || '?').toUpperCase()}
             </div>
             <div className="flex flex-col gap-1.5 min-w-0 pt-0.5">
-              <span className="text-[14px] text-foreground font-bold truncate tracking-tight">{detail.author || 'Unknown Author'}</span>
+              <span className="text-[14px] text-foreground font-semibold truncate tracking-tight">{detail.author || 'Unknown Author'}</span>
               <div className="flex items-center gap-2.5 text-[12px] text-muted-foreground font-semibold">
                 <Clock size={14} className="opacity-40" />
                 <span>{formatDate(detail.timestamp)}</span>
@@ -285,7 +285,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
             {detail.parent_short_oids && detail.parent_short_oids.length > 0 && (
               <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-secondary/30 border border-border/40 backdrop-blur-md">
                 <GitBranch size={14} className="text-muted-foreground/40" />
-                <span className="text-[10px] text-muted-foreground/60 font-bold uppercase tracking-widest">Parents</span>
+                <span className="text-[10px] text-muted-foreground/60 font-semibold uppercase tracking-widest">Parents</span>
                 <div className="flex items-center gap-1.5">
                   {detail.parent_short_oids.map((p: string, i: number) => (
                     <Badge key={i} variant="outline" className="h-5 px-1.5 text-[11px] font-mono border-border/40 bg-background/40">
@@ -297,7 +297,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
             )}
             <Button 
               size="xs" 
-              className="h-8 px-4 text-[11px] font-bold uppercase tracking-widest ml-auto shadow-lg rounded-lg hover:scale-105 transition-transform"
+              className="h-8 px-4 text-[11px] font-semibold uppercase tracking-widest ml-auto shadow-lg rounded-lg hover:scale-105 transition-transform"
               onClick={() => useAppStore.setState({ selectedRowIndex: 0, selectedCommitDetail: null })}
             >
               <ExternalLink size={12} className="mr-2" />
@@ -314,7 +314,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                 <div className="p-1.5 bg-secondary/50 rounded-lg">
                   <FileText size={14} className="text-muted-foreground/60" />
                 </div>
-                <h3 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                <h3 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
                   Changes ({detail.files?.length ?? 0})
                 </h3>
               </div>
@@ -331,7 +331,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                   variant="ghost"
                   size="xs"
                   onClick={() => setViewMode('tree')}
-                  className={cn("h-7 px-4 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all", viewMode === 'tree' && "bg-background shadow-md text-primary")}
+                  className={cn("h-7 px-4 text-[11px] font-semibold uppercase tracking-widest rounded-lg transition-all", viewMode === 'tree' && "bg-background shadow-md text-primary")}
                 >
                   Tree
                 </Button>
@@ -350,7 +350,7 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                   return (
                     <div key={key} className="flex items-center gap-2 group/stat">
                       <div className={cn("w-2 h-2 rounded-full transition-transform group-hover/stat:scale-125", colors[key])} />
-                      <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest group-hover:text-foreground transition-colors">
+                      <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest group-hover:text-foreground transition-colors">
                         {count} {key}
                       </span>
                     </div>
@@ -413,10 +413,10 @@ export function CommitDetailPanel({ onCollapse }: CommitDetailPanelProps = {}) {
                           {f.path.includes('/') ? (
                               <>
                                 <span className="truncate shrink text-muted-foreground/50">{f.path.substring(0, f.path.lastIndexOf('/') + 1)}</span>
-                                <span className="shrink-0 text-foreground/90 font-bold group-hover:text-primary transition-colors">{f.path.substring(f.path.lastIndexOf('/') + 1)}</span>
+                                <span className="shrink-0 text-foreground/90 font-medium group-hover:text-primary transition-colors">{f.path.substring(f.path.lastIndexOf('/') + 1)}</span>
                               </>
                           ) : (
-                              <span className="truncate shrink-0 text-foreground/90 font-bold group-hover:text-primary transition-colors">{f.path}</span>
+                              <span className="truncate shrink-0 text-foreground/90 font-medium group-hover:text-primary transition-colors">{f.path}</span>
                           )}
                         </div>
                         <div className="ml-auto opacity-0 group-hover:opacity-40 transition-opacity">
