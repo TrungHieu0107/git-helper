@@ -270,3 +270,15 @@ pub fn discard_all(repo_path: String) -> Result<(), String> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn apply_patch(repo_path: String, patch_string: String) -> Result<(), String> {
+    let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    let diff = git2::Diff::from_buffer(patch_string.as_bytes()).map_err(|e| e.to_string())?;
+    
+    // Apply specifically to the INDEX to simulate 'git add -p' behavior
+    // This stages the changes described in the patch without modifying the working directory files.
+    repo.apply(&diff, git2::ApplyLocation::Index, None).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}

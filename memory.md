@@ -1,10 +1,10 @@
-## Version: 2.3.6
-## Last updated: 2026-04-29 – UI Refinement: Reduced Font Weights.
+## Version: 2.3.7
+## Last updated: 2026-04-29 – New Feature: Partial Staging (Hunk Staging).
 ## Project: GitKit
 
 | Date | Change | Reason |
 |---|---|---|
-| 2026-04-29 | Reduced CommitDetailPanel Font Weights | Changed file basenames and folders from `font-bold` to `font-medium` to improve readability and aesthetic consistency with the staging area. |
+| 2026-04-29 | Implemented Partial Staging (Hunk Staging) | Added a new "Stage Hunk" feature allowing users to stage specific code blocks directly from the Monaco diff gutter using Git patches applied to the index. |
 | 2026-04-29 | Committed and Pushed Changes | Committed "Undo Last Commit" and "Rebase Branch Resolution" features and pushed to origin/main |
 | 2026-04-29 | Implemented Rebase Branch Resolution | Successfully integrated smart branch detection during Interactive and Standard Rebase in Rust backend and synchronized frontend state. |
 | 2026-04-29 | Implemented Undo Last Commit Feature | Provide a quick UX shortcut to rollback the most recent commit with Soft/Hard reset options |

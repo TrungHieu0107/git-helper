@@ -1,6 +1,6 @@
 # User Flows: Technical Deep Dive
-## Version: 5.0.0
-## Last updated: 2026-04-29 – Ultra-Detailed Architectural Mapping.
+## Version: 5.1.0
+## Last updated: 2026-04-29 – Added Partial Staging (Hunk Staging) Flow.
 ## Project: GitKit
 
 This document provides a low-level mapping of user actions to system behaviors, including IPC contracts, Rust backend logic, and frontend state management.
@@ -214,4 +214,41 @@ graph TD
     Standard --> Result
     
     Result --> Store["useAppStore.setActiveBranch(name)"]
+
+---
+
+## 6. Partial Staging (Hunk Staging)
+
+Technical flow for staging specific code blocks (hunks) from the Diff View.
+
+### Technical Sequence
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant Diff as MainDiffView.tsx
+    participant Utils as patch-generator.ts
+    participant Backend as status.rs
+    participant Git as git2-rs
+
+    User->>Diff: Click "Plus" icon in Gutter (Line N)
+    Diff->>Diff: Identify Hunk containing Line N
+    Diff->>Utils: generateHunkPatch(options, hunkInfo)
+    
+    Note over Utils: Constructs Git Patch string:
+    Note over Utils: --- a/file.ts \n +++ b/file.ts \n @@ -L,C +L,C @@
+    
+    Utils-->>Diff: returns patchString
+    Diff->>Backend: invoke('apply_patch', { repoPath, patchString })
+    
+    Backend->>Git: Diff::from_buffer(patchString)
+    Backend->>Git: repo.apply(diff, ApplyLocation::Index, None)
+    
+    Note right of Git: Updates Index without touching Working Tree
+    
+    Git-->>Backend: Result<()>
+    Backend-->>Diff: Success
+    Diff->>Diff: toast.success()
+    Diff->>Diff: refreshStatus()
+```
 ```

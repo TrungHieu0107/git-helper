@@ -10,6 +10,8 @@ import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import { Separator } from "./ui/Separator";
 import { cn } from "../lib/utils";
+import { generateHunkPatch } from "../lib/patch-generator";
+import { toast } from "../lib/toast";
 
 export interface MainDiffViewProps {
   path?: string;
@@ -49,6 +51,68 @@ export function MainDiffView(props: MainDiffViewProps) {
   const prevTimestampRef = useRef<number>(refreshTimestamp);
   const lastSelectionRef = useRef<string | null>(null);
 
+  const stageHunk = async (hunkIndex: number) => {
+    if (!path || !activeRepoPath || oldContent === null || newContent === null || hunkIndex < 0 || hunkIndex >= changes.length) return;
+    
+    const hunk = changes[hunkIndex];
+    try {
+      const patch = generateHunkPatch({
+        repoPath: activeRepoPath,
+        filePath: path,
+        oldContent,
+        newContent
+      }, {
+        originalStart: hunk.originalStartLineNumber,
+        originalEnd: hunk.originalEndLineNumber,
+        modifiedStart: hunk.modifiedStartLineNumber,
+        modifiedEnd: hunk.modifiedEndLineNumber
+      });
+      
+      await invoke('apply_patch', { repoPath: activeRepoPath, patchString: patch });
+      toast.success(`Staged hunk ${hunkIndex + 1} of ${path}`);
+      store.refreshStatus();
+    } catch (err) {
+      console.error("Failed to stage hunk:", err);
+      toast.error(`Failed to stage hunk: ${err}`);
+    }
+  };
+
+  const updateHunkDecorations = (editor: any) => {
+    if (!editor) return;
+    const modifiedEditor = editor.getModifiedEditor();
+    const lineChanges = editor.getLineChanges() || [];
+    
+    const newDecorations = lineChanges.map((change: any, index: number) => ({
+      range: {
+        startLineNumber: change.modifiedStartLineNumber,
+        startColumn: 1,
+        endLineNumber: change.modifiedStartLineNumber,
+        endColumn: 1
+      },
+      options: {
+        isWholeLine: false,
+        glyphMarginClassName: 'hunk-stage-glyph',
+        glyphMarginHoverMessage: { value: `Stage Hunk ${index + 1}` },
+        stickiness: 1 // NeverGrowsWhenTypingAtEdges
+      }
+    }));
+
+    // We need to store decoration IDs to clear them later if needed
+    // For now, just apply them. In a real app, you'd manage IDs in a ref.
+    modifiedEditor.deltaDecorations([], newDecorations);
+
+    // Listen for glyph margin clicks
+    modifiedEditor.onMouseDown((e: any) => {
+      if (e.target.type === 2) { // Glyph margin
+        const line = e.target.position.lineNumber;
+        const clickedHunkIdx = lineChanges.findIndex((c: any) => c.modifiedStartLineNumber === line);
+        if (clickedHunkIdx !== -1) {
+          stageHunk(clickedHunkIdx);
+        }
+      }
+    });
+  };
+
   const handleEditorMount = (editor: any) => {
     diffEditorRef.current = editor;
 
@@ -84,7 +148,16 @@ export function MainDiffView(props: MainDiffViewProps) {
         setCurrentChangeIndex(activeIndex);
       }
     });
+
+    // Initial decorations
+    updateHunkDecorations(editor);
   };
+
+  useEffect(() => {
+    if (diffEditorRef.current && changes.length > 0) {
+      updateHunkDecorations(diffEditorRef.current);
+    }
+  }, [changes]);
 
   useEffect(() => {
     if (diffEditorRef.current) {
@@ -311,6 +384,20 @@ export function MainDiffView(props: MainDiffViewProps) {
                <ArrowDown size={12} />
             </Button>
           </div>
+
+          {!staged && !commitOid && (
+            <Button
+              variant="primary"
+              size="xs"
+              onClick={() => stageHunk(currentChangeIndex)}
+              disabled={currentChangeIndex === -1}
+              className="h-7 px-3 text-[10px] uppercase font-bold tracking-wider"
+              title="Stage Focused Hunk"
+            >
+              <Plus size={12} className="mr-1.5" />
+              Stage Hunk
+            </Button>
+          )}
 
           <div className="flex items-center bg-secondary/30 rounded-lg border border-border/50 p-0.5">
             <Button

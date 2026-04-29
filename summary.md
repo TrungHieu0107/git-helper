@@ -1,6 +1,6 @@
 # GitKit Summary
-## Version: 2.3.6
-## Last updated: 2026-04-29 – UI Refinement: Font Weight Optimization
+## Version: 2.3.7
+## Last updated: 2026-04-29 – New Feature: Partial Staging (Hunk Staging)
 ## Project: GitKit
 
-GitKit has undergone a UI refinement in the `CommitDetailPanel` to optimize readability and visual balance. File basenames, folder names, and section headers have been transitioned from a heavy `bold` weight to a more sophisticated `medium`/`semibold` weight. This change ensures aesthetic consistency with the staging area's `FileRow` components and provides a more premium, professional desktop experience.
+GitKit now supports **Partial Staging (Hunk Staging)**, enabling users to stage specific code blocks (hunks) from a modified file without staging the entire file. This is implemented via a new `apply_patch` backend command that uses `git2-rs` to apply Git patches directly to the index. The UI is integrated into the Monaco `MainDiffView`, where users can click a "Plus" icon in the gutter to stage a specific hunk. This provides a professional `git add -p` workflow within a modern, graphical interface.
