@@ -1,6 +1,6 @@
 # User Flows
-## Version: 3.4.1
-## Last updated: 2026-04-29 – Detailed Reverse-Engineering of Checkout Flow.
+## Version: 3.5.0
+## Last updated: 2026-04-29 – Added Undo Commit and Rebase Branch Resolution flows.
 ## Project: GitKit
 
 This document maps user interactions to state changes and backend operations.
@@ -163,4 +163,46 @@ sequenceDiagram
     User->>Editor: Click 'Accept Solution'
     Editor->>Backend: invoke('resolve_conflict_file', { path, content })
     Backend-->>Store: triggerRefresh()
+```
+
+## Undo Last Commit
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CommitArea
+    participant Dialog as UndoCommitDialog
+    participant Repo as repo.ts
+    participant Backend as Rust Backend
+
+    User->>CommitArea: Click "Undo" icon
+    CommitArea->>Dialog: setShowUndoCommitDialog(true)
+    Dialog->>User: Select Mode (Soft/Hard)
+    User->>Dialog: Click "Confirm Undo"
+    Dialog->>Repo: undoLastCommit(mode)
+    Repo->>Backend: invoke('undo_last_commit', { mode })
+    Backend->>Backend: Determine HEAD~1
+    Backend->>Backend: git2 reset (Soft/Hard)
+    Backend-->>Repo: returns success
+    Repo->>Repo: loadRepo()
+```
+
+## Branch Resolution (Rebase State)
+
+This flow ensures the UI displays the original branch name even when Git is in a detached HEAD state during a rebase.
+
+```mermaid
+flowchart TD
+    A[Refresh Trigger: loadRepo / refresh] --> B[Invoke open_repo / get_repo_status]
+    B --> C[Rust: resolve_head_branch]
+    C --> D{Check repo.state()}
+    D -- "Rebase/Merge" --> E[Read .git/rebase-merge/head-name]
+    D -- "Standard Rebase" --> F[Read .git/rebase-apply/head-name]
+    D -- "Clean" --> G[repo.head().shorthand()]
+    
+    E --> H[Strip 'refs/heads/']
+    F --> H
+    G --> I[Return Branch Name]
+    H --> I
+    I --> J[Frontend: Update activeBranch & repoInfo]
 ```
