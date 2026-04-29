@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { invoke } from '@tauri-apps/api/core';
 import { DiffEditor } from "@monaco-editor/react";
-import { X, Columns, AlignLeft, ArrowUp, ArrowDown, FileCode, Binary, AlertCircle } from "lucide-react";
+import { X, Columns, AlignLeft, ArrowUp, ArrowDown, FileCode, Binary, AlertCircle, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EncodingBadge } from "./EncodingBadge";
 import { useAppStore } from "../store";
@@ -70,7 +70,7 @@ export function MainDiffView(props: MainDiffViewProps) {
       
       await invoke('apply_patch', { repoPath: activeRepoPath, patchString: patch });
       toast.success(`Staged hunk ${hunkIndex + 1} of ${path}`);
-      store.refreshStatus();
+      store.triggerRefresh();
     } catch (err) {
       console.error("Failed to stage hunk:", err);
       toast.error(`Failed to stage hunk: ${err}`);

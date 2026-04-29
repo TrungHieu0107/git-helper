@@ -348,7 +348,7 @@ export function RightPanel() {
                               status={f.status} 
                               onAction={() => unstageFile(f.path)}
                               actionLabel="Unstage"
-                              onClick={() => handleFileClick(p, true)}
+                              onClick={() => handleFileClick(f.path, true)}
                               onContextMenu={(e) => handleFileContextMenu(e, f.path, true)}
                               highlight={fileFilter}
                               isCompact={width < 450}

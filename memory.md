@@ -1,9 +1,9 @@
-## Version: 2.3.7
-## Last updated: 2026-04-29 – New Feature: Partial Staging (Hunk Staging).
+## Version: 2.5.0
+## Last updated: 2026-04-29 – New Feature: Streaming Git Blame (Case 1)
 ## Project: GitKit
 
-| Date | Change | Reason |
-|---|---|---|
+| 2026-04-29 | Implemented Case 1: Streaming Git Blame | GitKit now supports **Streaming Git Blame**, a high-performance, non-blocking feature designed to handle massive files (>100k lines) by streaming blame data incrementally from Rust to React via Tauri Events. This ensures the UI remains responsive and the Event Loop is never blocked. This was implemented as part of the Case 1 Stress Test. Additionally, it supports **Rebase Current Branch**, allowing users to move their branch base onto any selected commit. |
+| 2026-04-29 | Implemented Rebase Current Branch | Added full rebase support including backend Rust logic, frontend context menu actions, dirty-state pre-checks, and auto-routing to the Conflict Editor. Stabilized build by resolving legacy TypeScript errors. |
 | 2026-04-29 | Implemented Partial Staging (Hunk Staging) | Added a new "Stage Hunk" feature allowing users to stage specific code blocks directly from the Monaco diff gutter using Git patches applied to the index. |
 | 2026-04-29 | Committed and Pushed Changes | Committed "Undo Last Commit" and "Rebase Branch Resolution" features and pushed to origin/main |
 | 2026-04-29 | Implemented Rebase Branch Resolution | Successfully integrated smart branch detection during Interactive and Standard Rebase in Rust backend and synchronized frontend state. |

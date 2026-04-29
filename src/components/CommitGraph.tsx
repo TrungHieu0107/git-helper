@@ -36,7 +36,6 @@ const ly = (row: number, rowH: number) => row * rowH + rowH / 2;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function md5(s: string) {
-  let a = 0, b = 0, c = 0, d = 0;
   const k = [
     0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
     0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
@@ -83,7 +82,7 @@ const getAvatarUrl = (email: string) => `https://www.gravatar.com/avatar/${md5(e
 // ── Manhattan-routed edge paths ──────────────────────────────────────
 type Edge = { path: string; colorIdx: number; childOid: string; isMerge: boolean; dashed?: boolean; r1: number; r2: number };
 
-function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merge' | 'branch-off', cornerRadius: number = 12) {
+function roundedPath(x1: number, y1: number, x2: number, y2: number, _type: 'merge' | 'branch-off', cornerRadius: number = 12) {
   const nodeRadius = NODE_R;
   
   // 1. Cùng một nhánh (Thẳng dọc)
@@ -134,6 +133,7 @@ function roundedPath(x1: number, y1: number, x2: number, y2: number, type: 'merg
     
     return `M ${p1x} ${p1y} L ${p2x} ${p2y} Q ${cx} ${cy} ${p3x} ${p3y} L ${p4x} ${p4y}`;
   }
+  return "";
 }
 
 function buildEdges(commits: CommitNode[], off: number, wip: boolean, minIdx: number, maxIdx: number, oidMap: Map<string, number>, rowH: number): Edge[] {
@@ -514,7 +514,6 @@ export function CommitGraph() {
               const cx = lx(n.lane), cy = ly(row, rowH);
               const c = color(n.color_idx);
               const r = NODE_R;
-              const isMerge = (n.parents?.length ?? 0) > 1;
 
               if (n.node_type === 'stash') {
                 return (
@@ -529,7 +528,7 @@ export function CommitGraph() {
               const isActive = activeOids.has(n.oid);
               const authorChar = (n.author?.[0] ?? '?').toUpperCase();
 
-              const avatarUrl = getAvatarUrl(n.author_email || '');
+              const avatarUrl = getAvatarUrl(n.email || '');
               const clipId = "avatar-clip";
 
               return (

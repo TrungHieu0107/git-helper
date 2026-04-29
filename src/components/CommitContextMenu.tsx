@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitBranch, Copy, Eye, BookmarkPlus, GitCommit, GitMerge, CloudSync, Trash2, ChevronsDown, RotateCcw, X, MessageSquare } from 'lucide-react';
 import { CommitNode, useAppStore } from '../store';
-import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, dropStash, findMergableBranch } from '../lib/repo';
+import { safeSwitchBranch, selectCommitDetail, applyStash, popStash, dropStash, findMergableBranch, startRebase } from '../lib/repo';
 import { confirm } from './ui/ConfirmDialog';
 import { toast } from '../lib/toast';
 import { CreateBranchDialog } from './CreateBranchDialog';
@@ -93,6 +93,43 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
     await safeSwitchBranch(commit.oid);
     onClose();
   }, [commit.oid, onClose]);
+
+  const handleRebase = useCallback(async () => {
+    if (!repoInfo) return;
+    
+    const repoStatus = useAppStore.getState().repoStatus;
+    const isDirty = (repoStatus?.staged_count || 0) > 0 || (repoStatus?.unstaged_count || 0) > 0;
+    
+    if (isDirty) {
+      onClose();
+      toast.error("You have uncommitted changes. Please stash or commit them before rebasing.");
+      return;
+    }
+
+    onClose();
+    const ok = await confirm({
+      title: 'Rebase Branch',
+      message: `Are you sure you want to rebase '${repoInfo.head_branch}' onto this commit?`,
+      detail: (
+        <div className="space-y-2 mt-2">
+          <div className="flex items-center gap-2 text-[11px] bg-amber-500/10 text-amber-500 p-2 rounded border border-amber-500/20">
+            <CloudSync size={12} />
+            <span>Warning: This will rewrite the history of your current branch.</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs bg-secondary/30 p-2 rounded-md border border-border/50">
+            <GitCommit size={12} className="text-muted-foreground" />
+            <span className="text-muted-foreground italic truncate">"{commit.message}"</span>
+          </div>
+        </div>
+      ),
+      confirmLabel: 'Rebase',
+      variant: 'danger'
+    });
+
+    if (ok) {
+      await startRebase(commit.oid);
+    }
+  }, [commit, repoInfo, onClose]);
 
   const handleApplyStash = useCallback(() => {
     if (commit.stash_index !== undefined) {
@@ -186,6 +223,14 @@ export function CommitContextMenu({ commit, position, onClose }: CommitContextMe
         onClose();
       },
       disabled: isStash || commit.oid === repoInfo?.head_oid || cherryPickState !== 'idle'
+    },
+    {
+      id: 'rebase-onto',
+      icon: <GitMerge size={14} className="rotate-90" />,
+      label: 'Rebase current branch onto here...',
+      className: 'text-amber-400 hover:bg-amber-400/10',
+      action: handleRebase,
+      disabled: isStash || commit.oid === repoInfo?.head_oid || cherryPickState !== 'idle' || repoInfo?.state !== 'clean'
     },
     ...remoteRefs.map(ref => ({
       id: `force-checkout-${ref}`,

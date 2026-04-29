@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Trash2, Check, X, AlertTriangle, Info } from 'lucide-react';
+import { RotateCcw, Trash2, Check, X, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '../store';
 import { undoLastCommit } from '../lib/repo';
 import { Button } from './ui/Button';

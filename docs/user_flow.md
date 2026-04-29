@@ -194,6 +194,33 @@ sequenceDiagram
 
 ## 5. Rebase Branch Name Resolution (Deep State)
 
+### Streaming Git Blame Flow (Reactive)
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (React)
+    participant BE as Backend (Rust/Tauri)
+    participant GIT as Git CLI (Incremental)
+
+    FE->>BE: invoke("start_git_blame", { filePath })
+    BE->>GIT: git blame --incremental [filePath]
+    loop Streaming
+        GIT-->>BE: raw stdout lines
+        BE->>BE: parse chunk (500 lines)
+        BE->>FE: emit("blame-event", { type: "Chunk", lines })
+    end
+    GIT-->>BE: process exit
+    BE->>FE: emit("blame-event", { type: "Complete" })
+    
+    Note over FE, BE: Backpressure handled by chunking
+    Note over FE, BE: Event Loop remains unblocked (Tokio)
+```
+
+#### Edge Case Analysis
+- **Large Files:** Chunks of 500 lines are emitted to avoid saturating the IPC bridge.
+- **Backpressure:** The backend uses `BufReader` and `tokio::spawn` to ensure data is processed as fast as the OS provides it, while the frontend re-renders incrementally.
+- **Cancellation:** If the user switches context, the backend can kill the `Child` process (to be added in refined version).
+
 How GitKit maintains identity during `Detached HEAD` states.
 
 ```mermaid

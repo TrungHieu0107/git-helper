@@ -66,7 +66,6 @@ export function App() {
     
     // Layout Density logic
     const rowHeight = layoutDensity === 'compact' ? 29 : 37;
-    const gapMultiplier = layoutDensity === 'compact' ? 1 : 1.5;
     
     document.documentElement.style.setProperty('--row-height', `${rowHeight}px`);
     document.documentElement.style.setProperty('--app-gap-sm', layoutDensity === 'compact' ? '5px' : '12px');

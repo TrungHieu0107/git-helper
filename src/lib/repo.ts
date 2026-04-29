@@ -140,6 +140,35 @@ export interface ResetResult {
   commits_rewound: number;
 }
 
+export type RebaseResult = 
+  | { type: 'Success' }
+  | { type: 'ConflictDetected', files: string[] }
+  | { type: 'AlreadyUpToDate' };
+
+export interface BlameLine {
+  line_number: number;
+  commit_id: string;
+  author: string;
+  author_mail: string;
+  timestamp: number;
+  summary: string;
+}
+
+export type BlameEvent = 
+  | { type: 'Chunk', lines: BlameLine[] }
+  | { type: 'Complete' }
+  | { type: 'Error', message: string };
+
+/**
+ * Starts a streaming git blame for the given file.
+ * Listen for 'blame-event' to receive chunks.
+ */
+export async function startGitBlame(filePath: string) {
+  const repoPath = useAppStore.getState().activeRepoPath;
+  if (!repoPath) return;
+  return await invoke('start_git_blame', { repoPath, filePath });
+}
+
 
 export interface StashUnstagedOptions {
   message?: string;
@@ -662,6 +691,42 @@ export async function createBranch(name: string, startPoint?: string): Promise<C
 
   return result || null;
 }
+
+/**
+ * Starts a rebase of the current branch onto the target commit.
+ */
+export async function startRebase(targetOid: string) {
+  const path = useAppStore.getState().activeRepoPath;
+  if (!path) return;
+
+  return await withLoading(async () => {
+    try {
+      const result = await invoke<RebaseResult>('start_rebase', { repoPath: path, targetOid });
+      await loadRepo(path);
+      
+      switch (result.type) {
+        case 'Success':
+          toast.success("Rebase completed successfully.");
+          break;
+        case 'ConflictDetected':
+          toast.info("Rebase stopped due to conflicts. Please resolve them.");
+          if (result.files && result.files.length > 0) {
+            useAppStore.getState().openConflictEditor(result.files[0], 'Rebase');
+          }
+          break;
+        case 'AlreadyUpToDate':
+          toast.info("Already up to date.");
+          break;
+      }
+      return result;
+    } catch (e) {
+      toast.error(`Rebase failed: ${e}`);
+      return null;
+    }
+  }, "Rebasing branch...", 1000);
+}
+
+
 
 export async function validateBranchName(name: string): Promise<BranchValidation> {
   const path = useAppStore.getState().activeRepoPath;
