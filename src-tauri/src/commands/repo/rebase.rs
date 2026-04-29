@@ -45,7 +45,13 @@ pub fn start_rebase(repo_path: String, target_oid: String) -> Result<RebaseResul
         let _op = match op_res {
             Ok(o) => o,
             Err(e) => {
-                // If next() fails, it's likely a conflict or apply error
+                // If the error code is Applied (-18), it means the patch was already applied
+                // and we can safely skip this commit.
+                if e.code() == git2::ErrorCode::Applied {
+                    continue;
+                }
+
+                // If next() fails for other reasons, it's likely a conflict or apply error
                 // Check for conflicts in the index
                 let index = repo.index().map_err(|e| e.to_string())?;
                 if index.has_conflicts() {
