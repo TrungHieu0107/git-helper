@@ -1,208 +1,217 @@
-# User Flows
-## Version: 3.5.0
-## Last updated: 2026-04-29 – Added Undo Commit and Rebase Branch Resolution flows.
+# User Flows: Technical Deep Dive
+## Version: 5.0.0
+## Last updated: 2026-04-29 – Ultra-Detailed Architectural Mapping.
 ## Project: GitKit
 
-This document maps user interactions to state changes and backend operations.
+This document provides a low-level mapping of user actions to system behaviors, including IPC contracts, Rust backend logic, and frontend state management.
 
-## Opening a Repository
+---
 
+## 1. Repository Lifecycle & State Restoration
+
+### High-Detail sequence: Opening a Repository
 ```mermaid
 sequenceDiagram
+    autonumber
     participant User
     participant Welcome as WelcomeScreen
     participant Store as Zustand Store
-    participant Repo as repo.ts
+    participant Repo as repoService.ts
     participant Backend as Rust Backend
+    participant FS as Local Filesystem
 
-    User->>Welcome: Click "Open Local Repository"
-    Welcome->>Repo: open_repo_dialog()
-    Repo->>Backend: tauri-plugin-dialog: open()
-    Backend-->>Repo: returns path
-    Repo->>Backend: invoke('open_repo', { path })
-    Backend-->>Repo: returns RepoInfo
-    Repo->>Store: setRepoPath(path)
-    Store->>Store: setActiveTabId(path)
-    Repo->>Repo: refreshActiveRepoStatus()
+    User->>Welcome: Launch GitKit
+    Welcome->>Backend: invoke('get_app_state')
+    Backend->>FS: Read $APP_DATA/state.json
+    FS-->>Backend: { recentRepos: [...] }
+    Backend-->>Welcome: AppState object
+    Welcome->>Store: setAppState(state)
+    
+    alt User clicks "Open Local Repository"
+        User->>Welcome: Click Button
+        Welcome->>Backend: tauri-plugin-dialog: open({ directory: true })
+        Backend-->>Welcome: returns selected_path
+    end
+
+    Welcome->>Repo: loadRepo(selected_path)
+    Repo->>Store: setIsInitializing(true)
+    
+    Repo->>Backend: invoke('open_repo', { path: selected_path })
+    Backend->>Backend: Repository::discover(path)
+    Backend->>Backend: resolve_head_branch(repo)
+    Note right of Backend: Checks .git/rebase-merge/head-name if REBASE-i
+    Backend->>FS: Update recentRepos in state.json
+    Backend-->>Repo: returns RepoInfo { head_branch, head_oid, state, ... }
+    
+    Repo->>Store: setRepoPath(selected_path)
     Repo->>Store: setRepoInfo(info)
+    Repo->>Store: setActiveBranch(info.head_branch)
+    
+    Repo->>Repo: refreshActiveRepoStatus()
+    Repo->>Backend: invoke('get_repo_status')
+    Backend-->>Repo: { staged_count, unstaged_count, ahead, behind, branch_name }
+    Repo->>Store: setRepoStatus(status)
+    Repo->>Store: setIsInitializing(false)
 ```
 
-## Committing Changes
+---
 
+## 2. Commit & Rollback Lifecycle
+
+### Technical Flow: Create Commit
 ```mermaid
 flowchart TD
-    A[User types commit message] --> B[User clicks 'Commit']
-    B --> C{Any staged files?}
-    C -- No --> D[Show Toast: No staged files]
-    C -- Yes --> E[Call commit_changes message]
-    E --> F[invoke 'create_commit']
-    F --> G[Rust: git2 commit]
-    G --> H[Update Log & Status]
-    H --> I[Clear commit message area]
+    subgraph Frontend [UI: CommitArea.tsx]
+        A[User Input] --> B{Message Empty?}
+        B -- "Yes" --> C[toast.error('Please enter message')]
+        B -- "No" --> D{Staged Files > 0?}
+        D -- "No" --> E[toast.error('No changes staged')]
+        D -- "Yes" --> F[invoke 'create_commit' {message}]
+    end
+
+    subgraph Backend [Rust: diff.rs]
+        F --> G[repo.index()]
+        G --> H[index.write_tree()]
+        H --> I[Get HEAD OID as Parent]
+        I --> J[repo.signature()]
+        J --> K[repo.commit(HEAD, author, committer, msg, tree, [parents])]
+        K --> L{Result?}
+        L -- "Ok" --> M[Return Success]
+        L -- "Err" --> N[Return Error Message]
+    end
+
+    subgraph Refresh [Lifecycle]
+        M --> O[Clear Message Input]
+        O --> P[loadRepo() - Full Refresh]
+        N --> Q[toast.error(err)]
+    end
 ```
 
-## Switching Branches (Checkout)
-
-### Flow Description
-This flow describes the process of switching from the current branch to a target branch (local or remote). The application implements a "safe" checkout strategy: it first validates the repository state and potential conflicts via a dry-run (`safe_checkout`) before committing to the actual operation (`checkout_branch`). This prevents the working directory from entering a partially-updated or corrupted state due to unforeseen conflicts.
-
-### IPC Contract
-
-#### 1. `safe_checkout` (Validation)
-- **Method**: `invoke('safe_checkout', { repoPath, branchName })`
-- **Request Payload**:
-  ```typescript
-  {
-    repoPath: string;
-    branchName: string;
-  }
-  ```
-- **Success Response**: `SafeCheckoutResult`
-  ```typescript
-  type SafeCheckoutResult = 
-    | { action: 'AlreadyOnBranch' }
-    | { action: 'Clean' }
-    | { action: 'DirtyNoConflict' }
-    | { action: 'DirtyWithConflict', files: string[] }
-    | { action: 'DirtyState', state: string }
-    | { action: 'NotFound', branch: string };
-  ```
-
-#### 2. `checkout_branch` (Execution)
-- **Method**: `invoke('checkout_branch', { repoPath, branchName, options })`
-- **Request Payload**:
-  ```typescript
-  {
-    repoPath: string;
-    branchName: string;
-    options: {
-      force: boolean;
-      merge: boolean;
-      create: boolean;
-    };
-  }
-  ```
-- **Error Types**: `CheckoutError`
-  ```typescript
-  type CheckoutError = 
-    | { type: 'Conflict', data: { files: string[] } }
-    | { type: 'DirtyState', data: { state: string } }
-    | { type: 'NotFound', data: { branch: string } }
-    | { type: 'DetachedHead', data: { oid: string } }
-    | { type: 'Generic', data: { message: string } };
-  ```
-
-### Mermaid Diagram
-
-```mermaid
-graph TD
-    %% Frontend Entry
-    User_Action["User Double-Clicks Branch"] --> UI_Trigger["safeSwitchBranch(branchName)"]
-    UI_Trigger --> Invoke_Safe["invoke('safe_checkout')"]
-
-    %% Backend Validation (safe_checkout)
-    Invoke_Safe --> Rust_Safe["Rust: safe_checkout"]
-    Rust_Safe --> Check_State{"Repo State Clean?"}
-    
-    Check_State -- "No" --> Result_DirtyState["Return DirtyState"]
-    Check_State -- "Yes" --> Check_Current{"Already on Branch?"}
-    
-    Check_Current -- "Yes" --> Result_AlreadyOn["Return AlreadyOnBranch"]
-    Check_Current -- "No" --> Resolve_Target["Resolve Target OID"]
-    
-    Resolve_Target --> DryRun_Checkout["Dry-run checkout_tree"]
-    DryRun_Checkout -- "Conflicts Found" --> Result_Conflict["Return DirtyWithConflict"]
-    DryRun_Checkout -- "No Conflicts" --> Check_WT{"WT Changes?"}
-    
-    Check_WT -- "No" --> Result_Clean["Return Clean"]
-    Check_WT -- "Yes" --> Result_DirtyNoConflict["Return DirtyNoConflict"]
-
-    %% Frontend Decision Logic
-    Result_AlreadyOn --> Toast_Info["Show Info Toast"]
-    Result_DirtyState --> UI_Error["Show CheckoutError Dialog"]
-    Result_Conflict --> UI_Confirm["Show Force Checkout Alert"]
-    
-    Result_Clean --> Invoke_Checkout["invoke('checkout_branch')"]
-    Result_DirtyNoConflict --> Invoke_Checkout
-
-    %% Backend Execution (checkout_branch)
-    Invoke_Checkout --> Rust_Exec["Rust: checkout_branch"]
-    Rust_Exec --> Exec_Target{"Target Type?"}
-    
-    Exec_Target -- "Local" --> Local_Flow["Find Local Branch"]
-    Exec_Target -- "Remote" --> Remote_Flow["Create/Locate Local Tracking Branch"]
-    
-    Local_Flow --> Final_Checkout["repo.checkout_tree"]
-    Remote_Flow --> Final_Checkout
-    
-    Final_Checkout -- "Ok" --> Set_Head["repo.set_head(...)"]
-    Final_Checkout -- "Err (Conflict)" --> Error_Conflict["Return Conflict Error"]
-    Final_Checkout -- "Err (Other)" --> Error_Generic["Return Generic Error"]
-    
-    Set_Head --> UI_Success["toast.success & loadRepo()"]
-    Error_Conflict --> UI_Error_Display["Display Conflict Files in UI"]
-    Error_Generic --> UI_Toast_Err["toast.error(...)"]
-```
-
-## Conflict Resolution Workflow
-
+### Technical Flow: Undo Last Commit (Soft/Hard Reset)
 ```mermaid
 sequenceDiagram
+    autonumber
     participant User
-    participant Tree as FileTree
-    participant Store as Zustand Store
-    participant Editor as ConflictEditorView
-    participant Backend as Rust Backend
-
-    User->>Tree: Click conflicted file (!)
-    Tree->>Store: openConflictEditor(path, mode)
-    Store->>Editor: Render Monaco Merge Editor
-    Editor->>Backend: invoke('get_conflict_diff', { path })
-    Backend-->>Editor: returns Ours, Base, Theirs
-    User->>Editor: Resolve hunks
-    User->>Editor: Click 'Accept Solution'
-    Editor->>Backend: invoke('resolve_conflict_file', { path, content })
-    Backend-->>Store: triggerRefresh()
-```
-
-## Undo Last Commit
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant CommitArea
     participant Dialog as UndoCommitDialog
     participant Repo as repo.ts
-    participant Backend as Rust Backend
+    participant Backend as ops.rs
 
-    User->>CommitArea: Click "Undo" icon
-    CommitArea->>Dialog: setShowUndoCommitDialog(true)
-    Dialog->>User: Select Mode (Soft/Hard)
+    User->>Dialog: Select "Soft" or "Hard"
     User->>Dialog: Click "Confirm Undo"
     Dialog->>Repo: undoLastCommit(mode)
-    Repo->>Backend: invoke('undo_last_commit', { mode })
-    Backend->>Backend: Determine HEAD~1
-    Backend->>Backend: git2 reset (Soft/Hard)
-    Backend-->>Repo: returns success
+    Repo->>Backend: invoke('undo_last_commit', { repoPath, mode })
+    
+    Backend->>Backend: repo.head() -> resolve to commit
+    Backend->>Backend: Get parent (HEAD~1)
+    
+    alt mode == "Soft"
+        Backend->>Backend: repo.reset(parent, SOFT, None)
+        Note right of Backend: Keeps Index & WT intact
+    else mode == "Hard"
+        Backend->>Backend: repo.reset(parent, HARD, Some(CheckoutBuilder))
+        Note right of Backend: Overwrites Index & WT
+    end
+    
+    Backend-->>Repo: returns Result<()>
     Repo->>Repo: loadRepo()
 ```
 
-## Branch Resolution (Rebase State)
+---
 
-This flow ensures the UI displays the original branch name even when Git is in a detached HEAD state during a rebase.
+## 3. Advanced Branching: "Safe Checkout"
 
+GitKit implements a multi-stage checkout to prevent data loss.
+
+### Data Contract: `SafeCheckoutResult`
+| Value | Interpretation | UI Action |
+|---|---|---|
+| `AlreadyOnBranch` | HEAD already points here | Info Toast |
+| `Clean` | No uncommitted changes | Immediate Checkout |
+| `DirtyNoConflict` | WT changes exist but don't overlap | Checkout with Merge |
+| `DirtyWithConflict` | WT changes overlap with target branch | Show Conflict Alert (Force/Stash) |
+| `DirtyState` | Repo is in Merge/Rebase/Bisect | Show Error Dialog |
+
+### Execution Flow
 ```mermaid
 flowchart TD
-    A[Refresh Trigger: loadRepo / refresh] --> B[Invoke open_repo / get_repo_status]
-    B --> C[Rust: resolve_head_branch]
-    C --> D{Check repo.state()}
-    D -- "Rebase/Merge" --> E[Read .git/rebase-merge/head-name]
-    D -- "Standard Rebase" --> F[Read .git/rebase-apply/head-name]
-    D -- "Clean" --> G[repo.head().shorthand()]
+    User["User: Checkout Branch"] --> Guard["safeSwitchBranch(target)"]
+    Guard --> SafeCall["invoke 'safe_checkout'"]
     
-    E --> H[Strip 'refs/heads/']
-    F --> H
-    G --> I[Return Branch Name]
-    H --> I
-    I --> J[Frontend: Update activeBranch & repoInfo]
+    subgraph Rust_Validation [safe_checkout]
+        SafeCall --> Discover["Resolve target OID"]
+        Discover --> StateCheck{"Repo State == Idle?"}
+        StateCheck -- "No" --> ReturnDirtyState["Return DirtyState(state)"]
+        
+        StateCheck -- "Yes" --> DryRun["CheckoutBuilder: dry_run()"]
+        DryRun -- "Conflict" --> ReturnConflict["Return DirtyWithConflict(files)"]
+        DryRun -- "Clean" --> WTCheck{"Working Tree Dirty?"}
+        
+        WTCheck -- "No" --> ReturnClean["Return Clean"]
+        WTCheck -- "Yes" --> ReturnDirtyNo["Return DirtyNoConflict"]
+    end
+
+    ReturnClean --> DoCheckout["invoke 'checkout_branch' {merge: true}"]
+    ReturnDirtyNo --> DoCheckout
+    ReturnConflict --> Alert["Prompt: Force or Stash?"]
+    
+    Alert -- "Stash & Checkout" --> StashFlow["invoke 'force_checkout_confirm_with_stash'"]
+    Alert -- "Force" --> ForceFlow["invoke 'checkout_branch' {force: true}"]
+```
+
+---
+
+## 4. Conflict Resolution & Merge Editor
+
+### Interactive Merge sequence
+```mermaid
+sequenceDiagram
+    participant User
+    participant Editor as MonacoMergeEditor
+    participant Backend as Rust Backend
+
+    User->>Editor: Click conflicted file
+    Editor->>Backend: invoke('get_conflict_diff', { path })
+    Backend->>Backend: Read INDEX (Stage 1, 2, 3)
+    Note right of Backend: Stage 1: Base, 2: Ours, 3: Theirs
+    Backend-->>Editor: { base, ours, theirs }
+    
+    Editor->>Editor: Load Monaco with 3-way view
+    User->>Editor: Resolve hunks manually
+    User->>Editor: Click "Save Resolution"
+    
+    Editor->>Backend: invoke('resolve_conflict_file', { path, content })
+    Backend->>Backend: Write content to WT
+    Backend->>Backend: repo.index() -> add(path)
+    Backend->>Backend: Check if all conflicts resolved
+    Backend-->>Editor: returns { remainingConflicts: N }
+    
+    alt N == 0
+        Editor->>User: Show "Commit Merge" Button
+    end
+```
+
+---
+
+## 5. Rebase Branch Name Resolution (Deep State)
+
+How GitKit maintains identity during `Detached HEAD` states.
+
+```mermaid
+graph TD
+    Trigger["Repo Refresh"] --> Resolve["resolve_head_branch(repo)"]
+    Resolve --> State{"repo.state()"}
+    
+    State -- "RebaseInteractive" --> PathMerge[".git/rebase-merge/head-name"]
+    State -- "Rebase" --> PathApply[".git/rebase-apply/head-name"]
+    State -- "Merge" --> PathMergeMsg[".git/MERGE_MSG"]
+    State -- "Idle" --> Standard["repo.head().shorthand()"]
+    
+    PathMerge --> Read["fs::read_to_string()"]
+    PathApply --> Read
+    
+    Read --> Clean["Strip 'refs/heads/' prefix"]
+    Clean --> Result["Branch: 'feature/login'"]
+    Standard --> Result
+    
+    Result --> Store["useAppStore.setActiveBranch(name)"]
 ```

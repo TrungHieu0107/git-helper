@@ -1,6 +1,6 @@
 # GitKit Summary
-## Version: 2.3.2
-## Last updated: 2026-04-29 – Rebase Branch Resolution Implementation
+## Version: 2.3.5
+## Last updated: 2026-04-29 – Ultra-Detailed Architectural Mapping Implementation
 ## Project: GitKit
 
-GitKit has successfully implemented a critical fix for branch name resolution during Git Rebase states. By directly reading internal `.git` metadata (`rebase-merge/head-name` and `rebase-apply/head-name`) in the Rust backend, the application now accurately displays the original branch name even during Interactive Rebase. The frontend state management has also been synchronized to ensure the UI remains consistent across all repository refreshes.
+GitKit has reached its highest documentation fidelity with the release of the "Technical Deep Dive" User Flow suite. This version (5.0.0 of `user_flow.md`) provides low-level architectural mapping for repository lifecycles, commit/rollback transactions, safe checkout multi-stage validation, and complex conflict resolution. It explicitly details the interaction between the Rust backend (Git2-rs), Tauri IPC bridge, and Zustand state management, providing a "Source of Truth" for the entire application logic.

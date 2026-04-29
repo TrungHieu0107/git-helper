@@ -1,9 +1,11 @@
-## Version: 2.3.2
-## Last updated: 2026-04-29 – Rebase Branch Resolution Implemented
+## Version: 2.3.5
+## Last updated: 2026-04-29 – Ultra-Detailed Architectural Mapping.
 ## Project: GitKit
 
 | Date | Change | Reason |
 |---|---|---|
+| 2026-04-29 | Ultra-Detailed User Flow Mapping | Created a high-fidelity technical specification of user flows, including IPC contracts, Rust backend logic branches, and state restoration lifecycle in `user_flow.md`. |
+| 2026-04-29 | Committed and Pushed Changes | Committed "Undo Last Commit" and "Rebase Branch Resolution" features and pushed to origin/main |
 | 2026-04-29 | Implemented Rebase Branch Resolution | Successfully integrated smart branch detection during Interactive and Standard Rebase in Rust backend and synchronized frontend state. |
 | 2026-04-29 | Implemented Undo Last Commit Feature | Provide a quick UX shortcut to rollback the most recent commit with Soft/Hard reset options |
 | 2026-04-29 | Enhanced Checkout User Flow Documentation | Performed deep logic tracing of `safe_checkout` and `checkout_branch` to create a high-fidelity technical mapping in `user_flow.md`. |
