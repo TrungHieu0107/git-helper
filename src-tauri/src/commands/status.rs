@@ -163,6 +163,7 @@ pub struct RepoStatus {
     pub conflict_count: usize,
     pub ahead: usize,
     pub behind: usize,
+    pub branch_name: String,
 }
 
 #[tauri::command]
@@ -217,6 +218,8 @@ pub fn get_repo_status(path: String) -> Result<RepoStatus, String> {
         }
     }
 
+    let branch_name = super::repo::utils::resolve_head_branch(&repo);
+    
     Ok(RepoStatus {
         staged_count: staged,
         unstaged_count: unstaged,
@@ -224,6 +227,7 @@ pub fn get_repo_status(path: String) -> Result<RepoStatus, String> {
         conflict_count: conflicted,
         ahead,
         behind,
+        branch_name,
     })
 }
 

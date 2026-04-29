@@ -27,6 +27,7 @@ import { setupGlobalErrorHandlers, handleError } from "./lib/error";
 import { LoadingOverlay, GitLoader } from "./components/ui/Loading";
 import { CreateBranchDialog } from "./components/CreateBranchDialog";
 import { CreateStashDialog } from "./components/CreateStashDialog";
+import { UndoCommitDialog } from "./components/UndoCommitDialog";
 
 // App component
 export function App() {
@@ -45,6 +46,7 @@ export function App() {
   const setShowCreateBranch = useAppStore(state => state.setShowCreateBranch);
   const showCreateStash = useAppStore(state => state.showCreateStash);
   const setShowCreateStash = useAppStore(state => state.setShowCreateStash);
+  const showUndoCommitDialog = useAppStore(state => state.showUndoCommitDialog);
   const focusDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isInitializing, setIsInitializing] = useState(true);
@@ -177,6 +179,7 @@ export function App() {
       {mergeTarget && <MergeDialog />}
       {showCreateBranch && <CreateBranchDialog onClose={() => setShowCreateBranch(false)} />}
       {showCreateStash && <CreateStashDialog onClose={() => setShowCreateStash(false)} />}
+      {showUndoCommitDialog && <UndoCommitDialog />}
     </div>
   );
 }

@@ -803,16 +803,19 @@ export async function discardAllChanges() {
   }, "Discarding all changes...", 800);
 }
 
-export async function undoLastCommit() {
+export async function undoLastCommit(mode: 'Soft' | 'Mixed' | 'Hard' = 'Soft') {
   const path = useAppStore.getState().activeRepoPath;
   if (!path) return;
-  try {
-    await invoke('undo_last_commit', { repoPath: path });
-    await loadRepo(path);
-    toast.success("Last commit undone (soft reset)");
-  } catch (e) {
-    toast.error(`Undo failed: ${e}`);
-  }
+  
+  await withLoading(async () => {
+    try {
+      await invoke('undo_last_commit', { repoPath: path, mode });
+      await loadRepo(path);
+      toast.success(`Last commit undone (${mode.toLowerCase()} reset)`);
+    } catch (e) {
+      toast.error(`Undo failed: ${e}`);
+    }
+  }, `Undoing last commit (${mode.toLowerCase()})...`, 600);
 }
 
 export async function refreshActiveRepoStatus() {

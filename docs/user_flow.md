@@ -1,6 +1,6 @@
 # User Flows
-## Version: 3.4.0
-## Last updated: 2026-04-22 – High-Fidelity UI Modernization & Stability Hardening.
+## Version: 3.4.1
+## Last updated: 2026-04-29 – Detailed Reverse-Engineering of Checkout Flow.
 ## Project: GitKit
 
 This document maps user interactions to state changes and backend operations.
@@ -41,18 +41,107 @@ flowchart TD
     H --> I[Clear commit message area]
 ```
 
-## Switching Branches
+## Switching Branches (Checkout)
+
+### Flow Description
+This flow describes the process of switching from the current branch to a target branch (local or remote). The application implements a "safe" checkout strategy: it first validates the repository state and potential conflicts via a dry-run (`safe_checkout`) before committing to the actual operation (`checkout_branch`). This prevents the working directory from entering a partially-updated or corrupted state due to unforeseen conflicts.
+
+### IPC Contract
+
+#### 1. `safe_checkout` (Validation)
+- **Method**: `invoke('safe_checkout', { repoPath, branchName })`
+- **Request Payload**:
+  ```typescript
+  {
+    repoPath: string;
+    branchName: string;
+  }
+  ```
+- **Success Response**: `SafeCheckoutResult`
+  ```typescript
+  type SafeCheckoutResult = 
+    | { action: 'AlreadyOnBranch' }
+    | { action: 'Clean' }
+    | { action: 'DirtyNoConflict' }
+    | { action: 'DirtyWithConflict', files: string[] }
+    | { action: 'DirtyState', state: string }
+    | { action: 'NotFound', branch: string };
+  ```
+
+#### 2. `checkout_branch` (Execution)
+- **Method**: `invoke('checkout_branch', { repoPath, branchName, options })`
+- **Request Payload**:
+  ```typescript
+  {
+    repoPath: string;
+    branchName: string;
+    options: {
+      force: boolean;
+      merge: boolean;
+      create: boolean;
+    };
+  }
+  ```
+- **Error Types**: `CheckoutError`
+  ```typescript
+  type CheckoutError = 
+    | { type: 'Conflict', data: { files: string[] } }
+    | { type: 'DirtyState', data: { state: string } }
+    | { type: 'NotFound', data: { branch: string } }
+    | { type: 'DetachedHead', data: { oid: string } }
+    | { type: 'Generic', data: { message: string } };
+  ```
+
+### Mermaid Diagram
 
 ```mermaid
-flowchart TD
-    Start[User double-clicks branch] --> Check[safe_checkout validation]
-    Check --> Result{Action Result}
-    Result -- Clean --> Checkout[invoke 'checkout_branch']
-    Result -- DirtyNoConflict --> Checkout
-    Result -- DirtyWithConflict --> Alert[Show ForceCheckoutAlert]
-    Alert -- Stash & Switch --> Stash[invoke 'force_checkout_confirm_with_stash']
-    Alert -- Force Switch --> Force[invoke 'force_checkout_from_origin']
-    Result -- AlreadyOn --> Toast[Show Toast: Already on branch]
+graph TD
+    %% Frontend Entry
+    User_Action["User Double-Clicks Branch"] --> UI_Trigger["safeSwitchBranch(branchName)"]
+    UI_Trigger --> Invoke_Safe["invoke('safe_checkout')"]
+
+    %% Backend Validation (safe_checkout)
+    Invoke_Safe --> Rust_Safe["Rust: safe_checkout"]
+    Rust_Safe --> Check_State{"Repo State Clean?"}
+    
+    Check_State -- "No" --> Result_DirtyState["Return DirtyState"]
+    Check_State -- "Yes" --> Check_Current{"Already on Branch?"}
+    
+    Check_Current -- "Yes" --> Result_AlreadyOn["Return AlreadyOnBranch"]
+    Check_Current -- "No" --> Resolve_Target["Resolve Target OID"]
+    
+    Resolve_Target --> DryRun_Checkout["Dry-run checkout_tree"]
+    DryRun_Checkout -- "Conflicts Found" --> Result_Conflict["Return DirtyWithConflict"]
+    DryRun_Checkout -- "No Conflicts" --> Check_WT{"WT Changes?"}
+    
+    Check_WT -- "No" --> Result_Clean["Return Clean"]
+    Check_WT -- "Yes" --> Result_DirtyNoConflict["Return DirtyNoConflict"]
+
+    %% Frontend Decision Logic
+    Result_AlreadyOn --> Toast_Info["Show Info Toast"]
+    Result_DirtyState --> UI_Error["Show CheckoutError Dialog"]
+    Result_Conflict --> UI_Confirm["Show Force Checkout Alert"]
+    
+    Result_Clean --> Invoke_Checkout["invoke('checkout_branch')"]
+    Result_DirtyNoConflict --> Invoke_Checkout
+
+    %% Backend Execution (checkout_branch)
+    Invoke_Checkout --> Rust_Exec["Rust: checkout_branch"]
+    Rust_Exec --> Exec_Target{"Target Type?"}
+    
+    Exec_Target -- "Local" --> Local_Flow["Find Local Branch"]
+    Exec_Target -- "Remote" --> Remote_Flow["Create/Locate Local Tracking Branch"]
+    
+    Local_Flow --> Final_Checkout["repo.checkout_tree"]
+    Remote_Flow --> Final_Checkout
+    
+    Final_Checkout -- "Ok" --> Set_Head["repo.set_head(...)"]
+    Final_Checkout -- "Err (Conflict)" --> Error_Conflict["Return Conflict Error"]
+    Final_Checkout -- "Err (Other)" --> Error_Generic["Return Generic Error"]
+    
+    Set_Head --> UI_Success["toast.success & loadRepo()"]
+    Error_Conflict --> UI_Error_Display["Display Conflict Files in UI"]
+    Error_Generic --> UI_Toast_Err["toast.error(...)"]
 ```
 
 ## Conflict Resolution Workflow

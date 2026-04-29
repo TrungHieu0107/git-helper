@@ -501,12 +501,31 @@ pub fn check_working_tree(repo_path: String) -> Result<WorkingTreeCheck, String>
 }
 
 #[tauri::command]
-pub fn undo_last_commit(repo_path: String) -> Result<(), String> {
+pub fn undo_last_commit(repo_path: String, mode: ResetMode) -> Result<(), String> {
     let repo = Repository::open(&repo_path).map_err(|e| e.to_string())?;
+    
+    // Check repository state
+    if repo.state() != git2::RepositoryState::Clean {
+        return Err("Cannot undo commit: repository is in a busy state (merge/rebase/etc).".to_string());
+    }
+
     let head = repo.head().map_err(|e| e.to_string())?;
     let commit = head.peel_to_commit().map_err(|e| e.to_string())?;
-    let parent = commit.parent(0).map_err(|_| "No parent commit to undo to")?;
-    repo.reset(parent.as_object(), git2::ResetType::Soft, None).map_err(|e| e.to_string())?;
+    
+    // Use revparse_single to find HEAD~1 reliably
+    let parent = match repo.revparse_single("HEAD~1") {
+        Ok(obj) => obj,
+        Err(_) => return Err("Cannot undo: This is the first commit of the repository.".to_string()),
+    };
+    
+    let reset_type = match mode {
+        ResetMode::Soft => git2::ResetType::Soft,
+        ResetMode::Mixed => git2::ResetType::Mixed,
+        ResetMode::Hard => git2::ResetType::Hard,
+    };
+
+    repo.reset(&parent, reset_type, None).map_err(|e| e.to_string())?;
+    
     Ok(())
 }
 

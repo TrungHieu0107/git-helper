@@ -59,6 +59,7 @@ export interface UISlice {
   forceCheckoutPhase: 'idle' | 'confirm_reset' | 'confirm_stash' | 'processing' | 'stash_conflict';
 
   confirmCheckoutTo: string | null;
+  showUndoCommitDialog: boolean;
 
   showFileHistoryModal: boolean;
   fileHistoryPath: string | null;
@@ -93,6 +94,7 @@ export interface UISlice {
   setShowSetUpstreamDialog: (show: boolean) => void;
   setShowCreateBranch: (show: boolean) => void;
   setLastCommitWasAmend: (wasAmend: boolean) => void;
+  setShowUndoCommitDialog: (show: boolean) => void;
 
   addToast: (message: string, type: Toast['type'], duration?: number) => void;
   removeToast: (id: string) => void;
@@ -142,6 +144,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   forceCheckoutPhase: 'idle',
 
   confirmCheckoutTo: null,
+  showUndoCommitDialog: false,
 
   showFileHistoryModal: false,
   fileHistoryPath: null,
@@ -178,6 +181,7 @@ export const createUISlice: StateCreator<AppStore, [], [], UISlice> = (set) => (
   setShowSetUpstreamDialog: (show) => set(() => ({ showSetUpstreamDialog: show })),
   setShowCreateBranch: (show) => set(() => ({ showCreateBranch: show })),
   setLastCommitWasAmend: (wasAmend) => set(() => ({ lastCommitWasAmend: wasAmend })),
+  setShowUndoCommitDialog: (show) => set(() => ({ showUndoCommitDialog: show })),
 
   setForceCheckout: (target, phase) => set(() => ({ forceCheckoutTarget: target, forceCheckoutPhase: phase })),
   setFileHistory: (path) => set(() => ({ fileHistoryPath: path, showFileHistoryModal: !!path })),

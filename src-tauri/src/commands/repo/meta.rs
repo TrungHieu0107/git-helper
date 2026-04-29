@@ -159,13 +159,10 @@ pub fn open_repo(app: tauri::AppHandle, path: String) -> Result<RepoInfo, String
     
     let is_bare = repo.is_bare();
     
-    let mut head_branch = "main".to_string();
+    let head_branch = super::utils::resolve_head_branch(&repo);
     let mut head_oid = "".to_string();
     
     if let Ok(head) = repo.head() {
-        if let Some(name) = head.shorthand() {
-            head_branch = name.to_string();
-        }
         if let Some(target) = head.target() {
             head_oid = target.to_string();
         }

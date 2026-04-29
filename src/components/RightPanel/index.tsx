@@ -381,6 +381,8 @@ export function RightPanel() {
               headCommitInfo={headCommitInfo}
               onCommit={handleCommit}
               stagedCount={stagedFiles.length}
+              canUndo={useAppStore.getState().commitLog.some(n => n.node_type === 'commit')}
+              onUndo={() => useAppStore.getState().setShowUndoCommitDialog(true)}
             />
           </>
         )}

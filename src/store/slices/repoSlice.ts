@@ -18,6 +18,7 @@ export interface RepoStatus {
   conflict_count: number;
   ahead: number;
   behind: number;
+  branch_name: string;
 }
 
 export interface RecentRepo {

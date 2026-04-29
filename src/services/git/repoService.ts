@@ -17,6 +17,7 @@ export async function loadRepo(path: string) {
     }
 
     store.setRepoInfo(info);
+    store.setActiveBranch(info.head_branch);
     
     // Parallel fetch for all repo data to reduce latency
     const [status, repoStatus, branches, logResponse, backendStashes] = await Promise.all([
@@ -126,7 +127,19 @@ export async function refreshActiveRepoStatus() {
     unstagedFiles: status.filter(f => f.status === 'unstaged' || f.status === 'untracked'),
     stagedFiles: status.filter(f => f.status === 'staged')
   });
-  if (repoStatus) useAppStore.setState({ repoStatus });
+  if (repoStatus) {
+    useAppStore.setState({ repoStatus });
+    useAppStore.getState().setActiveBranch(repoStatus.branch_name);
+    
+    // Also update repoInfo if it exists to keep everything consistent
+    const currentInfo = useAppStore.getState().repoInfo;
+    if (currentInfo) {
+      useAppStore.getState().setRepoInfo({
+        ...currentInfo,
+        head_branch: repoStatus.branch_name
+      });
+    }
+  }
 }
 
 export async function saveCurrentState() {

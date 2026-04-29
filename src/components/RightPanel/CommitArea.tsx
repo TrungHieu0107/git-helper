@@ -13,6 +13,8 @@ interface CommitAreaProps {
   headCommitInfo: HeadCommitInfo | null;
   onCommit: () => void;
   stagedCount: number;
+  canUndo?: boolean;
+  onUndo?: () => void;
 }
 
 export const CommitArea: React.FC<CommitAreaProps> = ({
@@ -24,7 +26,9 @@ export const CommitArea: React.FC<CommitAreaProps> = ({
   setAmend,
   headCommitInfo,
   onCommit,
-  stagedCount
+  stagedCount,
+  canUndo,
+  onUndo
 }) => {
   const charsLeft = 72 - message.length;
   const isCommitDisabled = (!amend && stagedCount === 0) || message.trim() === '';
@@ -36,13 +40,24 @@ export const CommitArea: React.FC<CommitAreaProps> = ({
           <div className="w-1.5 h-4 bg-dracula-green rounded-sm" />
           <span className="section-header-text">NEW COMMIT</span>
         </div>
-        <div 
-          onClick={() => setAmend(!amend)}
-          className="flex items-center gap-1.5 cursor-pointer group"
-        >
-          <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors uppercase">Amend</span>
-          <div className={`w-7 h-3.5 rounded-full relative transition-colors ${amend ? 'bg-dracula-green/80' : 'bg-border/40'}`}>
-            <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${amend ? 'right-0.5' : 'left-0.5'}`} />
+        <div className="flex items-center gap-2">
+          {canUndo && (
+            <button 
+              onClick={onUndo}
+              title="Undo Last Commit"
+              className="p-1 hover:bg-white/10 rounded text-muted-foreground hover:text-dracula-cyan transition-colors"
+            >
+              <GitCommit size={14} className="rotate-180" />
+            </button>
+          )}
+          <div 
+            onClick={() => setAmend(!amend)}
+            className="flex items-center gap-1.5 cursor-pointer group"
+          >
+            <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors uppercase">Amend</span>
+            <div className={`w-7 h-3.5 rounded-full relative transition-colors ${amend ? 'bg-dracula-green/80' : 'bg-border/40'}`}>
+              <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${amend ? 'right-0.5' : 'left-0.5'}`} />
+            </div>
           </div>
         </div>
       </div>
@@ -85,15 +100,17 @@ export const CommitArea: React.FC<CommitAreaProps> = ({
         />
       </div>
 
-      <Button 
-        onClick={onCommit}
-        variant="primary"
-        className="w-full py-2.5 text-[12px]"
-        disabled={isCommitDisabled}
-        leftIcon={<GitCommit size={14} />}
-      >
-        {amend ? 'Amend last commit' : 'Commit changes'}
-      </Button>
+      <div className="flex gap-1.5">
+        <Button 
+          onClick={onCommit}
+          variant="primary"
+          className="flex-1 py-2.5 text-[12px]"
+          disabled={isCommitDisabled}
+          leftIcon={<GitCommit size={14} />}
+        >
+          {amend ? 'Amend last commit' : 'Commit changes'}
+        </Button>
+      </div>
     </div>
   );
 };

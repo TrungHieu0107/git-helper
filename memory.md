@@ -1,10 +1,12 @@
-# Change Log
-## Version: 2.2.0
-## Last updated: 2026-04-25 – Compact UI & Performance Optimization
+## Version: 2.3.2
+## Last updated: 2026-04-29 – Rebase Branch Resolution Implemented
 ## Project: GitKit
 
 | Date | Change | Reason |
 |---|---|---|
+| 2026-04-29 | Implemented Rebase Branch Resolution | Successfully integrated smart branch detection during Interactive and Standard Rebase in Rust backend and synchronized frontend state. |
+| 2026-04-29 | Implemented Undo Last Commit Feature | Provide a quick UX shortcut to rollback the most recent commit with Soft/Hard reset options |
+| 2026-04-29 | Enhanced Checkout User Flow Documentation | Performed deep logic tracing of `safe_checkout` and `checkout_branch` to create a high-fidelity technical mapping in `user_flow.md`. |
 | 2026-04-22 | Refined CommitDetailPanel density | Reduce excessive whitespace and fix file list overlap |
 | 2026-04-22 | Enhanced High-Contrast Dracula Palette | Improve accessibility and visual impact |
 | 2026-04-22 | Resolved Build Stability Issues | Fix broken imports, missing icons, and type mismatches |
@@ -29,3 +31,5 @@
 | 2026-04-25T13:16:00+07:00 | Adjusted Commit Row Height | Increased commit row height by 5px (24px -> 29px for compact, 32px -> 37px for normal) to improve legibility and provide more breathing room while maintaining constant avatar size. |
 | 2026-04-25T13:35:00+07:00 | Implemented Asymmetric Edge Routing | Implemented GitKraken-style asymmetric edge routing. Forking (to right) exits Right side and enters Top. Merging (to left) exits Bottom and enters Right side. Optimized anchor points to avoid node center intersections. |
 | 2026-04-25T13:42:00+07:00 | Standardized Stash Edge Routing | Replaced Stash Bezier curves with the asymmetric Manhattan algorithm. Standardized coordinates and applied a dashed styling (`strokeDasharray="6, 4"`, `opacity: 0.7`). Ensured Stash edges render in the background layer for visual clarity. |
+| 2026-04-29T21:25:00+07:00 | Enhanced Checkout User Flow Documentation | Performed deep logic tracing of `safe_checkout` and `checkout_branch` to create a high-fidelity technical mapping in `user_flow.md`. |
+| 2026-04-29T21:23:00+07:00 | Adopted User Flow Implementation Workflow | Integrated a mandatory 3-phase workflow (Ingestion, Mapping, Generation) for implementing features from Mermaid/Markdown flows. |
